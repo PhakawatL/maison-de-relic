@@ -10,9 +10,9 @@
 
 หน้าเว็บกับ API รันแยกกัน และคุยกันผ่าน `fetch()` เท่านั้น ตามข้อกำหนดของวิชา
 
-```
-เบราว์เซอร์ → Vercel (frontend/) ──fetch()──→ Railway (backend/) → PostgreSQL
-```
+![แผนผังระบบ](docs/architecture.png)
+
+(ไฟล์ภาพสำหรับใส่รายงาน: `docs/architecture.png` / แก้ไขได้ที่ `docs/architecture.svg`)
 
 ---
 
