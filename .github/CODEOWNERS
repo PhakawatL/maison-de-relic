@@ -1,0 +1,32 @@
+# กำหนดว่าใครต้องรีวิว PR ที่แก้ไฟล์ส่วนไหน — GitHub จะขอรีวิวจากคนนั้นให้อัตโนมัติ
+# TODO (R1): เปลี่ยน @TODO-xxx เป็น GitHub username จริงของเพื่อน แล้วลบ # หน้าบรรทัดออก
+# (ถ้าใส่ username ที่ไม่ใช่ collaborator ของ repo บรรทัดนั้นจะใช้ไม่ได้)
+
+# ค่าเริ่มต้น: Tech Lead รีวิวทุกอย่าง
+*                                   @PhakawatL
+
+# R2 · Identity · Admin Users
+# /backend/src/modules/auth/        @TODO-bonus
+# /backend/src/modules/users/       @TODO-bonus
+# /frontend/js/pages/login.js       @TODO-bonus
+# /frontend/js/pages/admin-users.js @TODO-bonus
+
+# R3 · Catalog · Inventory
+# /backend/src/modules/products/    @TODO-yu
+# /backend/src/modules/inventory/   @TODO-yu
+# /frontend/js/pages/admin-products.js @TODO-yu
+
+# R4 · Discovery · Recommender
+# /backend/src/modules/search/      @TODO-pleng
+# /backend/src/modules/recommend/   @TODO-pleng
+# /backend/src/modules/events/      @TODO-pleng
+# /frontend/js/pages/home.js        @TODO-pleng
+# /frontend/js/pages/search.js      @TODO-pleng
+# /frontend/js/pages/detail.js      @TODO-pleng
+
+# R5 · Cart · Checkout · Orders
+# /backend/src/modules/cart/        @TODO-r5
+# /backend/src/modules/orders/      @TODO-r5
+
+# migration กระทบทุกคน — Tech Lead ต้องรีวิวเสมอ
+/backend/db/                        @PhakawatL

@@ -1,0 +1,54 @@
+# ตรวจทุก PR ก่อน merge: ติดตั้งได้, migration/seed รันผ่าน, test ผ่าน
+# ถ้าขึ้นกากบาทแดงใน PR ให้กดดู log ว่าพังขั้นไหน
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: maison_de_relic
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/maison_de_relic
+      NODE_ENV: test
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - name: Migrate
+        run: npm run db:migrate
+      - name: Seed
+        run: npm run db:seed
+      - name: Migrate ซ้ำต้องไม่พัง (ไฟล์ที่รันแล้วต้องถูกข้าม)
+        run: npm run db:migrate
+      - name: Test
+        run: npm test

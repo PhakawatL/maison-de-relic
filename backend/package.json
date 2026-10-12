@@ -1,0 +1,25 @@
+{
+  "name": "maison-de-relic-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "REST API ของร้าน Maison de Relic (Node.js + Express + PostgreSQL)",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:reset": "node scripts/reset.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.1.0",
+    "pg": "^8.13.0"
+  }
+}

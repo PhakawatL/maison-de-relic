@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# ความลับ — ห้าม commit เด็ดขาด (ใช้ .env.example เป็นตัวอย่างแทน)
+.env
+.env.*
+!.env.example
+
+# log / OS / editor
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ไฟล์ที่อัปโหลดตอนทดสอบบนเครื่อง
+backend/uploads/
+
+# Vercel
+.vercel

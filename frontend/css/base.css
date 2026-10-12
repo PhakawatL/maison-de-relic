@@ -1,0 +1,189 @@
+/* =========================================================
+   base.css — สไตล์กลางของทั้งเว็บ (สี ฟอนต์ ระยะห่าง ปุ่ม ฟอร์ม)
+   เปลี่ยนธีมทั้งเว็บได้จากตัวแปรใน :root ด้านล่าง
+   หน้าใดอยากมีสไตล์เฉพาะ ให้สร้างไฟล์ css/pages/<หน้า>.css แยก
+   ========================================================= */
+:root {
+  --color-bg: #faf8f5;
+  --color-surface: #ffffff;
+  --color-text: #1f1b16;
+  --color-muted: #6b645b;
+  --color-border: #e4ded5;
+  --color-primary: #7a4b1f;
+  --color-primary-contrast: #ffffff;
+  --color-danger: #b42318;
+  --color-success: #1f6f43;
+
+  --font-body: 'IBM Plex Sans Thai', system-ui, sans-serif;
+  --radius: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 16px;
+  --space-4: 24px;
+  --space-5: 40px;
+  --container: 1120px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+  padding: var(--space-5) 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+a {
+  color: var(--color-primary);
+}
+
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--space-3);
+}
+
+/* ---------- header / footer (สร้างโดย js/layout.js) ---------- */
+.site-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 64px;
+  flex-wrap: wrap;
+}
+.brand {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.nav {
+  display: flex;
+  gap: var(--space-3);
+  flex: 1;
+  flex-wrap: wrap;
+}
+.nav a {
+  color: var(--color-muted);
+  text-decoration: none;
+}
+.nav a[aria-current='page'] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-4) 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+
+/* ---------- ปุ่ม ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-primary {
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- ฟอร์ม ---------- */
+.field {
+  display: grid;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+input,
+select,
+textarea {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+/* ---------- ข้อความแจ้งเตือน ---------- */
+.alert {
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+}
+.alert-error {
+  background: #fdecea;
+  color: var(--color-danger);
+}
+.alert-success {
+  background: #e7f4ec;
+  color: var(--color-success);
+}
+.muted {
+  color: var(--color-muted);
+}
+
+/* ---------- การ์ด / ตาราง ---------- */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+}
+th,
+td {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}

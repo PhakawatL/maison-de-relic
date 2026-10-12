@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>รายละเอียดสินค้า · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- หน้าบังคับ: Detail Page — แสดงรายละเอียดสินค้าตาม Data Model
+         URL: /detail?id=123
+         ผู้รับผิดชอบ: R4 (คอมโพเนนต์รีวิวจาก R1 ภายใน W5) -->
+    <article id="product-detail">
+      <p class="muted">กำลังโหลด...</p>
+    </article>
+    <section id="reviews"><!-- R1: คอมโพเนนต์รีวิว --></section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/detail.js"></script>
+</body>
+</html>

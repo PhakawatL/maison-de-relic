@@ -1,0 +1,6 @@
+# ให้ทุกเครื่อง (Windows/Mac) เก็บไฟล์ข้อความเป็น LF เหมือนกัน กัน diff เพี้ยนทั้งไฟล์
+* text=auto eol=lf
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary

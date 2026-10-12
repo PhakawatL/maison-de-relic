@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ค้นหาสินค้า · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- หน้าบังคับ: Search Page
+         ต้องมี: ค้นหาแบบมีเงื่อนไขอย่างน้อย 3 แบบ + ค้นหาแบบไม่มีเงื่อนไข (แสดงทั้งหมด)
+         ผลลัพธ์กดลิงก์ไปหน้า Detail ได้
+         ผู้รับผิดชอบ: R4 -->
+    <h1>ค้นหาสินค้า</h1>
+    <form id="search-form" class="card">
+      <div class="grid">
+        <div class="field">
+          <label for="q">ชื่อสินค้า</label>
+          <input id="q" name="q" placeholder="เช่น Gundam">
+        </div>
+        <div class="field">
+          <label for="category">หมวดหมู่</label>
+          <select id="category" name="category"><option value="">ทั้งหมด</option></select>
+        </div>
+        <div class="field">
+          <label for="condition">สภาพสินค้า</label>
+          <select id="condition" name="condition"><option value="">ทั้งหมด</option></select>
+        </div>
+      </div>
+      <button class="btn btn-primary" type="submit">ค้นหา</button>
+      <button class="btn btn-ghost" type="button" id="show-all">แสดงทั้งหมด</button>
+    </form>
+    <div id="results" class="grid" style="margin-top:24px"></div>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/search.js"></script>
+</body>
+</html>

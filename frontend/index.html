@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>หน้าแรก · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- หน้าบังคับ: Homepage / Landing Page
+         ต้องมี: เมนู (site map), ลิงก์ไปหน้า Login ของแอดมิน, เนื้อหาแนะนำธุรกิจ
+         ผู้รับผิดชอบ: R4 (Home) — header/footer มาจาก js/layout.js ของ R1 -->
+    <section>
+      <h1>Maison de Relic</h1>
+      <p class="muted">ร้านของสะสมออนไลน์ — TODO: ใส่คำอธิบายธุรกิจจากรายงาน Phase 1</p>
+      <a class="btn btn-primary" href="/search">ดูสินค้าทั้งหมด</a>
+    </section>
+
+    <!-- ตัวเช็กการเชื่อมต่อ API ระหว่างพัฒนา (ลบออกได้เมื่อหน้าแรกเสร็จ) -->
+    <p class="muted" id="api-status">กำลังตรวจสอบการเชื่อมต่อ API...</p>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/home.js"></script>
+</body>
+</html>

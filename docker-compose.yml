@@ -1,0 +1,30 @@
+# ฐานข้อมูล PostgreSQL สำหรับเครื่องของแต่ละคน (ใช้ตอนพัฒนาเท่านั้น ไม่ได้ใช้บน Railway)
+# ใช้ image ที่มี pgvector ติดมาด้วย เผื่อระบบ semantic search ของ R4
+#
+#   docker compose up -d --wait   เปิด (หรือใช้ npm run setup / npm run dev ที่ root)
+#   docker compose down           ปิด (ข้อมูลยังอยู่)
+#   docker compose down -v        ปิดและลบข้อมูลทิ้งทั้งหมด
+#
+# ถ้าเครื่องมี Postgres ตัวอื่นใช้ port 5432 อยู่แล้ว ให้ตั้ง DB_PORT=5433 ในไฟล์ .env ที่ root
+# แล้วแก้ DATABASE_URL ใน backend/.env ให้เป็น :5433 ด้วย
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: maison-de-relic-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: maison_de_relic
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d maison_de_relic"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  db-data:

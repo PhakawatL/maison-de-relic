@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>จัดการสินค้า · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- หน้าบังคับ: Product Management (Admin) — ค้นหา เพิ่ม แก้ไข ลบ สินค้า
+         ต้องล็อกอินก่อน · ผู้รับผิดชอบ: R3 -->
+    <h1>จัดการสินค้า</h1>
+    <div id="page-error" class="alert alert-error" hidden></div>
+    <div class="table-wrap"><table id="product-table"></table></div>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/admin-products.js"></script>
+</body>
+</html>

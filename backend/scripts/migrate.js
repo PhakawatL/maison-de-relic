@@ -1,0 +1,16 @@
+// npm run db:migrate — สร้าง/แก้โครงสร้างตารางตามไฟล์ใน db/migrations
+// บน Railway ตั้งเป็น Pre-Deploy Command เพื่อให้รันก่อน deploy ทุกครั้ง
+const path = require('path');
+const { pool } = require('../src/db/pool');
+const { runSqlDir } = require('./sqlRunner');
+
+runSqlDir({
+  dir: path.join(__dirname, '..', 'db', 'migrations'),
+  table: 'schema_migrations',
+  label: 'migrate',
+})
+  .catch((err) => {
+    console.error(err.message);
+    process.exitCode = 1;
+  })
+  .finally(() => pool.end());
