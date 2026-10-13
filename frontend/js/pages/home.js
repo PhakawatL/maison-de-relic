@@ -1,100 +1,12 @@
 // หน้าแรก — ผู้รับผิดชอบ: R4 (Figma: 01-Home)
 import { api } from '../api.js';
 import { escapeHtml } from '../utils.js';
-import { t, has, addMessages, applyI18n, onLangChange } from '../i18n.js';
+import { t, has, applyI18n, onLangChange } from '../i18n.js';
 
 const SHELF_SIZE = 4;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// =========================================================
-// คำแปลของหน้าแรก (คีย์ที่ใช้ร่วมกันหลายหน้า เช่น cond.*, cat.* อยู่ใน js/i18n.js)
-// =========================================================
-addMessages({
-  th: {
-    'home.pageTitle': 'หน้าแรก · Maison de Relic',
-    'home.metaDesc': 'ร้านของสะสมออนไลน์ ฟิกเกอร์ การ์ด และโมเดล ตรวจสภาพทุกชิ้นก่อนส่งถึงมือคุณ',
-    'home.eyebrow': 'ร้านของสะสมที่คัดและตรวจสภาพทุกชิ้น',
-    'home.title1': 'ของสะสม',
-    'home.title2': 'ทุกชิ้น',
-    'home.title3': 'เคยเป็นของ',
-    'home.title4': 'ใครสักคน',
-    'home.titleFull': 'ของสะสมทุกชิ้น เคยเป็นของใครสักคน',
-    'home.lede': 'ฟิกเกอร์ การ์ด และโมเดลที่เราคัดมาเอง ตรวจสอบสภาพทุกชิ้นก่อนส่งถึงมือคุณ',
-    'home.searchLabel': 'ค้นหาสินค้า',
-    'home.searchBtn': 'ค้นหา',
-    'home.hint0': 'พิมพ์ชื่อรุ่น ซีรีส์ หรือแบรนด์ที่ตามหา',
-    'home.hint1': 'ลอง “Labubu The Monsters”',
-    'home.hint2': 'ลอง “Charizard” หรือการ์ดหายาก',
-    'home.hint3': 'ลอง “Gundam MG 1/100”',
-    'home.hint4': 'ลอง “One Piece Card Game”',
-    'home.try': 'ลองค้นหา',
-    'home.trust1': 'ตรวจสภาพก่อนส่ง',
-    'home.trust2': 'เกรดสภาพ 6 ระดับ',
-    'home.trust3': 'ติดตามพัสดุได้',
-    'home.justIn': 'เพิ่งเข้าร้าน',
-    'home.mqCards': 'การ์ดสะสม',
-    'home.mqModels': 'โมเดลพลาสติก',
-    'home.catsLabel': 'หมวดหมู่หลัก',
-    'home.catArttoyDesc': 'ฟิกเกอร์ดีไซเนอร์ กล่องสุ่ม ตัวละครพิเศษ',
-    'home.catCardDesc': 'การ์ดเกม การ์ดศิลปิน',
-    'home.catModelDesc': 'รถ เครื่องบิน ของเก่า',
-    'home.count': '{n} ชิ้น',
-    'home.recKicker': '01 · คัดมาให้',
-    'home.recTitle': 'ของสะสมที่แนะนำ',
-    'home.viewAll': 'ดูทั้งหมด',
-    'home.newKicker': '02 · เพิ่งเข้าร้าน',
-    'home.newTitle': 'มาใหม่ล่าสุด',
-    'home.filterLabel': 'กรองตามหมวดหมู่',
-    'home.all': 'ทั้งหมด',
-    'home.viewAllNew': 'ดูสินค้ามาใหม่ทั้งหมด',
-    'home.viewDetail': 'ดูรายละเอียด',
-    'home.untitled': 'ไม่มีชื่อสินค้า',
-    'home.shelfEmpty': 'ยังไม่มีสินค้าในหมวดนี้ ลองเลือกหมวดอื่นดูนะ',
-    'home.sampleNote': 'แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้',
-  },
-  en: {
-    'home.pageTitle': 'Home · Maison de Relic',
-    'home.metaDesc': 'An online collectibles shop for figures, cards and models — every piece inspected before it reaches you.',
-    'home.eyebrow': 'Hand-picked collectibles, every piece inspected',
-    'home.title1': 'Every',
-    'home.title2': 'collectible',
-    'home.title3': 'once belonged to',
-    'home.title4': 'someone',
-    'home.titleFull': 'Every collectible once belonged to someone',
-    'home.lede': 'Figures, cards and models we source ourselves — every piece is condition-checked before it reaches you.',
-    'home.searchLabel': 'Search products',
-    'home.searchBtn': 'Search',
-    'home.hint0': 'Search by model, series or brand',
-    'home.hint1': 'Try “Labubu The Monsters”',
-    'home.hint2': 'Try “Charizard” or rare cards',
-    'home.hint3': 'Try “Gundam MG 1/100”',
-    'home.hint4': 'Try “One Piece Card Game”',
-    'home.try': 'Try',
-    'home.trust1': 'Inspected before shipping',
-    'home.trust2': '6-level condition grading',
-    'home.trust3': 'Trackable delivery',
-    'home.justIn': 'Just arrived',
-    'home.mqCards': 'Trading cards',
-    'home.mqModels': 'Model kits',
-    'home.catsLabel': 'Main categories',
-    'home.catArttoyDesc': 'Designer figures, blind boxes, special characters',
-    'home.catCardDesc': 'Game cards, artist cards',
-    'home.catModelDesc': 'Cars, planes, vintage pieces',
-    'home.count': '{n} items',
-    'home.recKicker': '01 · Curated for you',
-    'home.recTitle': 'Recommended pieces',
-    'home.viewAll': 'View all',
-    'home.newKicker': '02 · Just in',
-    'home.newTitle': 'New arrivals',
-    'home.filterLabel': 'Filter by category',
-    'home.all': 'All',
-    'home.viewAllNew': 'See all new arrivals',
-    'home.viewDetail': 'View details',
-    'home.untitled': 'Untitled item',
-    'home.shelfEmpty': 'Nothing in this category yet — try another one.',
-    'home.sampleNote': 'Showing sample data because the product API is unavailable',
-  },
-});
+// แปลข้อความในหน้า (คำแปลอยู่ที่ js/locales/th.js และ en.js หมวด "หน้าแรก")
 applyI18n();
 
 // สี ไอคอน และโทนพื้นของแต่ละหมวด (ตัวแปรสีอยู่ใน home.css)

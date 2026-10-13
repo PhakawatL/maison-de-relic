@@ -1,81 +1,29 @@
 // ระบบสลับภาษา TH / EN ของทั้งเว็บ
+// คำแปลทั้งหมดอยู่ที่ js/locales/th.js และ js/locales/en.js (วิธีเพิ่มคำอยู่หัวไฟล์ th.js)
 //
 // ใน HTML: ใส่ data-i18n="คีย์" ที่ element ที่ต้องแปลข้อความ
 //          ใส่ data-i18n-attr="placeholder:คีย์; aria-label:คีย์" ถ้าต้องแปล attribute
 // ใน JS ของแต่ละหน้า:
-//   import { t, addMessages, applyI18n, onLangChange } from '../i18n.js';
-//   addMessages({ th: { 'search.title': 'ค้นหาสินค้า' }, en: { 'search.title': 'Search' } });
+//   import { t, applyI18n, onLangChange } from '../i18n.js';
 //   applyI18n();                      // แปลทุก element ที่มี data-i18n ในหน้า
 //   t('search.title');                // ใช้ตอนสร้าง HTML ด้วย JS
 //   t('home.count', { n: 12 });       // แทนค่า {n} ในข้อความ
 //   onLangChange(() => render());     // วาดส่วนที่สร้างด้วย JS ใหม่เมื่อผู้ใช้สลับภาษา
-//
-// คีย์ของแต่ละหน้าให้ตั้งชื่อขึ้นต้นด้วยชื่อหน้า (home.*, search.*) จะได้ไม่ชนกัน
-// คีย์ที่ใช้ร่วมกันหลายหน้า (เมนู, สภาพสินค้า, หมวดหมู่) อยู่ในไฟล์นี้
+import th from './locales/th.js';
+import en from './locales/en.js';
 
 const STORAGE_KEY = 'mdr_lang';
 export const LANGS = ['th', 'en'];
 
-const messages = {
-  th: {
-    'nav.label': 'เมนูหลัก',
-    'nav.home': 'หน้าแรก',
-    'nav.search': 'ค้นหาสินค้า',
-    'nav.team': 'ทีมของเรา',
-    'nav.adminProducts': 'จัดการสินค้า',
-    'nav.adminUsers': 'จัดการผู้ดูแล',
-    'auth.signIn': 'เข้าสู่ระบบ',
-    'auth.signUp': 'สมัครสมาชิก',
-    'auth.logout': 'ออกจากระบบ',
-    'lang.label': 'เลือกภาษา',
-    'theme.toDark': 'เปลี่ยนเป็นโหมดมืด',
-    'theme.toLight': 'เปลี่ยนเป็นโหมดสว่าง',
-    'footer.text': 'โครงงานวิชา ITDS241/242 มหาวิทยาลัยมหิดล',
+const messages = { th, en };
 
-    'cond.new': 'ของใหม่',
-    'cond.like_new': 'เหมือนใหม่',
-    'cond.excellent': 'สภาพดีมาก',
-    'cond.good': 'สภาพดี',
-    'cond.fair': 'พอใช้',
-    'cond.poor': 'มีตำหนิ',
-
-    'cat.art-toys': 'อาร์ตทอย',
-    'cat.trading-cards': 'การ์ด',
-    'cat.model-kits': 'โมเดล',
-    'cat.figures': 'ฟิกเกอร์',
-    'cat.comics-books': 'การ์ตูนและหนังสือ',
-    'cat.coins-stamps': 'เหรียญและแสตมป์',
-  },
-  en: {
-    'nav.label': 'Main menu',
-    'nav.home': 'Home',
-    'nav.search': 'Search',
-    'nav.team': 'Our team',
-    'nav.adminProducts': 'Products',
-    'nav.adminUsers': 'Admins',
-    'auth.signIn': 'Sign in',
-    'auth.signUp': 'Sign up',
-    'auth.logout': 'Log out',
-    'lang.label': 'Language',
-    'theme.toDark': 'Switch to dark mode',
-    'theme.toLight': 'Switch to light mode',
-    'footer.text': 'ITDS241/242 course project, Mahidol University',
-
-    'cond.new': 'Brand new',
-    'cond.like_new': 'Like new',
-    'cond.excellent': 'Excellent',
-    'cond.good': 'Good',
-    'cond.fair': 'Fair',
-    'cond.poor': 'Flawed',
-
-    'cat.art-toys': 'Art toys',
-    'cat.trading-cards': 'Cards',
-    'cat.model-kits': 'Models',
-    'cat.figures': 'Figures',
-    'cat.comics-books': 'Comics & books',
-    'cat.coins-stamps': 'Coins & stamps',
-  },
-};
+// ตอนเปิดเว็บบนเครื่อง: เตือนใน console ถ้ามีคีย์ที่ลืมเพิ่มในอีกภาษา
+if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+  for (const [lang, other] of [['th', 'en'], ['en', 'th']]) {
+    const missing = Object.keys(messages[lang]).filter((key) => !(key in messages[other]));
+    if (missing.length) console.warn(`[i18n] มีใน ${lang}.js แต่ไม่มีใน ${other}.js:`, missing);
+  }
+}
 
 function readStored() {
   try {
@@ -94,13 +42,6 @@ export function initLang() {
 export function getLang() {
   const lang = document.documentElement.lang;
   return LANGS.includes(lang) ? lang : 'th';
-}
-
-/** เพิ่มคำแปลของหน้า — { th: {...}, en: {...} } */
-export function addMessages(dict) {
-  for (const [lang, entries] of Object.entries(dict)) {
-    messages[lang] = { ...messages[lang], ...entries };
-  }
 }
 
 function lookup(key) {
