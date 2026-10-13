@@ -19,6 +19,8 @@
 
 เครื่องควรเป็น Windows 10 (อัปเดตล่าสุด) หรือ Windows 11 และมี RAM 8 GB ขึ้นไป
 
+**เช็กก่อนว่ามีอะไรอยู่แล้วบ้าง:** Settings → Apps → Installed apps แล้วพิมพ์ค้นทีละชื่อ `docker`, `git`, `visual studio`, `node` ตัวไหนเจอแล้วข้ามขั้นนั้นไปได้เลย
+
 ---
 
 ## 1. เช็กว่าเครื่องเปิด Virtualization แล้ว
@@ -56,7 +58,8 @@ Docker ต้องใช้ความสามารถนี้ของ CPU
 
 ## 3. ติดตั้ง Docker Desktop
 
-1. ดาวน์โหลดจาก https://www.docker.com/products/docker-desktop/ → **Download for Windows**
+1. ดาวน์โหลดจาก https://www.docker.com/products/docker-desktop/ → **Download Docker Desktop** → เลือก **Download for Windows – AMD64** (เครื่อง Intel/AMD ทั่วไป) ไฟล์ประมาณ 500–600 MB
+   - เลือก **ARM64** เฉพาะเครื่องที่ใช้ชิป Snapdragon เท่านั้น ถ้าไม่แน่ใจดูใน Task Manager → Performance → CPU มุมขวาบนจะบอกชื่อ CPU
 2. เปิดไฟล์ติดตั้ง ในหน้า Configuration **ต้องติ๊ก "Use WSL 2 instead of Hyper-V"**
 3. ติดตั้งเสร็จแล้วรีสตาร์ตเครื่อง (หรือ Sign out แล้วเข้าใหม่ ตามที่ตัวติดตั้งบอก)
 4. เปิดแอป **Docker Desktop** → กดยอมรับเงื่อนไข → ถ้าให้ล็อกอิน กด **Skip** ได้
@@ -146,6 +149,12 @@ code .
    หน้าแรกต้องขึ้นว่า **"API เชื่อมต่อแล้ว · ฐานข้อมูล: ok"** ✅
 
 ปล่อย Terminal นี้เปิดทิ้งไว้ระหว่างทำงาน ถ้าจะพิมพ์คำสั่ง git ให้เปิด Terminal ใหม่ (กดปุ่ม **+** ในแผง Terminal)
+
+**สิ่งที่จะเห็นใน Terminal และเป็นเรื่องปกติ**
+- บรรทัด `web-1 | 127.0.0.1 - - [...] "GET / HTTP/1.1" 200 ... "Wget"` ขึ้นซ้ำทุกไม่กี่วินาที คือระบบเช็กว่ากล่อง web ยังทำงานอยู่ ไม่ใช่ error
+- แถบล่างที่มี `v View in Docker Desktop` `o View Config` `w Enable Watch` `d Detach` เป็นปุ่มลัดของ docker compose
+  - `d` = ปล่อยให้ระบบรันเบื้องหลัง แล้ว Terminal ว่างให้พิมพ์ต่อ (ปิดทีหลังด้วย `docker compose down`)
+  - **ไม่ต้องกด `w`** โปรเจกต์นี้ให้ API รีสตาร์ตเองเมื่อแก้โค้ดอยู่แล้ว
 
 ---
 
