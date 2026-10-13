@@ -36,10 +36,11 @@
 ## 2. GitHub — ตั้งค่าให้ทีม
 
 1. **Settings → Collaborators →** เชิญสมาชิก (ทำแล้ว)
-2. **Settings → Branches → Add branch ruleset** (หรือ Add rule) สำหรับ `main`:
+2. **Settings → Rules → Rulesets** สร้างกฎ `protect-main` สำหรับ `main` (ทำแล้ว 13 ต.ค. 2569):
    - Require a pull request before merging โดยต้องมี approval 1 คน
    - Require status checks to pass แล้วเลือก `backend` และ `docker` (มาจาก CI)
-   - Block force pushes
+   - Block force pushes และห้ามลบ main
+   - Bypass list: Repository admin (R1 push งานเอกสารตรงได้ตามกติกาใน README)
 3. `.github/CODEOWNERS` ใส่ username ของทุกคนแล้ว
 
 ---
