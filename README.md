@@ -18,7 +18,7 @@
 
 ## เริ่มต้นครั้งแรก
 
-**ต้องติดตั้งก่อน:** [Node.js 22](https://nodejs.org), [Docker Desktop](https://www.docker.com/products/docker-desktop/) และ Git
+**ต้องติดตั้งก่อน:** [Node.js 24.21.0](https://nodejs.org/en/download) (เวอร์ชัน LTS ทั้งทีมใช้ตัวเดียวกัน), [Docker Desktop](https://www.docker.com/products/docker-desktop/) และ Git
 
 ```bash
 git clone <URL ของ repo นี้>
