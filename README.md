@@ -109,7 +109,7 @@ backend/                  API (กล่อง api)
 docs/
 ├─ api.md                 ข้อตกลง API + รายการ endpoint
 ├─ deploy.md              วิธีตั้งค่า Vercel และ GitHub
-├─ wireframe.md           ลิงก์ Figma + รายการ component และหน้าที่ต้องทำ
+├─ wireframe.md           ลิงก์ Figma ไปทุกหน้าจอ แยกตามคนรับผิดชอบ + รายการ component
 └─ database/              ER Diagram, Data Dictionary
 ```
 
