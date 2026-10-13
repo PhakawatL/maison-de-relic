@@ -26,6 +26,8 @@
 
    ไฟล์ seed แต่ละไฟล์รันแค่ครั้งเดียว การใส่ `db:seed` ไว้ใน Pre-Deploy เลยปลอดภัย
 
+   Railway จะเจอ `backend/Dockerfile` แล้ว build กล่อง API จากไฟล์นี้ให้เอง (Node 24.21.0 ตัวเดียวกับที่ทีมใช้บนเครื่อง)
+
 4. **เพิ่มฐานข้อมูล:** ในโปรเจกต์กด **+ Create**
    - ถ้า R4 ต้องใช้ semantic search ที่เก็บ embedding ใน Postgres → เลือก **Template** แล้วค้นหา **pgvector**
    - ถ้าไม่ต้องใช้ → เลือก **Database → PostgreSQL**

@@ -2,11 +2,11 @@
 
 โครงงานวิชา ITDS241/242 มหาวิทยาลัยมหิดล
 
-| ส่วน | เทคโนโลยี | อยู่ที่ |
-|---|---|---|
-| หน้าเว็บ | HTML + CSS + Vanilla JavaScript | `frontend/` → deploy บน **Vercel** |
-| API | Node.js + Express | `backend/` → deploy บน **Railway** |
-| ฐานข้อมูล | PostgreSQL | บนเครื่องรันใน Docker / production อยู่บน Railway |
+| ส่วน | เทคโนโลยี | บนเครื่อง (Docker) | ออนไลน์ |
+|---|---|---|---|
+| หน้าเว็บ | HTML + CSS + Vanilla JavaScript | กล่อง `web` (nginx) | Vercel |
+| API | Node.js 24 + Express | กล่อง `api` | Railway |
+| ฐานข้อมูล | PostgreSQL 16 | กล่อง `db` | Railway |
 
 หน้าเว็บกับ API รันแยกกัน และคุยกันผ่าน `fetch()` เท่านั้น ตามข้อกำหนดของวิชา
 
@@ -18,48 +18,69 @@
 
 ## เริ่มต้นครั้งแรก
 
-**ต้องติดตั้งก่อน:** [Node.js 24.21.0](https://nodejs.org/en/download) (เวอร์ชัน LTS ทั้งทีมใช้ตัวเดียวกัน), [Docker Desktop](https://www.docker.com/products/docker-desktop/) และ Git
+**ต้องติดตั้งก่อน:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) และ Git
+(แนะนำให้ลง [Node.js 24.21.0](https://nodejs.org/en/download) ไว้ด้วย เพื่อให้ VS Code ช่วยเติมโค้ดได้ แต่ตัวระบบรันใน Docker ทั้งหมด)
 
 ```bash
-git clone <URL ของ repo นี้>
+git clone https://github.com/PhakawatL/maison-de-relic.git
 cd maison-de-relic
-npm run setup
+docker compose up --build
 ```
 
-คำสั่ง `setup` จะติดตั้ง package สร้างไฟล์ `backend/.env` เปิดฐานข้อมูลใน Docker แล้วสร้างตารางกับใส่ข้อมูลตัวอย่างให้
+> ต้องเปิดแอป Docker Desktop ไว้ก่อน ครั้งแรกจะใช้เวลาโหลดสักพัก
 
-> ต้องเปิด Docker Desktop ไว้ก่อนรันคำสั่งนี้
+พอขึ้นข้อความ `API พร้อมใช้งาน` ก็เปิดได้เลย
+
+| เปิดที่ | คืออะไร |
+|---|---|
+| http://localhost:5500 | หน้าเว็บ (หน้าแรกต้องขึ้นว่า "API เชื่อมต่อแล้ว · ฐานข้อมูล: ok") |
+| http://localhost:3000/api/health | API |
+| `localhost:5432` user/pass `postgres`/`postgres` | ฐานข้อมูล (เปิดด้วย DBeaver/TablePlus ได้) |
+
+ทุกครั้งที่เปิด ระบบจะสร้าง/อัปเดตตาราง (migration) และใส่ข้อมูลตัวอย่าง (seed) ให้เอง
 
 ## ทำงานทุกวัน
 
 ```bash
-npm run dev
+git pull
+docker compose up
 ```
 
-| เปิดที่ | คืออะไร |
-|---|---|
-| http://localhost:5500 | หน้าเว็บ |
-| http://localhost:3000/api/health | API (ต้องเห็น `"db":"ok"`) |
-
-แก้ไฟล์แล้ว backend จะรีสตาร์ตเอง ส่วนหน้าเว็บให้กด refresh
+- แก้โค้ด **backend** แล้ว API รีสตาร์ตเอง
+- แก้โค้ด **frontend** แล้วกด refresh หน้าเว็บ
+- ปิด: กด `Ctrl + C` หรือ `docker compose down`
 
 ### คำสั่งอื่น
 
 | คำสั่ง | ใช้ทำอะไร |
 |---|---|
-| `npm run db:migrate` | รัน migration ใหม่ที่ยังไม่ได้รัน (หลัง pull โค้ดเพื่อน) |
-| `npm run db:seed` | ใส่ข้อมูลตัวอย่างที่เพิ่มมาใหม่ |
-| `npm run db:reset` | ลบฐานข้อมูลบนเครื่องทิ้ง แล้วสร้างใหม่ทั้งหมด |
-| `npm run db:down` | ปิดฐานข้อมูล |
-| `npm test` | รัน test |
-| `npm run dev:no-docker` | ใช้เมื่อติดตั้ง PostgreSQL เองแทน Docker (แก้ `DATABASE_URL` ใน `backend/.env` ก่อน) |
+| `docker compose up --build --renew-anon-volumes` | หลังมีคนเพิ่ม package ใน `backend/package.json` |
+| `docker compose exec api npm run db:migrate` | รัน migration ใหม่โดยไม่ต้องปิดระบบ |
+| `docker compose exec api npm run db:reset` | ล้างฐานข้อมูลบนเครื่องแล้วสร้างใหม่ทั้งหมด |
+| `docker compose exec api npm test` | รัน test |
+| `docker compose logs -f api` | ดู log ของ API |
+| `docker compose down -v` | ปิดและลบข้อมูลในฐานข้อมูลทิ้ง |
+
+ถ้าลง Node ไว้ ใช้คำสั่งลัดแทนได้ เช่น `npm run dev`, `npm run db:reset`, `npm test` (ดูใน `package.json`)
+
+### เจอปัญหา
+
+| อาการ | วิธีแก้ |
+|---|---|
+| `port is already allocated` | มีโปรแกรมอื่นใช้ port อยู่ สร้างไฟล์ `.env` ที่ root แล้วใส่ `DB_PORT=5433` (หรือ `API_PORT` / `WEB_PORT`) |
+| `Cannot find module ...` หลัง `git pull` | มีคนเพิ่ม package ให้รัน `docker compose up --build --renew-anon-volumes` |
+| แก้ backend แล้วไม่รีสตาร์ต (มักเจอบน Windows) | รัน `docker compose restart api` |
+| อยากเริ่มฐานข้อมูลใหม่หมด | `docker compose down -v` แล้ว `docker compose up` |
 
 ---
 
 ## โครงสร้าง
 
 ```
-frontend/                 หน้าเว็บ (Vercel)
+docker-compose.yml        เปิดทั้งระบบ 3 กล่อง: db, api, web
+docker/web/nginx.conf     ตั้งค่าเว็บเซิร์ฟเวอร์ของกล่อง web
+
+frontend/                 หน้าเว็บ (กล่อง web / ออนไลน์บน Vercel)
 ├─ *.html                 หน้าบังคับ 7 หน้า: index, login, search, detail, team, admin/products, admin/users
 ├─ css/base.css           สไตล์กลาง สี ฟอนต์ ปุ่ม ฟอร์ม
 └─ js/
@@ -69,7 +90,8 @@ frontend/                 หน้าเว็บ (Vercel)
    ├─ utils.js            escapeHtml, formatBaht
    └─ pages/              โค้ดของแต่ละหน้า
 
-backend/                  API (Railway)
+backend/                  API (กล่อง api / ออนไลน์บน Railway)
+├─ Dockerfile             สูตรสร้างกล่อง api (Node 24.21.0)
 ├─ src/
 │  ├─ app.js              ประกอบ middleware + routes
 │  ├─ server.js           จุดเริ่มรัน
@@ -95,7 +117,7 @@ docs/
 1. **ห้าม push เข้า `main` ตรง ๆ** ให้แตก branch แล้วเปิด Pull Request ทุกครั้ง
 2. ตั้งชื่อ branch เป็น `<ประเภท>/<ตำแหน่ง>-<เรื่อง>` เช่น `feat/r1-wishlist`, `fix/r3-stock-count`
 3. PR ต้องให้เพื่อนอนุมัติอย่างน้อย 1 คน และ CI ต้องผ่าน (เครื่องหมายถูกสีเขียว)
-4. ก่อนเริ่มงานทุกวัน ให้ `git pull` แล้วรัน `npm run db:migrate`
+4. ก่อนเริ่มงานทุกวัน ให้ `git pull` แล้ว `docker compose up` (ระบบ migrate ให้เอง)
 5. แก้เฉพาะโฟลเดอร์ของตัวเอง ถ้าต้องแก้ของคนอื่นให้คุยกันก่อน
 6. ห้าม commit ไฟล์ `.env` หรือรหัสผ่าน
 7. เปลี่ยนโครงสร้างตารางให้เพิ่มไฟล์ migration ใหม่ ห้ามแก้ไฟล์เก่า
@@ -103,7 +125,7 @@ docs/
 ```bash
 git checkout main && git pull
 git checkout -b feat/r1-wishlist
-# ... เขียนโค้ด ...
+# ... เขียนโค้ด (เปิด docker compose up ทิ้งไว้) ...
 git add .
 git commit -m "R1: เพิ่ม API wishlist"
 git push -u origin feat/r1-wishlist
