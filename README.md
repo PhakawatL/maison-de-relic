@@ -112,10 +112,10 @@ git push -u origin feat/r1-wishlist
 
 ## ใครดูแลอะไร
 
-| ตำแหน่ง | หน้าที่ |
-|---|---|
-| R1 · Tech Lead · After-sales | โครงระบบ, Team page, Wishlist, Review, Refund, Support |
-| R2 · Identity · Admin Users | Login, จัดการผู้ดูแล, สมัครสมาชิก, โปรไฟล์ |
-| R3 · Catalog · Inventory | จัดการสินค้า, สต็อก, สรุปยอดขาย |
-| R4 · Discovery · Recommender | Home, Search, Detail, ระบบแนะนำ |
-| R5 · Cart · Checkout · Orders | ตะกร้า, ชำระเงิน (จำลอง), คำสั่งซื้อ |
+| ตำแหน่ง | ใคร | GitHub | หน้าที่ |
+|---|---|---|---|
+| R1 · Tech Lead · After-sales | ภควรรษ (Peem) | @PhakawatL | โครงระบบ, Team page, Wishlist, Review, Refund, Support |
+| R2 · Identity · Admin Users | ศุภวิชญ์ (Bonus) | @SuphawitBonus | Login, จัดการผู้ดูแล, สมัครสมาชิก, โปรไฟล์ |
+| R3 · Catalog · Inventory | ญาณวุฒิ (Yu) | @yarnawutthongyoung-hue | จัดการสินค้า, สต็อก, สรุปยอดขาย |
+| R4 · Discovery · Recommender | ดนยกฤตย์ (Pleng) | @N3ptz | Home, Search, Detail, ระบบแนะนำ |
+| R5 · Cart · Checkout · Orders | นรบดี | @tainnnn | ตะกร้า, ชำระเงิน (จำลอง), คำสั่งซื้อ |

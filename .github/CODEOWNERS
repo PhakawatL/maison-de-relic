@@ -1,32 +1,32 @@
 # กำหนดว่าใครต้องรีวิว PR ที่แก้ไฟล์ส่วนไหน — GitHub จะขอรีวิวจากคนนั้นให้อัตโนมัติ
-# TODO (R1): เปลี่ยน @TODO-xxx เป็น GitHub username จริงของเพื่อน แล้วลบ # หน้าบรรทัดออก
-# (ถ้าใส่ username ที่ไม่ใช่ collaborator ของ repo บรรทัดนั้นจะใช้ไม่ได้)
+# บรรทัดล่างสุดที่ตรงกับไฟล์จะชนะ (บรรทัดหลังทับบรรทัดก่อน)
 
 # ค่าเริ่มต้น: Tech Lead รีวิวทุกอย่าง
-*                                   @PhakawatL
+*                                       @PhakawatL
 
-# R2 · Identity · Admin Users
-# /backend/src/modules/auth/        @TODO-bonus
-# /backend/src/modules/users/       @TODO-bonus
-# /frontend/js/pages/login.js       @TODO-bonus
-# /frontend/js/pages/admin-users.js @TODO-bonus
+# R2 · Identity · Admin Users — ศุภวิชญ์ (Bonus)
+/backend/src/modules/auth/              @SuphawitBonus
+/backend/src/modules/users/             @SuphawitBonus
+/backend/src/middleware/auth.js         @SuphawitBonus
+/frontend/js/pages/login.js             @SuphawitBonus
+/frontend/js/pages/admin-users.js       @SuphawitBonus
 
-# R3 · Catalog · Inventory
-# /backend/src/modules/products/    @TODO-yu
-# /backend/src/modules/inventory/   @TODO-yu
-# /frontend/js/pages/admin-products.js @TODO-yu
+# R3 · Catalog · Inventory — ญาณวุฒิ (Yu)
+/backend/src/modules/products/          @yarnawutthongyoung-hue
+/backend/src/modules/inventory/         @yarnawutthongyoung-hue
+/frontend/js/pages/admin-products.js    @yarnawutthongyoung-hue
 
-# R4 · Discovery · Recommender
-# /backend/src/modules/search/      @TODO-pleng
-# /backend/src/modules/recommend/   @TODO-pleng
-# /backend/src/modules/events/      @TODO-pleng
-# /frontend/js/pages/home.js        @TODO-pleng
-# /frontend/js/pages/search.js      @TODO-pleng
-# /frontend/js/pages/detail.js      @TODO-pleng
+# R4 · Discovery · Recommender — ดนยกฤตย์ (Pleng)
+/backend/src/modules/search/            @N3ptz
+/backend/src/modules/recommend/         @N3ptz
+/backend/src/modules/events/            @N3ptz
+/frontend/js/pages/home.js              @N3ptz
+/frontend/js/pages/search.js            @N3ptz
+/frontend/js/pages/detail.js            @N3ptz
 
-# R5 · Cart · Checkout · Orders
-# /backend/src/modules/cart/        @TODO-r5
-# /backend/src/modules/orders/      @TODO-r5
+# R5 · Cart · Checkout · Orders — นรบดี
+/backend/src/modules/cart/              @tainnnn
+/backend/src/modules/orders/            @tainnnn
 
 # migration กระทบทุกคน — Tech Lead ต้องรีวิวเสมอ
-/backend/db/                        @PhakawatL
+/backend/db/                            @PhakawatL

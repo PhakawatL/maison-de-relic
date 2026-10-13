@@ -1,43 +1,44 @@
 // หน้าทีม (หน้าบังคับ) — ผู้รับผิดชอบ: R1
-// แก้ข้อมูลสมาชิกในรายการด้านล่าง แล้ววางรูปไว้ที่ frontend/assets/team/
+// แก้ข้อมูลสมาชิกในรายการด้านล่าง แล้ววางรูปไว้ที่ frontend/assets/team/ ตามชื่อไฟล์ใน photo
+// TODO: ใส่รูปจริงของทุกคน (สี่เหลี่ยมจัตุรัส) และเพิ่มชื่อเล่นของนรบดี ถ้าอยากใส่ลิงก์โซเชียลอื่นเพิ่มใส่ใน socials ได้
 // ใบงานกำหนด: ข้อมูล + รูปภาพสมาชิกทุกคน + ลิงก์ Social Media อย่างน้อยคนละ 1 ช่องทาง
 import { escapeHtml } from '../utils.js';
 
 const MEMBERS = [
   {
     name: 'ภควรรษ ลิโมทัย (Peem)',
-    studentId: 'TODO',
+    studentId: '6887109',
     role: 'Tech Lead · โครงระบบ · After-sales',
     photo: '/assets/team/peem.jpg',
     socials: [{ label: 'GitHub', url: 'https://github.com/PhakawatL' }],
   },
   {
-    name: 'TODO (Bonus)',
-    studentId: 'TODO',
+    name: 'ศุภวิชญ์ ธรรมราษฎร์ (Bonus)',
+    studentId: '6887059',
     role: 'Identity · Admin Users',
     photo: '/assets/team/bonus.jpg',
-    socials: [{ label: 'TODO', url: '#' }],
+    socials: [{ label: 'GitHub', url: 'https://github.com/SuphawitBonus' }],
   },
   {
-    name: 'TODO (Yu)',
-    studentId: 'TODO',
+    name: 'ญาณวุฒิ ทองยัง (Yu)',
+    studentId: '6887012',
     role: 'Catalog · Inventory · ยอดขาย',
     photo: '/assets/team/yu.jpg',
-    socials: [{ label: 'TODO', url: '#' }],
+    socials: [{ label: 'GitHub', url: 'https://github.com/yarnawutthongyoung-hue' }],
   },
   {
-    name: 'TODO (Pleng)',
-    studentId: 'TODO',
+    name: 'ดนยกฤตย์ ภัทร์ธนะวัตน์ (Pleng)',
+    studentId: '6887019',
     role: 'Discovery · Recommender',
     photo: '/assets/team/pleng.jpg',
-    socials: [{ label: 'TODO', url: '#' }],
+    socials: [{ label: 'GitHub', url: 'https://github.com/N3ptz' }],
   },
   {
-    name: 'TODO (R5)',
-    studentId: 'TODO',
+    name: 'นรบดี ศรีดีเลิศ',
+    studentId: '6887031',
     role: 'Cart · Checkout · Orders',
-    photo: '/assets/team/r5.jpg',
-    socials: [{ label: 'TODO', url: '#' }],
+    photo: '/assets/team/narabodee.jpg',
+    socials: [{ label: 'GitHub', url: 'https://github.com/tainnnn' }],
   },
 ];
 
