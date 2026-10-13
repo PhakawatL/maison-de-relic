@@ -20,7 +20,9 @@
 
 ## เริ่มต้นครั้งแรก
 
-**ต้องติดตั้งก่อน:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) และ Git
+> **ยังไม่เคยลงโปรแกรม?** ทำตาม [คู่มือติดตั้งเครื่อง (Windows)](docs/setup.md) ทีละขั้น มีวิธีแก้ปัญหาที่เจอบ่อยและ checklist ให้ติ๊ก
+
+**ต้องติดตั้งก่อน:** [Docker Desktop](https://www.docker.com/products/docker-desktop/), Git และ VS Code
 (แนะนำให้ลง [Node.js 24.21.0](https://nodejs.org/en/download) ไว้ด้วย เพื่อให้ VS Code ช่วยเติมโค้ดได้ แต่ตัวระบบรันใน Docker ทั้งหมด)
 
 ```bash
@@ -108,6 +110,7 @@ backend/                  API (กล่อง api)
 
 docs/
 ├─ api.md                 ข้อตกลง API + รายการ endpoint
+├─ setup.md               คู่มือติดตั้งเครื่อง (Windows) ทีละขั้น
 ├─ deploy.md              วิธีตั้งค่า Vercel และ GitHub
 ├─ wireframe.md           ลิงก์ Figma ไปทุกหน้าจอ แยกตามคนรับผิดชอบ + รายการ component
 └─ database/              ER Diagram, Data Dictionary
@@ -117,7 +120,9 @@ docs/
 
 ## กติกาทีม
 
-1. **ห้าม push เข้า `main` ตรง ๆ** ให้แตก branch แล้วเปิด Pull Request ทุกครั้ง
+1. **ห้าม push เข้า `main` ตรง ๆ** ให้แตก branch แล้วเปิด Pull Request (PR) ทุกครั้ง
+   - ข้อยกเว้นเดียว: R1 (Tech Lead) push ตรงได้**เฉพาะงานเอกสาร** (`README.md`, `docs/`)
+   - **โค้ดทุกอย่าง** (`frontend/`, `backend/`, `docker-compose.yml`, migration ฯลฯ) ทุกคนรวม R1 ต้องผ่าน PR
 2. ตั้งชื่อ branch เป็น `<ประเภท>/<ตำแหน่ง>-<เรื่อง>` เช่น `feat/r1-wishlist`, `fix/r3-stock-count`
 3. PR ต้องให้เพื่อนอนุมัติอย่างน้อย 1 คน และ CI ต้องผ่าน (เครื่องหมายถูกสีเขียว)
 4. ก่อนเริ่มงานทุกวัน ให้ `git pull` แล้ว `docker compose up` (ระบบ migrate ให้เอง)
