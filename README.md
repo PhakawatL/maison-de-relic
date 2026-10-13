@@ -14,6 +14,8 @@
 
 (ไฟล์ภาพสำหรับใส่รายงาน: `docs/architecture.png` / แก้ไขได้ที่ `docs/architecture.svg`)
 
+**Wireframe (Figma):** [ITDS241 - เว็บขายของสะสม](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=0-1) · รายละเอียด component ดูที่ [`docs/wireframe.md`](docs/wireframe.md)
+
 ---
 
 ## เริ่มต้นครั้งแรก
@@ -107,6 +109,7 @@ backend/                  API (กล่อง api)
 docs/
 ├─ api.md                 ข้อตกลง API + รายการ endpoint
 ├─ deploy.md              วิธีตั้งค่า Vercel และ GitHub
+├─ wireframe.md           ลิงก์ Figma + รายการ component และหน้าที่ต้องทำ
 └─ database/              ER Diagram, Data Dictionary
 ```
 
