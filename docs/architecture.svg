@@ -110,11 +110,11 @@
   <rect x="30" y="472" width="280" height="44" rx="10" fill="#f1f5f9"/>
   <rect x="30" y="506" width="280" height="10" fill="#f1f5f9"/>
   <text x="48" y="500" class="h">เครื่องของสมาชิกแต่ละคน</text>
-  <text x="48" y="544" class="m">npm run dev</text>
-  <text x="48" y="566" class="s">หน้าเว็บ localhost:5500</text>
-  <text x="48" y="586" class="s">API localhost:3000</text>
-  <text x="48" y="616" class="t">PostgreSQL ใน Docker</text>
-  <text x="48" y="636" class="s">ฐานข้อมูลของตัวเอง ไม่กระทบเพื่อน</text>
+  <text x="48" y="544" class="m">docker compose up</text>
+  <text x="48" y="568" class="t">3 กล่องใน Docker</text>
+  <text x="48" y="590" class="s">web :5500 · api :3000 · db :5432</text>
+  <text x="48" y="620" class="s">แต่ละคนมีฐานข้อมูลของตัวเอง</text>
+  <text x="48" y="640" class="s">ทดลองพังก็ไม่กระทบเพื่อน</text>
 
   <!-- Laptop -> GitHub -->
   <line x1="310" y1="572" x2="386" y2="572" class="line" marker-end="url(#arr)"/>

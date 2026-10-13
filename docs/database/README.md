@@ -9,7 +9,7 @@
 
 1. สร้างไฟล์ใหม่ใน `backend/db/migrations/` โดยใช้เลขถัดไป เช่น `002_add_review_rating.sql`
 2. เขียน SQL เช่น `ALTER TABLE ...` หรือ `CREATE TABLE ...`
-3. รัน `npm run db:migrate` บนเครื่องตัวเองเพื่อทดสอบ
+3. รัน `docker compose exec api npm run db:migrate` (หรือปิดแล้ว `docker compose up` ใหม่) เพื่อทดสอบบนเครื่องตัวเอง
 4. เปิด PR ไฟล์ใน `backend/db/` ต้องให้ Tech Lead รีวิว
 5. พอ merge เข้า main แล้ว Railway จะรัน migration ให้อัตโนมัติก่อน deploy
 
@@ -18,10 +18,10 @@
 ## ฐานข้อมูลบนเครื่องเละ อยากเริ่มใหม่
 
 ```bash
-npm run db:reset    # ลบทุกตาราง แล้ว migrate + seed ใหม่
+docker compose exec api npm run db:reset    # ลบทุกตาราง แล้ว migrate + seed ใหม่
 ```
 
-คำสั่งนี้ทำงานได้เฉพาะเมื่อ `DATABASE_URL` ชี้ไปที่เครื่องตัวเอง (localhost) ถ้าชี้ไปที่ Railway หรือที่อื่น ระบบจะปฏิเสธทันที เพื่อกันไม่ให้เผลอลบฐานข้อมูลจริงหรือฐานข้อมูลที่ใช้ร่วมกันทั้งทีม
+คำสั่งนี้ทำงานได้เฉพาะเมื่อ `DATABASE_URL` ชี้ไปที่เครื่องตัวเอง (localhost หรือกล่อง `db` ของ docker compose) ถ้าชี้ไปที่ Railway หรือที่อื่น ระบบจะปฏิเสธทันที เพื่อกันไม่ให้เผลอลบฐานข้อมูลจริงหรือฐานข้อมูลที่ใช้ร่วมกันทั้งทีม
 
 ## เปิดดูข้อมูลด้วยโปรแกรม (DBeaver / TablePlus / pgAdmin)
 
