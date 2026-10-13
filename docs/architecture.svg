@@ -21,18 +21,20 @@
   <rect width="1200" height="770" fill="#ffffff"/>
 
   <!-- ================= ส่วนที่ 1: ระหว่างใช้งาน ================= -->
-  <text x="30" y="40" class="sec">1 · ระหว่างใช้งานจริง (เปิดเว็บ → เรียก API → ฐานข้อมูล)</text>
+  <text x="30" y="40" class="sec">1 · ระหว่างใช้งาน (เปิดเว็บ → เรียก API → ฐานข้อมูล) · ทุกส่วนรันใน Docker</text>
 
   <!-- Vercel -->
   <rect x="30" y="64" width="200" height="300" rx="10" class="box"/>
   <rect x="30" y="64" width="200" height="44" rx="10" fill="#f1f5f9"/>
   <rect x="30" y="98" width="200" height="10" fill="#f1f5f9"/>
-  <text x="48" y="92" class="h">Vercel</text>
+  <text x="48" y="92" class="h">กล่อง web</text>
   <text x="48" y="134" class="m">frontend/</text>
-  <text x="48" y="160" class="t">เก็บไฟล์หน้าเว็บ</text>
+  <text x="48" y="160" class="t">nginx เก็บไฟล์หน้าเว็บ</text>
   <text x="48" y="182" class="s">HTML · CSS · JS</text>
   <text x="48" y="214" class="s">ไม่มีโค้ดฝั่ง server</text>
   <text x="48" y="234" class="s">แค่ส่งไฟล์ให้เบราว์เซอร์</text>
+  <text x="48" y="274" class="s">localhost:5500</text>
+  <text x="48" y="294" class="s">(ออนไลน์: Vercel)</text>
 
   <!-- Vercel -> Browser -->
   <line x1="230" y1="214" x2="296" y2="214" class="line" marker-end="url(#arr)"/>
@@ -60,11 +62,11 @@
   <line x1="626" y1="246" x2="552" y2="246" class="dash" marker-end="url(#arr)"/>
   <text x="588" y="268" class="s" text-anchor="middle">JSON</text>
 
-  <!-- Railway API -->
+  <!-- API -->
   <rect x="630" y="64" width="330" height="300" rx="10" class="box"/>
   <rect x="630" y="64" width="330" height="44" rx="10" fill="#f5f3ff"/>
   <rect x="630" y="98" width="330" height="10" fill="#f5f3ff"/>
-  <text x="648" y="92" class="h">Railway · API</text>
+  <text x="648" y="92" class="h">กล่อง api</text>
   <text x="840" y="92" class="m" text-anchor="start">backend/</text>
 
   <rect x="648" y="122" width="294" height="34" rx="6" class="inner"/>
@@ -96,14 +98,14 @@
   <rect x="1020" y="64" width="150" height="44" rx="10" fill="#eff6ff"/>
   <rect x="1020" y="98" width="150" height="10" fill="#eff6ff"/>
   <text x="1038" y="92" class="h">PostgreSQL</text>
-  <text x="1038" y="134" class="t">บน Railway</text>
+  <text x="1038" y="134" class="t">กล่อง db</text>
   <text x="1038" y="160" class="s">22 ตาราง</text>
   <text x="1038" y="190" class="s">สร้างจากไฟล์</text>
   <text x="1038" y="208" class="m">migrations/</text>
 
   <!-- ================= ส่วนที่ 2: ระหว่างพัฒนาและ deploy ================= -->
   <line x1="30" y1="408" x2="1170" y2="408" stroke="#e2e8f0"/>
-  <text x="30" y="448" class="sec">2 · ระหว่างพัฒนา → ส่งโค้ด → ขึ้นเว็บจริงอัตโนมัติ</text>
+  <text x="30" y="448" class="sec">2 · ระหว่างพัฒนา → ส่งโค้ด → ทุกคนได้โค้ดล่าสุด</text>
 
   <!-- Laptop -->
   <rect x="30" y="472" width="280" height="200" rx="10" class="box"/>
@@ -132,7 +134,7 @@
   <text x="408" y="620" class="s">ผ่านทั้งสองอย่างจึง merge เข้า</text>
   <text x="408" y="640" class="m">main</text>
 
-  <!-- GitHub -> Vercel / Railway -->
+  <!-- GitHub -> Vercel / ทีม -->
   <path d="M690 548 C 730 548, 730 520, 770 520" class="line" marker-end="url(#arr)"/>
   <path d="M690 600 C 730 600, 730 628, 770 628" class="line" marker-end="url(#arr)"/>
   <text x="728" y="580" class="s" text-anchor="middle">merge</text>
@@ -145,11 +147,10 @@
   <text x="792" y="552" class="s">+ ทุก PR ได้ลิงก์ preview ให้ลองก่อน</text>
 
   <rect x="774" y="586" width="396" height="84" rx="10" class="box"/>
-  <text x="792" y="614" class="h">Railway</text>
-  <text x="876" y="614" class="s">ถ้าไฟล์ใน backend/ เปลี่ยน</text>
-  <text x="792" y="642" class="t">รัน migration → deploy API ใหม่</text>
-  <text x="792" y="660" class="s">ตารางบนเว็บจริงอัปเดตตามไฟล์อัตโนมัติ</text>
+  <text x="792" y="614" class="h">เพื่อนทุกคน</text>
+  <text x="792" y="642" class="m">git pull → docker compose up</text>
+  <text x="792" y="660" class="s">ได้โค้ดล่าสุด และตารางอัปเดตตาม migration อัตโนมัติ</text>
 
   <!-- footer note -->
-  <text x="30" y="740" class="s">frontend กับ backend รันแยกกันคนละเครื่อง และคุยกันผ่าน fetch() เท่านั้น · โครงงานวิชา ITDS241/242 มหาวิทยาลัยมหิดล</text>
+  <text x="30" y="740" class="s">frontend กับ backend รันแยกกันคนละกล่อง และคุยกันผ่าน fetch() เท่านั้น · โครงงานวิชา ITDS241/242 มหาวิทยาลัยมหิดล</text>
 </svg>

@@ -1,5 +1,5 @@
 // npm run db:migrate — สร้าง/แก้โครงสร้างตารางตามไฟล์ใน db/migrations
-// บน Railway ตั้งเป็น Pre-Deploy Command เพื่อให้รันก่อน deploy ทุกครั้ง
+// docker compose รันคำสั่งนี้ให้เองทุกครั้งที่เปิดกล่อง api
 const path = require('path');
 const { pool } = require('../src/db/pool');
 const { runSqlDir } = require('./sqlRunner');

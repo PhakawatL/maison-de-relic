@@ -11,5 +11,5 @@
 --   * แต่ละไฟล์รันใน transaction เดียว ถ้าพังจะย้อนกลับทั้งไฟล์
 --
 -- ถ้าระบบ semantic search (R4) เก็บ embedding ใน Postgres ให้เปิดบรรทัดนี้
--- (บนเครื่องใช้ image pgvector อยู่แล้ว / บน Railway ต้องสร้าง DB จาก template pgvector)
+-- (กล่อง db ใช้ image ที่มี pgvector อยู่แล้ว)
 -- CREATE EXTENSION IF NOT EXISTS vector;

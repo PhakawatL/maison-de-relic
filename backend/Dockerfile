@@ -1,5 +1,5 @@
 # กล่องของ API (Node.js + Express)
-# ใช้ทั้งตอนพัฒนา (docker compose) และตอน deploy (Railway build จากไฟล์นี้ได้เลย)
+# docker compose ใช้ไฟล์นี้สร้างกล่อง api
 FROM node:24.21.0-alpine
 
 WORKDIR /app
@@ -16,5 +16,4 @@ USER node
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# Railway ตรวจ /api/health เอง ส่วน docker compose ใช้ healthcheck ที่ตั้งไว้ใน docker-compose.yml
 CMD ["node", "src/server.js"]

@@ -9,7 +9,7 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 const app = express();
 
 // ---------- CORS ----------
-// frontend (Vercel) กับ backend (Railway) อยู่คนละโดเมน เบราว์เซอร์จึงต้องได้รับอนุญาตก่อนเรียก API
+// หน้าเว็บ (localhost:5500 / Vercel) กับ API (localhost:3000) เป็นคนละ origin เบราว์เซอร์จึงต้องได้รับอนุญาตก่อนเรียก API
 app.use(
   cors({
     origin(origin, callback) {
@@ -28,7 +28,7 @@ app.use(
 app.use(express.json({ limit: '1mb' }));
 
 // ---------- Health check ----------
-// Railway ใช้ตรวจว่า deploy สำเร็จ และใช้ทดสอบว่า frontend ต่อ backend ได้
+// docker compose ใช้ตรวจว่ากล่อง api พร้อม และใช้ทดสอบว่า frontend ต่อ backend ได้
 app.get('/api/health', async (req, res) => {
   let db = 'ok';
   try {

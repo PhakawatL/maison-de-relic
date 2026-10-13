@@ -7,7 +7,7 @@
 | ที่ไหน | Base URL |
 |---|---|
 | บนเครื่อง | `http://localhost:3000/api` |
-| Production | `https://<backend>.up.railway.app/api` (ตั้งใน `frontend/js/config.js`) |
+| ออนไลน์ | ยังไม่มี — API รันใน Docker บนเครื่องเท่านั้น (ตั้งได้ที่ `frontend/js/config.js`) |
 
 ## ตั้งชื่อ endpoint
 
@@ -68,7 +68,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 ## การล็อกอิน (R2 กำหนดรายละเอียด)
 
 - หน้าเว็บส่ง token มากับ header `Authorization: Bearer <token>` ซึ่ง `api.js` แนบให้อัตโนมัติ
-- ห้ามใช้ cookie session เพราะ frontend (vercel.app) กับ backend (railway.app) เป็นคนละเว็บ เบราว์เซอร์จะบล็อก cookie
+- ใช้ token ใน header แทน cookie session เพราะหน้าเว็บกับ API เป็นคนละ origin และถ้าวันหลังย้ายขึ้นออนไลน์คนละโดเมน cookie จะโดนเบราว์เซอร์บล็อก
 
 ## รายการ API (เจ้าของ endpoint เป็นคนเติม)
 

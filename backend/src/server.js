@@ -7,7 +7,7 @@ const server = app.listen(env.port, () => {
   console.log(`API พร้อมใช้งานที่ http://localhost:${env.port}/api/health (${env.nodeEnv})`);
 });
 
-// ปิดการเชื่อมต่อให้เรียบร้อยตอน Railway สั่งหยุด/deploy ใหม่
+// ปิดการเชื่อมต่อให้เรียบร้อยตอน docker compose สั่งหยุดกล่อง
 function shutdown() {
   server.close(() => pool.end().then(() => process.exit(0)));
 }

@@ -2,11 +2,11 @@
 
 โครงงานวิชา ITDS241/242 มหาวิทยาลัยมหิดล
 
-| ส่วน | เทคโนโลยี | บนเครื่อง (Docker) | ออนไลน์ |
-|---|---|---|---|
-| หน้าเว็บ | HTML + CSS + Vanilla JavaScript | กล่อง `web` (nginx) | Vercel |
-| API | Node.js 24 + Express | กล่อง `api` | Railway |
-| ฐานข้อมูล | PostgreSQL 16 | กล่อง `db` | Railway |
+| ส่วน | เทคโนโลยี | รันที่ |
+|---|---|---|
+| หน้าเว็บ | HTML + CSS + Vanilla JavaScript | กล่อง `web` (nginx) ใน Docker · ออนไลน์บน Vercel |
+| API | Node.js 24 + Express | กล่อง `api` ใน Docker |
+| ฐานข้อมูล | PostgreSQL 16 | กล่อง `db` ใน Docker |
 
 หน้าเว็บกับ API รันแยกกัน และคุยกันผ่าน `fetch()` เท่านั้น ตามข้อกำหนดของวิชา
 
@@ -90,7 +90,7 @@ frontend/                 หน้าเว็บ (กล่อง web / ออ
    ├─ utils.js            escapeHtml, formatBaht
    └─ pages/              โค้ดของแต่ละหน้า
 
-backend/                  API (กล่อง api / ออนไลน์บน Railway)
+backend/                  API (กล่อง api)
 ├─ Dockerfile             สูตรสร้างกล่อง api (Node 24.21.0)
 ├─ src/
 │  ├─ app.js              ประกอบ middleware + routes
@@ -106,7 +106,7 @@ backend/                  API (กล่อง api / ออนไลน์บน
 
 docs/
 ├─ api.md                 ข้อตกลง API + รายการ endpoint
-├─ deploy.md              วิธีตั้งค่า Vercel / Railway / GitHub
+├─ deploy.md              วิธีตั้งค่า Vercel และ GitHub
 └─ database/              ER Diagram, Data Dictionary
 ```
 

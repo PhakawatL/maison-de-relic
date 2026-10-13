@@ -5,7 +5,7 @@
 //   1. ห้ามรันเมื่อ NODE_ENV=production
 //   2. รันได้เฉพาะฐานข้อมูลบนเครื่องตัวเอง (localhost / 127.0.0.1 / ::1)
 //      หรือกล่อง "db" ของ docker compose บนเครื่องตัวเอง
-//      ถ้า DATABASE_URL ชี้ไปที่ Railway หรือเครื่องอื่น จะปฏิเสธทันที
+//      ถ้า DATABASE_URL ชี้ไปที่เครื่องอื่น จะปฏิเสธทันที
 const path = require('path');
 const env = require('../src/config/env');
 const { pool } = require('../src/db/pool');
