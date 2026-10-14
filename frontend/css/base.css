@@ -5,8 +5,7 @@
    หน้าใดอยากมีสไตล์เฉพาะ ให้สร้างไฟล์ css/pages/<หน้า>.css แยก
    ========================================================= */
 
-/* ฟอนต์โลโก้ (Bodoni Moda — ตัวมีเชิงสาย Didone แบบแบรนด์แฟชั่น) โหลดที่นี่ที่เดียว ทุกหน้าได้เหมือนกัน */
-@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap');
+/* ฟอนต์โลโก้ (Bodoni Moda) โหลดผ่าน <link> Google Fonts ใน <head> ของทุกหน้า — เพิ่มหน้าใหม่ต้องใส่ family=Bodoni+Moda ด้วย */
 
 :root {
   --font-brand: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
@@ -89,19 +88,31 @@ a {
   width: 100%;
   max-width: var(--container);
   margin: 0 auto;
-  padding: 0 var(--space-3);
+  padding-inline: var(--space-3); /* ไม่ใช้ padding ย่อ เพราะจะไปทับ padding บน-ล่างของ main.container */
 }
 
 /* ---------- header / footer (สร้างโดย js/layout.js) ---------- */
 .site-header {
-  background: var(--color-surface);
+  position: relative;
+  z-index: 50;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
   border-bottom: 1px solid var(--color-border);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+}
+/* header ติดด้านบนตามการเลื่อนจอ (เหมือนหน้าแรก) — เฉพาะจอกว้าง เพราะจอมือถือ header สูงหลายบรรทัดจะบังเนื้อหา */
+@media (min-width: 641px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+  }
 }
 .header-inner {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  min-height: 64px;
+  min-height: 80px;
+  padding-block: 22px;
   flex-wrap: wrap;
 }
 /* โลโก้: ตัวพิมพ์ใหญ่ เว้นระยะกว้าง แบบโลโก้แบรนด์หรู
