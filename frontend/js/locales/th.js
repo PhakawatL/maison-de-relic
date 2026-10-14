@@ -82,4 +82,16 @@ export default {
   'home.untitled': 'ไม่มีชื่อสินค้า',
   'home.shelfEmpty': 'ยังไม่มีสินค้าในหมวดนี้ ลองเลือกหมวดอื่นดูนะ',
   'home.sampleNote': 'แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้',
+
+  // ---------------------------------------------------------------- หน้าทีม (R1)
+  'team.pageTitle': 'ทีมของเรา · Maison de Relic',
+  'team.title1': 'ทีม',
+  'team.title2': 'ของเรา',
+  'team.subtitle': 'โครงงานวิชา ITDS241/242 คณะเทคโนโลยีสารสนเทศและการสื่อสาร มหาวิทยาลัยมหิดล',
+  'team.photoAlt': 'รูปของ {name}',
+  'team.role.peem': 'Tech Lead · โครงระบบ · After-sales',
+  'team.role.bonus': 'Identity · Admin Users',
+  'team.role.yu': 'Catalog · Inventory · ยอดขาย',
+  'team.role.pleng': 'Discovery · Recommender',
+  'team.role.narabodee': 'Cart · Checkout · Orders',
 };

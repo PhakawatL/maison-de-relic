@@ -3,21 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ทีมของเรา · Maison de Relic</title>
+  <title data-i18n="team.pageTitle">ทีมของเรา · Maison de Relic</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Noto+Serif+Thai:wght@600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/team.css">
 </head>
-<body>
+<body class="page-team">
   <header id="site-header"></header>
 
   <main class="container">
     <!-- หน้าบังคับ: Team Page — ข้อมูล รูป และลิงก์โซเชียลอย่างน้อยคนละ 1 ช่องทาง
          ผู้รับผิดชอบ: R1 (W3) — แก้ข้อมูลสมาชิกใน js/pages/team.js -->
-    <h1>ทีมของเรา</h1>
-    <p class="muted">โครงงานวิชา ITDS241/242 คณะเทคโนโลยีสารสนเทศและการสื่อสาร มหาวิทยาลัยมหิดล</p>
-    <div id="team-list" class="grid"></div>
+    <header class="team-hero">
+      <p class="team-eyebrow anim" style="--d:0">Maison de Relic</p>
+      <h1 class="anim" style="--d:1"><span data-i18n="team.title1">ทีม</span><span class="accent"><span data-i18n="team.title2">ของเรา</span><svg class="scribble" viewBox="0 0 200 16" preserveAspectRatio="none" aria-hidden="true"><path d="M4 11C46 4 112 2 196 7"/></svg></span></h1>
+      <p class="muted team-lede anim" style="--d:2" data-i18n="team.subtitle">โครงงานวิชา ITDS241/242 คณะเทคโนโลยีสารสนเทศและการสื่อสาร มหาวิทยาลัยมหิดล</p>
+    </header>
+    <div id="team-list" class="team-grid"></div>
   </main>
 
   <footer id="site-footer"></footer>
