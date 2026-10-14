@@ -1,6 +1,9 @@
 # กล่องของ API (Node.js + Express)
 # docker compose ใช้ไฟล์นี้สร้างกล่อง api
-FROM node:24.21.0-alpine
+# ใช้ Debian (bookworm-slim) แทน Alpine เพราะ library ที่มีโค้ด native หลายตัว
+# เช่น onnxruntime-node (ใช้กับ @huggingface/transformers ของ R4) รองรับเฉพาะ Linux แบบ glibc
+# Alpine ใช้ musl จึงติดตั้งได้แต่โหลดโมเดลไม่ได้
+FROM node:24.21.0-bookworm-slim
 
 WORKDIR /app
 
