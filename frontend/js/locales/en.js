@@ -74,4 +74,5 @@ export default {
   'home.untitled': 'Untitled item',
   'home.shelfEmpty': 'Nothing in this category yet — try another one.',
   'home.sampleNote': 'Showing sample data because the product API is unavailable',
+  'home.sampleEmpty': 'Showing sample data because the shop has no products yet',
 };

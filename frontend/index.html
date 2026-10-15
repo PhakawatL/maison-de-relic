@@ -13,7 +13,8 @@
   <!-- ตั้งค่าก่อนหน้าแสดงผล กันหน้ากระพริบ:
        - js: บอก CSS ว่ามี JS → ซ่อนส่วนที่จะค่อย ๆ โผล่ตอนเลื่อนจอ
        - data-theme: โหมดมืด/สว่างที่เคยเลือก (หรือตามเครื่อง) — js/theme.js
-       - lang + i18n-pending: ถ้าเคยเลือกภาษาอังกฤษ ซ่อนข้อความไทยไว้จนกว่า js/i18n.js จะแปลเสร็จ -->
+       - lang + i18n-pending: ถ้าเคยเลือกภาษาอังกฤษ ซ่อนข้อความไทยไว้จนกว่า js/i18n.js จะแปลเสร็จ
+         ถ้า JS โหลดไม่ขึ้น จะเอาคลาสออกเองหลัง 2 วินาที ข้อความไทยจะได้ไม่ถูกซ่อนค้าง -->
   <script>
     (function (root) {
       var theme, lang;
@@ -21,7 +22,11 @@
       if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       root.dataset.theme = theme;
       root.classList.add('js');
-      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+      if (lang === 'en') {
+        root.lang = 'en';
+        root.classList.add('i18n-pending');
+        setTimeout(function () { root.classList.remove('i18n-pending'); }, 2000);
+      }
     })(document.documentElement);
   </script>
 </head>
@@ -196,7 +201,7 @@
     </section>
 
     <p class="container sample-note" id="sample-note" hidden>
-      <span data-i18n="home.sampleNote">แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้</span> (<span id="sample-reason"></span>)
+      <span data-i18n="home.sampleNote">แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้</span> <span id="sample-reason"></span>
     </p>
   </main>
 
