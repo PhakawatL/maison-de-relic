@@ -1,9 +1,15 @@
 /* =========================================================
    base.css — สไตล์กลางของทั้งเว็บ (สี ฟอนต์ ระยะห่าง ปุ่ม ฟอร์ม)
    เปลี่ยนธีมทั้งเว็บได้จากตัวแปรใน :root ด้านล่าง
+   โหมดมืด: ตัวแปรชุด [data-theme='dark'] (js/theme.js เป็นคนตั้ง data-theme ที่ <html>)
    หน้าใดอยากมีสไตล์เฉพาะ ให้สร้างไฟล์ css/pages/<หน้า>.css แยก
    ========================================================= */
+
+/* ฟอนต์โลโก้ (Bodoni Moda — ตัวมีเชิงสาย Didone แบบแบรนด์แฟชั่น) โหลดที่นี่ที่เดียว ทุกหน้าได้เหมือนกัน */
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap');
+
 :root {
+  --font-brand: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
   --color-bg: #faf8f5;
   --color-surface: #ffffff;
   --color-text: #1f1b16;
@@ -22,6 +28,30 @@
   --space-4: 24px;
   --space-5: 40px;
   --container: 1120px;
+
+  color-scheme: light;
+}
+
+/* ---------- โหมดมืด ---------- */
+[data-theme='dark'] {
+  --color-bg: #13100d;
+  --color-surface: #1c1814;
+  --color-text: #f1ebe2;
+  --color-muted: #a99f93;
+  --color-border: #332b24;
+  --color-primary: #e8a873;
+  --color-primary-contrast: #13100d;
+  --color-danger: #f2877a;
+  --color-success: #7fc79c;
+
+  color-scheme: dark;
+}
+
+/* เปลี่ยนธีมแบบวงกลมกระจาย (js/theme.js) — ปิด animation จางเริ่มต้นของเบราว์เซอร์ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 *,
@@ -74,11 +104,24 @@ a {
   min-height: 64px;
   flex-wrap: wrap;
 }
+/* โลโก้: ตัวพิมพ์ใหญ่ เว้นระยะกว้าง แบบโลโก้แบรนด์หรู
+   ล็อก opsz ไว้ที่ขนาดเล็ก — Bodoni ขนาดใหญ่เส้นบางจะบางมากจนกลืนพื้น ขนาดเล็กเส้นหนาขึ้น อ่านง่ายกว่า */
 .brand {
-  font-weight: 700;
-  font-size: 1.2rem;
+  font-family: var(--font-brand);
+  font-optical-sizing: none;
+  font-variation-settings: 'opsz' 9;
+  font-weight: 600;
+  font-size: 1.4rem;
+  letter-spacing: 0.24em;
+  margin-right: var(--space-3);
+  text-transform: uppercase;
+  white-space: nowrap;
   color: var(--color-text);
   text-decoration: none;
+  transition: opacity 0.3s;
+}
+.brand:hover {
+  opacity: 0.7;
 }
 .nav {
   display: flex;
@@ -107,6 +150,75 @@ a {
 .header-user {
   color: var(--color-muted);
 }
+
+/* ปุ่มสลับภาษา TH | EN */
+.lang-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+.lang-switch button {
+  font: 600 0.75rem/1 var(--font-body);
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+.lang-switch button:hover {
+  color: var(--color-text);
+}
+.lang-switch button[aria-pressed='true'] {
+  background: var(--color-text);
+  color: var(--color-bg);
+}
+
+/* ปุ่มกลมไอคอน (ปุ่มธีม) */
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.25s, transform 0.25s;
+}
+.icon-btn:hover {
+  border-color: var(--color-text);
+}
+.icon-btn:active {
+  transform: scale(0.92);
+}
+.theme-toggle svg {
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s;
+}
+/* โหมดสว่างโชว์พระจันทร์ (กดแล้วมืด) · โหมดมืดโชว์พระอาทิตย์ */
+.theme-toggle .icon-sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+[data-theme='dark'] .theme-toggle .icon-sun {
+  opacity: 1;
+  transform: none;
+}
+[data-theme='dark'] .theme-toggle .icon-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
 /* จอแคบ: โลโก้กับปุ่มอยู่แถวบน เมนูลงไปเต็มแถวล่าง */
 @media (max-width: 720px) {
   .header-inner {
@@ -119,14 +231,16 @@ a {
     flex-basis: 100%;
     gap: var(--space-1) var(--space-3);
   }
-  .header-actions .btn {
-    padding: var(--space-1) var(--space-2);
-    font-size: 0.9rem;
+  .header-actions .btn,
+  .header-actions .btn-pill {
+    padding: 6px 12px;
+    font-size: 0.85rem;
   }
   .header-user {
     display: none;
   }
 }
+
 .site-footer {
   border-top: 1px solid var(--color-border);
   padding: var(--space-4) 0;
@@ -155,6 +269,28 @@ a {
   color: var(--color-text);
   border-color: var(--color-border);
 }
+/* ปุ่มทึบสีตัวหนังสือ (สลับสีตามธีม) — ใช้กับปุ่ม Sign up ใน header */
+.btn-solid {
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-weight: 600;
+}
+.btn-pill {
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: background 0.25s, border-color 0.25s, opacity 0.25s, transform 0.2s;
+}
+.btn-ghost.btn-pill:hover {
+  border-color: var(--color-text);
+}
+.btn-solid.btn-pill:hover {
+  opacity: 0.85;
+}
+.btn-pill:active {
+  transform: scale(0.96);
+}
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -174,6 +310,7 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   background: var(--color-surface);
+  color: var(--color-text);
 }
 
 /* ---------- ข้อความแจ้งเตือน ---------- */
@@ -183,11 +320,11 @@ textarea {
   margin-bottom: var(--space-3);
 }
 .alert-error {
-  background: #fdecea;
+  background: color-mix(in srgb, var(--color-danger) 12%, var(--color-surface));
   color: var(--color-danger);
 }
 .alert-success {
-  background: #e7f4ec;
+  background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface));
   color: var(--color-success);
 }
 .muted {

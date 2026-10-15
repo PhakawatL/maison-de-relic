@@ -3,27 +3,206 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>หน้าแรก · Maison de Relic</title>
+  <title data-i18n="home.pageTitle">หน้าแรก · Maison de Relic</title>
+  <meta name="description" data-i18n-attr="content:home.metaDesc" content="ร้านของสะสมออนไลน์ ฟิกเกอร์ การ์ด และโมเดล ตรวจสภาพทุกชิ้นก่อนส่งถึงมือคุณ">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/home.css">
+  <!-- ตั้งค่าก่อนหน้าแสดงผล กันหน้ากระพริบ:
+       - js: บอก CSS ว่ามี JS → ซ่อนส่วนที่จะค่อย ๆ โผล่ตอนเลื่อนจอ
+       - data-theme: โหมดมืด/สว่างที่เคยเลือก (หรือตามเครื่อง) — js/theme.js
+       - lang + i18n-pending: ถ้าเคยเลือกภาษาอังกฤษ ซ่อนข้อความไทยไว้จนกว่า js/i18n.js จะแปลเสร็จ
+         ถ้า JS โหลดไม่ขึ้น จะเอาคลาสออกเองหลัง 2 วินาที ข้อความไทยจะได้ไม่ถูกซ่อนค้าง -->
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      root.classList.add('js');
+      if (lang === 'en') {
+        root.lang = 'en';
+        root.classList.add('i18n-pending');
+        setTimeout(function () { root.classList.remove('i18n-pending'); }, 2000);
+      }
+    })(document.documentElement);
+  </script>
 </head>
-<body>
+<body class="page-home">
+  <!-- ไอคอนที่ใช้ทั้งหน้า: <svg><use href="#i-..."></use></svg> -->
+  <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <symbol id="i-toy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="9.5" r="5"/><circle cx="7.4" cy="5" r="1.9"/><circle cx="16.6" cy="5" r="1.9"/>
+        <path d="M8.2 14.6 7.2 20.5h9.6l-1-5.9"/><path d="M10.6 11.6c.8.6 2 .6 2.8 0"/>
+        <circle cx="10" cy="9.2" r=".55" fill="currentColor"/><circle cx="14" cy="9.2" r=".55" fill="currentColor"/>
+      </symbol>
+      <symbol id="i-card" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4.5" width="11" height="16" rx="1.8" transform="rotate(-9 9.5 12.5)"/>
+        <rect x="8.5" y="3.5" width="11" height="16" rx="1.8"/>
+        <path d="m14 7.6 1 2.1 2.3.3-1.7 1.6.4 2.3-2-1.1-2 1.1.4-2.3-1.7-1.6 2.3-.3z"/>
+      </symbol>
+      <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2.5 15.5v-3l2.2-4.5h8.6l4 4.2h2.7a1.5 1.5 0 0 1 1.5 1.5v1.8"/>
+        <circle cx="7" cy="16" r="2"/><circle cx="17" cy="16" r="2"/><path d="M9 16h6M5.2 12.2h13"/>
+      </symbol>
+      <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>
+      </symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14M13 6l6 6-6 6"/>
+      </symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3 5 6v5.5c0 4.3 3 7.8 7 9.5 4-1.7 7-5.2 7-9.5V6z"/><path d="m9 12 2.2 2.2L15.5 10"/>
+      </symbol>
+      <symbol id="i-grade" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 19V13M9 19V9M14 19v-7M19 19V5"/>
+      </symbol>
+      <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/>
+      </symbol>
+    </defs>
+  </svg>
+
   <header id="site-header"></header>
 
-  <main class="container">
-    <!-- หน้าบังคับ: Homepage / Landing Page
-         ต้องมี: เมนู (site map), ลิงก์ไปหน้า Login ของแอดมิน, เนื้อหาแนะนำธุรกิจ
-         ผู้รับผิดชอบ: R4 (Home) — header/footer มาจาก js/layout.js ของ R1 -->
-    <section>
-      <h1>Maison de Relic</h1>
-      <p class="muted">ร้านของสะสมออนไลน์ — TODO: ใส่คำอธิบายธุรกิจจากรายงาน Phase 1</p>
-      <a class="btn btn-primary" href="/search">ดูสินค้าทั้งหมด</a>
+  <!-- หน้าบังคับ: Homepage / Landing Page (Figma: 01-Home)
+       ต้องมี: เมนู (site map), ลิงก์ไปหน้า Login ของแอดมิน, เนื้อหาแนะนำธุรกิจ
+       ผู้รับผิดชอบ: R4 (Home) — header/footer มาจาก js/layout.js ของ R1 -->
+  <main>
+    <!-- ---------- Hero: แนะนำร้าน + ช่องค้นหา ---------- -->
+    <section class="container hero" aria-labelledby="hero-title">
+      <div class="hero-text">
+        <p class="eyebrow anim" style="--d:0"><span class="pulse" aria-hidden="true"></span><span data-i18n="home.eyebrow">ร้านของสะสมที่คัดและตรวจสภาพทุกชิ้น</span></p>
+
+        <h1 id="hero-title" class="hero-title" aria-label="ของสะสมทุกชิ้น เคยเป็นของใครสักคน" data-i18n-attr="aria-label:home.titleFull">
+          <span class="line"><span class="w" style="--d:1" data-i18n="home.title1">ของสะสม</span><span class="w" style="--d:2" data-i18n="home.title2">ทุกชิ้น</span></span>
+          <span class="line"><span class="w" style="--d:3" data-i18n="home.title3">เคยเป็นของ</span><span class="w accent" style="--d:4"><span data-i18n="home.title4">ใครสักคน</span><svg class="scribble" viewBox="0 0 200 16" preserveAspectRatio="none" aria-hidden="true"><path d="M4 11C46 4 112 2 196 7"/></svg></span></span>
+        </h1>
+
+        <p class="hero-lede anim" style="--d:5" data-i18n="home.lede">ฟิกเกอร์ การ์ด และโมเดลที่เราคัดมาเอง ตรวจสอบสภาพทุกชิ้นก่อนส่งถึงมือคุณ</p>
+
+        <form class="hero-search anim" style="--d:6" action="/search" method="get" role="search">
+          <svg class="search-icon" aria-hidden="true"><use href="#i-search"></use></svg>
+          <label class="visually-hidden" for="hero-q" data-i18n="home.searchLabel">ค้นหาสินค้า</label>
+          <input id="hero-q" name="q" type="search" data-i18n-attr="placeholder:home.hint0" placeholder="พิมพ์ชื่อรุ่น ซีรีส์ หรือแบรนด์ที่ตามหา" autocomplete="off">
+          <button class="btn-dark" type="submit"><span data-i18n="home.searchBtn">ค้นหา</span><svg aria-hidden="true"><use href="#i-arrow"></use></svg></button>
+        </form>
+
+        <div class="quick anim" style="--d:7">
+          <span data-i18n="home.try">ลองค้นหา</span>
+          <a href="/search?q=Labubu">Labubu</a>
+          <a href="/search?q=Pok%C3%A9mon">Pokémon</a>
+          <a href="/search?q=Gundam">Gundam</a>
+          <a href="/search?q=One%20Piece">One Piece</a>
+        </div>
+
+        <ul class="trust anim" style="--d:8">
+          <li><svg aria-hidden="true"><use href="#i-shield"></use></svg><span data-i18n="home.trust1">ตรวจสภาพก่อนส่ง</span></li>
+          <li><svg aria-hidden="true"><use href="#i-grade"></use></svg><span data-i18n="home.trust2">เกรดสภาพ 6 ระดับ</span></li>
+          <li><svg aria-hidden="true"><use href="#i-box"></use></svg><span data-i18n="home.trust3">ติดตามพัสดุได้</span></li>
+        </ul>
+
+        <p class="hero-stats" id="hero-stats"></p>
+      </div>
+
+      <!-- ภาพตัดปะ: ขยับตามเมาส์ (data-depth = ระยะที่ขยับ) · ที่มาของรูปดู assets/images/CREDITS.md -->
+      <div class="hero-art" id="hero-art" aria-hidden="true">
+        <div class="tile t1 tone-peach" data-depth="10" style="--d:2"><img src="/assets/images/hero-labubu.jpg" alt="" fetchpriority="high"></div>
+        <div class="tile t2 tone-sage" data-depth="18" style="--d:3"><img src="/assets/images/hero-cards.jpg" alt=""></div>
+        <div class="tile t3 tone-sky" data-depth="7" style="--d:4"><img src="/assets/images/hero-gundam.jpg" alt=""></div>
+        <div class="tile t4 tone-sand" data-depth="14" style="--d:5"><img src="/assets/images/hero-cars.jpg" alt=""></div>
+
+        <div class="float-card fc1" data-depth="30">
+          <span class="fc-dot"></span>
+          <span class="fc-text"><small data-i18n="home.justIn">เพิ่งเข้าร้าน</small><b id="fc1-title">Labubu The Monsters</b></span>
+          <span class="fc-price" id="fc1-price">฿1,290</span>
+        </div>
+        <div class="float-card fc2" data-depth="38">
+          <span class="fc-star">★</span><b id="fc2-rating">4.9</b><span id="fc2-cond">สภาพดีมาก</span>
+        </div>
+
+        <svg class="badge" data-depth="22" viewBox="0 0 120 120">
+          <defs><path id="badge-path" d="M60 60m-45 0a45 45 0 1 1 90 0a45 45 0 1 1-90 0"/></defs>
+          <circle cx="60" cy="60" r="59" class="badge-bg"/>
+          <g class="badge-ring">
+            <text><textPath href="#badge-path" textLength="280" lengthAdjust="spacing">MAISON DE RELIC · CURATED COLLECTIBLES ·</textPath></text>
+          </g>
+          <path class="badge-star" d="m60 46 3.6 9.4 9.4 3.6-9.4 3.6L60 72l-3.6-9.4-9.4-3.6 9.4-3.6z"/>
+        </svg>
+      </div>
     </section>
 
-    <!-- ตัวเช็กการเชื่อมต่อ API ระหว่างพัฒนา (ลบออกได้เมื่อหน้าแรกเสร็จ) -->
-    <p class="muted" id="api-status">กำลังตรวจสอบการเชื่อมต่อ API...</p>
+    <!-- ---------- แถบชื่อซีรีส์เลื่อนวน (home.js ทำสำเนาให้วนต่อเนื่อง) ---------- -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track" id="marquee-track">
+        <span>Pokémon TCG</span><i>✦</i><span>One Piece</span><i>✦</i><span>Gundam</span><i>✦</i>
+        <span>Dragon Ball</span><i>✦</i><span>Pop Mart</span><i>✦</i><span data-i18n="cat.figures">ฟิกเกอร์</span><i>✦</i>
+        <span data-i18n="home.mqCards">การ์ดสะสม</span><i>✦</i><span data-i18n="home.mqModels">โมเดลพลาสติก</span><i>✦</i><span data-i18n="cat.art-toys">อาร์ตทอย</span><i>✦</i>
+      </div>
+    </div>
+
+    <!-- ---------- หมวดหมู่หลัก ---------- -->
+    <section class="container cats" aria-label="หมวดหมู่หลัก" data-i18n-attr="aria-label:home.catsLabel">
+      <div class="cat-grid">
+        <a class="cat-tile cat-arttoy" href="/search?category=art-toys" data-reveal style="--i:0">
+          <img class="cat-img" src="/assets/images/cat-arttoy.jpg" alt="" loading="lazy">
+          <span class="cat-name" data-i18n="cat.art-toys">อาร์ตทอย</span>
+          <span class="cat-desc" data-i18n="home.catArttoyDesc">ฟิกเกอร์ดีไซเนอร์ กล่องสุ่ม ตัวละครพิเศษ</span>
+          <span class="cat-foot"><span class="cat-count" data-cat="art-toys" data-i18n="home.viewAll">ดูทั้งหมด</span><span class="cat-go"><svg aria-hidden="true"><use href="#i-arrow"></use></svg></span></span>
+        </a>
+        <a class="cat-tile cat-card" href="/search?category=trading-cards" data-reveal style="--i:1">
+          <img class="cat-img" src="/assets/images/cat-cards.jpg" alt="" loading="lazy">
+          <span class="cat-name" data-i18n="cat.trading-cards">การ์ด</span>
+          <span class="cat-desc" data-i18n="home.catCardDesc">การ์ดเกม การ์ดศิลปิน</span>
+          <span class="cat-foot"><span class="cat-count" data-cat="trading-cards" data-i18n="home.viewAll">ดูทั้งหมด</span><span class="cat-go"><svg aria-hidden="true"><use href="#i-arrow"></use></svg></span></span>
+        </a>
+        <a class="cat-tile cat-model" href="/search?category=model-kits" data-reveal style="--i:2">
+          <img class="cat-img" src="/assets/images/cat-models.jpg" alt="" loading="lazy">
+          <span class="cat-name" data-i18n="cat.model-kits">โมเดล</span>
+          <span class="cat-desc" data-i18n="home.catModelDesc">รถ เครื่องบิน ของเก่า</span>
+          <span class="cat-foot"><span class="cat-count" data-cat="model-kits" data-i18n="home.viewAll">ดูทั้งหมด</span><span class="cat-go"><svg aria-hidden="true"><use href="#i-arrow"></use></svg></span></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ---------- ของสะสมที่แนะนำ ---------- -->
+    <section class="container shelf" aria-labelledby="rec-title">
+      <div class="shelf-head" data-reveal>
+        <div>
+          <p class="kicker" data-i18n="home.recKicker">01 · คัดมาให้</p>
+          <h2 id="rec-title" data-i18n="home.recTitle">ของสะสมที่แนะนำ</h2>
+        </div>
+        <a class="link-arrow" href="/search?sort=recommended"><span data-i18n="home.viewAll">ดูทั้งหมด</span><svg aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+      </div>
+      <div class="product-grid" id="recommended" aria-live="polite"></div>
+    </section>
+
+    <!-- ---------- มาใหม่ล่าสุด (กรองตามหมวดได้) ---------- -->
+    <section class="container shelf" aria-labelledby="new-title">
+      <div class="shelf-head" data-reveal>
+        <div>
+          <p class="kicker" data-i18n="home.newKicker">02 · เพิ่งเข้าร้าน</p>
+          <h2 id="new-title" data-i18n="home.newTitle">มาใหม่ล่าสุด</h2>
+        </div>
+        <div class="chips" id="new-filter" role="group" aria-label="กรองตามหมวดหมู่" data-i18n-attr="aria-label:home.filterLabel">
+          <button type="button" data-cat="" aria-pressed="true" data-i18n="home.all">ทั้งหมด</button>
+          <button type="button" data-cat="art-toys" aria-pressed="false" data-i18n="cat.art-toys">อาร์ตทอย</button>
+          <button type="button" data-cat="trading-cards" aria-pressed="false" data-i18n="cat.trading-cards">การ์ด</button>
+          <button type="button" data-cat="model-kits" aria-pressed="false" data-i18n="cat.model-kits">โมเดล</button>
+        </div>
+      </div>
+      <div class="product-grid" id="newest" aria-live="polite"></div>
+      <div class="shelf-more-row" data-reveal>
+        <a class="link-arrow" href="/search?sort=newest"><span data-i18n="home.viewAllNew">ดูสินค้ามาใหม่ทั้งหมด</span><svg aria-hidden="true"><use href="#i-arrow"></use></svg></a>
+      </div>
+    </section>
+
+    <p class="container sample-note" id="sample-note" hidden>
+      <span data-i18n="home.sampleNote">แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้</span> <span id="sample-reason"></span>
+    </p>
   </main>
 
   <footer id="site-footer"></footer>
