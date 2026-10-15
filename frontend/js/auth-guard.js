@@ -33,15 +33,24 @@ export function safeNext(fallback = '/') {
   }
 }
 
+let mePromise = null;
+
+/**
+ * ผู้ใช้ที่ล็อกอินอยู่ หรือ null ถ้ายังไม่ล็อกอิน / token ใช้ไม่ได้ / เชื่อมต่อ API ไม่ได้
+ * เรียกกี่ครั้งก็ยิง GET /auth/me แค่ครั้งเดียวต่อการเปิดหน้า (header กับตัวกันหน้าใช้ผลเดียวกัน)
+ */
+export function getMe() {
+  if (!auth.getToken()) return Promise.resolve(null);
+  mePromise ??= api
+    .get('/auth/me')
+    .then(({ data }) => data)
+    .catch(() => null); // 401 → api.js ลบ token ให้แล้ว
+  return mePromise;
+}
+
 export async function requireLoginPage() {
-  if (!auth.getToken()) return goToLogin();
-  try {
-    const { data: me } = await api.get('/auth/me');
-    return me;
-  } catch {
-    // token หมดอายุ / บัญชีถูกปิด (api.js ลบ token ให้แล้ว) หรือเชื่อมต่อ API ไม่ได้
-    return goToLogin();
-  }
+  const me = await getMe();
+  return me ?? goToLogin();
 }
 
 export async function requireAdminPage() {
