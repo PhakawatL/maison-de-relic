@@ -144,16 +144,19 @@ if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเม
 
 | username | รหัสผ่าน | เป็นอะไร |
 |---|---|---|
-| `owner` | `Owner@1234` | แอดมิน · เจ้าของร้าน |
-| `staff` | `Staff@1234` | แอดมิน · ทีมงาน |
+| `Neptz` | `Neptz@1234` | แอดมิน · เจ้าของร้าน (owner) |
+| `SuphawitBonus` | `SuphawitBonus@1234` | แอดมิน · เจ้าของร้าน (owner) |
 | `customer` | `Customer@1234` | ลูกค้า ยืนยันอีเมลแล้ว มีที่อยู่ 2 ที่ (seed `003_addresses.sql`) |
 | `newbie` | `Newbie@1234` | ลูกค้า ยังไม่ยืนยันอีเมล |
 | `banned` | `Banned@1234` | ลูกค้า ถูกปิดบัญชี |
 
+- username ตัวพิมพ์ใหญ่/เล็กต้องตรง (`Neptz` ไม่ใช่ `neptz`)
+- ยังไม่มีบัญชีระดับ staff ใน seed — ถ้าจะทดสอบหน้าแบบดูอย่างเดียว ให้ล็อกอินเป็น owner แล้วเพิ่มผู้ดูแลระดับ staff ที่ `/admin/users`
+
 ### `POST /auth/login`
 
 ```json
-{ "username": "owner", "password": "Owner@1234" }
+{ "username": "Neptz", "password": "Neptz@1234" }
 ```
 
 ตอบ 200
@@ -164,9 +167,9 @@ if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเม
     "token": "eyJhbGciOi...",
     "user": {
       "user_id": 1,
-      "username": "owner",
-      "email": "owner@maison-de-relic.test",
-      "display_name": "เจ้าของร้าน",
+      "username": "Neptz",
+      "email": "donyakrit.p@gmail.com",
+      "display_name": "Neptz",
       "is_email_verified": true,
       "is_admin": true,
       "admin_role": "owner"
@@ -309,13 +312,13 @@ MAIL_FROM="Maison de Relic <your-shop@gmail.com>"
 
 ```json
 {
-  "user_id": 2,
-  "username": "staff",
-  "email": "staff@maison-de-relic.test",
-  "first_name": "ทีมงาน",
-  "last_name": "ร้าน",
-  "display_name": "ทีมงานร้าน",
-  "phone": null,
+  "user_id": 6,
+  "username": "somchai",
+  "email": "somchai@example.com",
+  "first_name": "สมชาย",
+  "last_name": "ใจดี",
+  "display_name": "สมชาย",
+  "phone": "081-234-5678",
   "admin_role": "staff",
   "is_active": true,
   "granted_at": "2026-10-15T05:00:00.000Z",
