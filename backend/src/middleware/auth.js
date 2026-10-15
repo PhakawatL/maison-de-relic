@@ -24,6 +24,14 @@ const AppError = require('../utils/AppError');
 const ALGORITHM = 'HS256';
 
 /**
+ * เวลาที่ใช้ยกเลิก token เก่า: UPDATE "user" SET tokens_valid_after = $1 ด้วยค่านี้
+ * ใช้นาฬิกาของ API ตัวเดียวกับที่ลงเวลาใน token (ห้ามใช้ NOW() ของฐานข้อมูล ดู migration 002)
+ */
+function revokeTokensNow() {
+  return new Date();
+}
+
+/**
  * สร้าง token หลังล็อกอินสำเร็จ
  * t = เวลาที่ออก (มิลลิวินาที) ใช้เทียบกับ tokens_valid_after — iat มาตรฐานละเอียดแค่วินาที
  * ถ้าใช้ iat token เก่าที่ออกในวินาทีเดียวกับที่สั่งยกเลิกจะยังใช้ได้
@@ -55,7 +63,7 @@ function toAuthUser(row) {
 async function findActiveUser(userId, db = { query }) {
   const { rows } = await db.query(
     `SELECT u.user_id, u.username, u.email, u.display_name, u.is_email_verified, a.admin_role,
-            (EXTRACT(EPOCH FROM u.tokens_valid_after) * 1000)::bigint AS tokens_valid_after_ms
+            FLOOR(EXTRACT(EPOCH FROM u.tokens_valid_after) * 1000)::bigint AS tokens_valid_after_ms
        FROM "user" u
        LEFT JOIN admin a ON a.user_id = u.user_id
       WHERE u.user_id = $1 AND u.is_active`,
@@ -127,6 +135,7 @@ const requireAdmin = [requireAuth, requireRole('admin')];
 
 module.exports = {
   signToken,
+  revokeTokensNow,
   toAuthUser,
   findActiveUser,
   requireAuth,

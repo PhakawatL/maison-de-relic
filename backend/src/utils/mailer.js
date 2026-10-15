@@ -6,6 +6,7 @@
 // โหมดการส่ง:
 //   * ตั้ง MAIL_USER + MAIL_APP_PASSWORD แล้ว → ส่งจริงผ่าน Gmail (SMTP)
 //   * ยังไม่ได้ตั้ง → ไม่ส่ง แต่พิมพ์อีเมลลง log ของ API (ดูรหัส OTP ได้จาก docker compose logs -f api)
+//     ยกเว้นบน production: ไม่พิมพ์ (log จะมีรหัส OTP และลิงก์รีเซ็ตรหัสผ่านของลูกค้าจริง) แต่ throw ให้รู้ว่ายังไม่ได้ตั้งค่า
 //   * test เรียก mailer.captureForTests() → เก็บอีเมลไว้ใน mailer.outbox ไม่ส่งออกไปไหน
 const nodemailer = require('nodemailer');
 const env = require('../config/env');
@@ -27,6 +28,7 @@ async function send({ to, subject, text }) {
     return;
   }
   if (!transporter) {
+    if (env.isProduction) throw new Error('ยังไม่ได้ตั้งค่า MAIL_USER / MAIL_APP_PASSWORD');
     console.log(`\n[อีเมล] ยังไม่ได้ตั้งค่า MAIL_USER จึงแสดงใน log แทนการส่งจริง\nถึง: ${to}\nเรื่อง: ${subject}\n${text}\n`);
     return;
   }

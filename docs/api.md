@@ -205,6 +205,7 @@ MAIL_FROM="Maison de Relic <your-shop@gmail.com>"
 
 - App Password ต้องเปิด 2-Step Verification ของบัญชี Google ก่อน (ใช้รหัสผ่าน Gmail ปกติไม่ได้)
 - **ถ้าไม่ตั้ง** API จะไม่ส่งอีเมลจริง แต่พิมพ์อีเมล (รวมรหัส OTP และลิงก์รีเซ็ต) ไว้ใน log แทน ดูได้ด้วย `docker compose logs -f api` แล้วหาบรรทัด `[อีเมล]` — ทุกคนในทีมทดสอบ flow สมัครได้โดยไม่ต้องมี Gmail
+- บน production (`NODE_ENV=production`) ถ้าไม่ตั้งจะไม่พิมพ์ลง log (กันรหัสของลูกค้าจริงหลุด) API ตอบ `email_sent: false` แทน
 - test ไม่ส่งอีเมลจริง (`mailer.captureForTests()` เก็บไว้ใน `mailer.outbox`)
 
 ### `POST /auth/register`
@@ -225,6 +226,7 @@ MAIL_FROM="Maison de Relic <your-shop@gmail.com>"
 - ตอบ 201 `{ "data": { "token", "user", "email_sent", "otp_expires_at" } }` — ล็อกอินให้เลย (`is_email_verified: false`) และส่ง OTP ไปที่อีเมล
 - `email_sent: false` = ส่งอีเมลไม่สำเร็จ ให้กดขอรหัสใหม่
 - อีเมลนี้มีบัญชีที่**ยังไม่ยืนยัน**อยู่ → เขียนทับแถวเดิม (คนที่สมัครค้างไว้สมัครใหม่ได้) และ token เก่าของแถวนั้นใช้ไม่ได้
+- สมัครทับภายใน 60 วินาทีหลังส่ง OTP ครั้งก่อน → 429 `TOO_MANY_REQUESTS` (`details.retry_after`) กันใช้หน้านี้ยิงอีเมลใส่คนอื่น
 - อีเมลนี้ยืนยันแล้ว / username ซ้ำ → 409 `DUPLICATE` (`details[0].field` บอกช่อง)
 
 ### `POST /auth/verify-email` (ต้องล็อกอิน)

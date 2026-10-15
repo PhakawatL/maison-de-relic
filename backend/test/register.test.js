@@ -97,6 +97,17 @@ test('สมัครสำเร็จ → 201 ได้ token, ยังไม
   assert.notEqual(rows[0].code_hash, lastOtp(`${TAG}_alice@example.com`));
 });
 
+test('บัญชีใหม่ไม่ขึ้นกับนาฬิกาของฐานข้อมูล: tokens_valid_after เริ่มที่ epoch และ token ใช้ได้ทันที', async () => {
+  const data = await register('clock');
+  const { rows } = await query(
+    `SELECT tokens_valid_after = 'epoch'::timestamptz AS is_epoch FROM "user" WHERE user_id = $1`,
+    [data.user.user_id]
+  );
+  // ค่าเริ่มต้นไม่ได้มาจาก NOW() ของฐานข้อมูล นาฬิกาฐานข้อมูลเดินเร็วกว่า API ก็ไม่ทำให้ token ที่เพิ่งออกใช้ไม่ได้
+  assert.equal(rows[0].is_epoch, true);
+  assert.equal((await api('GET', '/auth/me', { token: data.token })).status, 200);
+});
+
 test('สมัครด้วยข้อมูลผิด → 400 บอกทุกช่อง', async () => {
   const { status, body } = await api('POST', '/auth/register', {
     body: { username: 'x', email: 'bad', password: '123' },
@@ -222,7 +233,17 @@ test('ยืนยันโดยไม่ล็อกอิน → 401, รห�
 test('สมัครซ้ำด้วยอีเมลที่ยังไม่ยืนยัน → เขียนทับแถวเดิม และ token เก่าใช้ไม่ได้', async () => {
   // คนแรกสมัครด้วยอีเมลนี้แต่ไม่เคยยืนยัน
   const first = await register('squat', { email: `${TAG}_owner_of_mail@example.com`, password: 'Squat@1234' });
-  // เจ้าของอีเมลตัวจริงมาสมัคร
+
+  // สมัครทับทันที (ภายใน 60 วินาทีหลังส่ง OTP) → 429 กันใช้หน้าสมัครยิงอีเมลรัว ๆ
+  const tooSoon = await api('POST', '/auth/register', {
+    body: signup('realowner', { email: `${TAG}_owner_of_mail@example.com` }),
+  });
+  assert.equal(tooSoon.status, 429);
+  assert.equal(tooSoon.body.error.code, 'TOO_MANY_REQUESTS');
+  assert.ok(tooSoon.body.error.details.retry_after > 0);
+
+  // เจ้าของอีเมลตัวจริงมาสมัครทีหลัง
+  await ageLastOtp(first.user.user_id);
   const real = await register('realowner', { email: `${TAG}_owner_of_mail@example.com` });
 
   assert.equal(real.user.user_id, first.user.user_id); // แถวเดิม

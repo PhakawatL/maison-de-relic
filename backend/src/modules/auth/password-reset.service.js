@@ -7,6 +7,7 @@ const env = require('../../config/env');
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
 const mailer = require('../../utils/mailer');
+const { revokeTokensNow } = require('../../middleware/auth');
 const { generateResetToken, hashSecret } = require('./secrets');
 
 const RESET_TTL_MINUTES = 30;
@@ -70,9 +71,9 @@ async function resetPassword(token, newPassword) {
     const userId = rows[0].user_id;
     await client.query(
       `UPDATE "user"
-          SET password_hash = $1, is_email_verified = TRUE, tokens_valid_after = NOW()
-        WHERE user_id = $2`,
-      [passwordHash, userId]
+          SET password_hash = $1, is_email_verified = TRUE, tokens_valid_after = $2
+        WHERE user_id = $3`,
+      [passwordHash, revokeTokensNow(), userId]
     );
     // ลิงก์ทุกอันของผู้ใช้คนนี้ที่ยังไม่ได้ใช้ ใช้ไม่ได้อีก
     await client.query(

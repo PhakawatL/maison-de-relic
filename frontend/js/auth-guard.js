@@ -16,12 +16,21 @@ export function goToLogin() {
 }
 
 /**
- * อ่าน ?next= ของหน้าปัจจุบันอย่างปลอดภัย — รับเฉพาะ path ในเว็บเรา (ขึ้นต้น / แต่ไม่ใช่ //)
+ * อ่าน ?next= ของหน้าปัจจุบันอย่างปลอดภัย — รับเฉพาะหน้าในเว็บเรา
  * กันคนส่งลิงก์ /login?next=https://เว็บปลอม มาหลอกให้เด้งออกไปเว็บอื่นหลังล็อกอิน
+ * ให้เบราว์เซอร์แปลงเป็น URL เต็มก่อนแล้วเทียบ origin — เช็กแค่ขึ้นต้นด้วย / ไม่พอ
+ * เพราะ /\evil.com เบราว์เซอร์ถือเป็น //evil.com (เว็บอื่น)
  */
 export function safeNext(fallback = '/') {
   const next = new URLSearchParams(window.location.search).get('next');
-  return next && next.startsWith('/') && !next.startsWith('//') ? next : fallback;
+  if (!next || !next.startsWith('/')) return fallback;
+  try {
+    const url = new URL(next, window.location.origin);
+    if (url.origin !== window.location.origin) return fallback;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return fallback;
+  }
 }
 
 export async function requireLoginPage() {

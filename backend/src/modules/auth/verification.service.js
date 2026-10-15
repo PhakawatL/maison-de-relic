@@ -25,6 +25,26 @@ async function issueOtp(client, userId) {
   return { code, expiresAt: rows[0].expires_at };
 }
 
+/**
+ * ต้องรออีกกี่วินาทีถึงจะส่ง OTP ให้ผู้ใช้คนนี้ได้อีก (0 = ส่งได้เลย) — เรียกใน transaction
+ * ใช้ทั้งตอนกดขอรหัสใหม่ และตอนสมัครทับบัญชีที่ยังไม่ยืนยัน (กันใช้หน้าสมัครยิงอีเมลรัว ๆ ใส่คนอื่น)
+ */
+async function secondsUntilNextOtp(client, userId) {
+  const { rows } = await client.query(
+    `SELECT CEIL(EXTRACT(EPOCH FROM (created_at + make_interval(secs => $3) - NOW())))::int AS wait
+       FROM otp_verification
+      WHERE user_id = $1 AND purpose = $2
+      ORDER BY otp_id DESC LIMIT 1`,
+    [userId, PURPOSE, RESEND_COOLDOWN_SECONDS]
+  );
+  return Math.max(rows[0]?.wait ?? 0, 0);
+}
+
+/** 429 บอกให้รอ — details.retry_after = จำนวนวินาที */
+function tooManyRequests(wait) {
+  return new AppError(429, 'TOO_MANY_REQUESTS', `กรุณารอ ${wait} วินาทีแล้วลองใหม่`, { retry_after: wait });
+}
+
 /** ส่งรหัสทางอีเมล — ส่งไม่สำเร็จไม่ทำให้ทั้งคำขอพัง (ผู้ใช้กดขอรหัสใหม่ได้) คืน true/false */
 async function sendOtpEmail(to, code) {
   try {
@@ -53,19 +73,8 @@ async function resendOtp(userId) {
     if (rows[0].is_email_verified) {
       throw AppError.conflict('ALREADY_VERIFIED', 'ยืนยันอีเมลแล้ว');
     }
-    const last = await client.query(
-      `SELECT CEIL(EXTRACT(EPOCH FROM (created_at + make_interval(secs => $3) - NOW())))::int AS wait
-         FROM otp_verification
-        WHERE user_id = $1 AND purpose = $2
-        ORDER BY otp_id DESC LIMIT 1`,
-      [userId, PURPOSE, RESEND_COOLDOWN_SECONDS]
-    );
-    const wait = last.rows[0]?.wait ?? 0;
-    if (wait > 0) {
-      throw new AppError(429, 'TOO_MANY_REQUESTS', `ขอรหัสใหม่ได้อีกครั้งใน ${wait} วินาที`, {
-        retry_after: wait,
-      });
-    }
+    const wait = await secondsUntilNextOtp(client, userId);
+    if (wait > 0) throw tooManyRequests(wait);
     return { ...(await issueOtp(client, userId)), email: rows[0].email };
   });
   const emailSent = await sendOtpEmail(email, code);
@@ -117,4 +126,13 @@ async function verifyEmail(userId, code) {
   return findActiveUser(userId);
 }
 
-module.exports = { issueOtp, sendOtpEmail, resendOtp, verifyEmail, OTP_TTL_MINUTES, MAX_ATTEMPTS };
+module.exports = {
+  issueOtp,
+  sendOtpEmail,
+  secondsUntilNextOtp,
+  tooManyRequests,
+  resendOtp,
+  verifyEmail,
+  OTP_TTL_MINUTES,
+  MAX_ATTEMPTS,
+};

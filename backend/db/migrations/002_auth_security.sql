@@ -10,6 +10,9 @@ ALTER TABLE otp_verification
 
 -- 2) ยกเลิก token เก่าทั้งหมดของผู้ใช้
 --    token ที่ออกก่อนเวลานี้ใช้ไม่ได้ (middleware/auth.js เทียบกับเวลาที่ออก token)
---    ตั้งเป็น NOW() ตอน: รีเซ็ตรหัสผ่าน, เปลี่ยนรหัสผ่าน, สมัครทับบัญชีที่ยังไม่ยืนยันอีเมล
+--    API ตั้งค่านี้ด้วยนาฬิกาของ API เอง (ไม่ใช้ NOW() ของฐานข้อมูล) ตอน:
+--    รีเซ็ตรหัสผ่าน, เปลี่ยนรหัสผ่าน, สมัครทับบัญชีที่ยังไม่ยืนยันอีเมล
+--    เพราะ token ก็ลงเวลาด้วยนาฬิกาของ API ถ้าใช้คนละนาฬิกา แล้วนาฬิกาฐานข้อมูลเดินเร็วกว่า
+--    token ที่เพิ่งออกจะถูกปฏิเสธทันที · ค่าเริ่มต้น epoch (ปี 1970) = ยังไม่เคยยกเลิก
 ALTER TABLE "user"
-  ADD COLUMN tokens_valid_after TIMESTAMPTZ NOT NULL DEFAULT NOW();
+  ADD COLUMN tokens_valid_after TIMESTAMPTZ NOT NULL DEFAULT 'epoch';

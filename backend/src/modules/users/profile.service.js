@@ -2,7 +2,7 @@
 const bcrypt = require('bcryptjs');
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
-const { signToken } = require('../../middleware/auth');
+const { signToken, revokeTokensNow } = require('../../middleware/auth');
 
 const BCRYPT_COST = 10;
 const COLUMNS = `user_id, username, email, first_name, last_name, display_name, phone, avatar_url,
@@ -49,8 +49,8 @@ async function changePassword(userId, currentPassword, newPassword) {
       ]);
     }
     await client.query(
-      'UPDATE "user" SET password_hash = $1, tokens_valid_after = NOW() WHERE user_id = $2',
-      [newHash, userId]
+      'UPDATE "user" SET password_hash = $1, tokens_valid_after = $2 WHERE user_id = $3',
+      [newHash, revokeTokensNow(), userId]
     );
   });
   return signToken(userId);

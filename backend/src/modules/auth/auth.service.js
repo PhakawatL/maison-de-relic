@@ -2,7 +2,7 @@
 const bcrypt = require('bcryptjs');
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
-const { signToken, toAuthUser, findActiveUser } = require('../../middleware/auth');
+const { signToken, toAuthUser, findActiveUser, revokeTokensNow } = require('../../middleware/auth');
 const { rethrowDuplicate } = require('../users/account.validation');
 const verification = require('./verification.service');
 
@@ -49,6 +49,7 @@ async function login(username, password) {
  *   และยกเลิก token เก่าของแถวนั้น — คนที่เคยสมัครด้วยอีเมลของคนอื่นจะใช้บัญชีต่อไม่ได้
  *   ปลอดภัยเพราะบัญชีที่ยังไม่ยืนยันเขียนข้อมูลอะไรไม่ได้เลย จึงไม่มีอะไรหาย
  * อีเมลนี้ยืนยันแล้ว / เป็นแอดมิน / ถูกปิดบัญชี → 409 อีเมลซ้ำ
+ * สมัครทับซ้ำภายใน 60 วินาทีหลังส่ง OTP ครั้งก่อน → 429 (กันใช้หน้านี้ยิงอีเมลใส่คนอื่นรัว ๆ)
  */
 async function register(data) {
   const passwordHash = await bcrypt.hash(data.password, BCRYPT_COST);
@@ -67,6 +68,11 @@ async function register(data) {
       throw AppError.conflict('DUPLICATE', 'อีเมลนี้ถูกใช้แล้ว', [{ field: 'email', issue: 'อีเมลนี้ถูกใช้แล้ว' }]);
     }
 
+    if (existing) {
+      const wait = await verification.secondsUntilNextOtp(client, existing.user_id);
+      if (wait > 0) throw verification.tooManyRequests(wait);
+    }
+
     const values = [
       data.username, passwordHash, data.first_name, data.last_name, data.display_name, data.phone ?? null,
     ];
@@ -76,9 +82,9 @@ async function register(data) {
         await client.query(
           `UPDATE "user"
               SET username = $1, password_hash = $2, first_name = $3, last_name = $4,
-                  display_name = $5, phone = $6, tokens_valid_after = NOW()
-            WHERE user_id = $7`,
-          [...values, existing.user_id]
+                  display_name = $5, phone = $6, tokens_valid_after = $7
+            WHERE user_id = $8`,
+          [...values, revokeTokensNow(), existing.user_id]
         );
         id = existing.user_id;
       } else {
