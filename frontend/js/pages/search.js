@@ -10,11 +10,11 @@ function render(products) {
     results.innerHTML = '<p class="muted">ไม่พบสินค้าที่ตรงกับเงื่อนไข</p>';
     return;
   }
-  // TODO (R4): ปรับชื่อฟิลด์ให้ตรงกับ API ของ R3
+  // ชื่อฟิลด์ตาม GET /api/products ของ R3: ชื่อสินค้าคือ title (ไม่ใช่ name)
   results.innerHTML = products
     .map(
       (p) => `<a class="card" href="/detail?id=${encodeURIComponent(p.product_id)}">
-        <strong>${escapeHtml(p.name)}</strong>
+        <strong>${escapeHtml(p.title)}</strong>
       </a>`
     )
     .join('');

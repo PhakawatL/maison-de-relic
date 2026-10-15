@@ -11,7 +11,8 @@ if (!id) {
   try {
     const { data: product } = await api.get(`/products/${encodeURIComponent(id)}`);
     // TODO (R4): แสดงรายละเอียดให้ครบตาม Data Model (รูป ราคา สภาพ สถานะของแท้ สต็อก ฯลฯ)
-    box.innerHTML = `<h1>${escapeHtml(product.name)}</h1>`;
+    // ชื่อสินค้าคือ title ตามตาราง product และ GET /api/products/:id ของ R3
+    box.innerHTML = `<h1>${escapeHtml(product.title)}</h1>`;
   } catch (err) {
     box.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
   }
