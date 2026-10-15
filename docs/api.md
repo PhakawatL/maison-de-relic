@@ -69,15 +69,101 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 
 - หน้าเว็บส่ง token มากับ header `Authorization: Bearer <token>` ซึ่ง `api.js` แนบให้อัตโนมัติ
 - ใช้ token ใน header แทน cookie session เพราะหน้าเว็บกับ API เป็นคนละ origin และถ้าวันหลังย้ายขึ้นออนไลน์คนละโดเมน cookie จะโดนเบราว์เซอร์บล็อก
+- รายละเอียด endpoint และวิธีใส่ middleware ใน route ของตัวเอง ดูหัวข้อ [ล็อกอิน (R2)](#ล็อกอิน-r2) ด้านล่าง
 
 ## รายการ API (เจ้าของ endpoint เป็นคนเติม)
 
 | Method | URL | ต้องล็อกอิน | เจ้าของ | คำอธิบาย |
 |---|---|---|---|---|
 | GET | `/health` | - | R1 | เช็กว่า server และฐานข้อมูลทำงาน |
+| POST | `/auth/login` | - | R2 | ล็อกอินด้วย username + password ได้ token กลับไป |
+| GET | `/auth/me` | ✓ | R2 | ข้อมูลผู้ใช้ที่ล็อกอินอยู่ และสิทธิ์แอดมิน |
 | GET | `/products` | - | R3 | รายการสินค้าที่ขายอยู่ ค้นหา/กรอง/เรียง/แบ่งหน้า (ดูรายละเอียดด้านล่าง) |
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | | | | | |
+
+---
+
+## ล็อกอิน (R2)
+
+### ใส่ใน route ของตัวเอง
+
+```js
+const { requireAuth, requireRole, requireAdmin, requireVerified } = require('../../middleware/auth');
+
+router.post('/', requireAdmin, controller.create);                    // แอดมินเท่านั้น (owner หรือ staff)
+router.post('/', requireAuth, requireRole('owner'), controller.x);    // เจ้าของร้านเท่านั้น
+router.post('/', requireAuth, requireVerified, controller.add);       // ลูกค้าที่ยืนยันอีเมลแล้ว (ตะกร้า, wishlist, ที่อยู่, ออเดอร์, ticket)
+router.get('/mine', requireAuth, controller.mine);                    // แค่ต้องล็อกอิน
+```
+
+ผ่าน `requireAuth` แล้ว controller อ่านผู้ใช้ได้จาก `req.user` เช่น `req.user.user_id` (ใช้เป็น `created_by`, `reviewed_by` ฯลฯ ได้เลย)
+
+| middleware | ไม่ผ่านเมื่อ | ตอบ |
+|---|---|---|
+| `requireAuth` | ไม่มี token, token ผิด/หมดอายุ, บัญชีถูกปิด | 401 `UNAUTHORIZED` |
+| `requireRole('admin')` / `requireAdmin` | ไม่ใช่แอดมิน | 403 `FORBIDDEN` |
+| `requireRole('owner')` | ไม่ใช่เจ้าของร้าน | 403 `FORBIDDEN` |
+| `requireVerified` | ยังไม่ยืนยันอีเมล | 403 `EMAIL_NOT_VERIFIED` |
+
+- **เป็นแอดมิน = มีแถวในตาราง `admin`** (BR-30) ระดับดูจาก `admin.admin_role` (`owner` / `staff`) ไม่ได้ดูจาก `user.role`
+- สิทธิ์และสถานะบัญชีอ่านจากฐานข้อมูลใหม่ทุก request ปิดบัญชีหรือถอดสิทธิ์แอดมินแล้วมีผลทันที
+- token มีอายุ 8 ชั่วโมง (ตั้งได้ที่ `JWT_EXPIRES_IN`) หมดแล้วต้องล็อกอินใหม่
+
+ฝั่งหน้าเว็บ หน้าแอดมินใส่ตัวกันบรรทัดบนสุด (ไม่ใช่แอดมินจะถูกส่งไป `/login`)
+
+```js
+import { requireAdminPage } from '../admin-guard.js';
+const me = await requireAdminPage();
+```
+
+### บัญชีทดสอบ (seed `002_users.sql`)
+
+| username | รหัสผ่าน | เป็นอะไร |
+|---|---|---|
+| `owner` | `Owner@1234` | แอดมิน · เจ้าของร้าน |
+| `staff` | `Staff@1234` | แอดมิน · ทีมงาน |
+| `customer` | `Customer@1234` | ลูกค้า ยืนยันอีเมลแล้ว |
+| `newbie` | `Newbie@1234` | ลูกค้า ยังไม่ยืนยันอีเมล |
+| `banned` | `Banned@1234` | ลูกค้า ถูกปิดบัญชี |
+
+### `POST /auth/login`
+
+```json
+{ "username": "owner", "password": "Owner@1234" }
+```
+
+ตอบ 200
+
+```json
+{
+  "data": {
+    "token": "eyJhbGciOi...",
+    "user": {
+      "user_id": 1,
+      "username": "owner",
+      "email": "owner@maison-de-relic.test",
+      "display_name": "เจ้าของร้าน",
+      "is_email_verified": true,
+      "is_admin": true,
+      "admin_role": "owner"
+    }
+  }
+}
+```
+
+- ลูกค้าก็ล็อกอินผ่าน endpoint นี้ได้ (`is_admin: false`, `admin_role: null`) หน้า `/login` ของแอดมินจะไม่ยอมให้ลูกค้าเข้า
+- ออกจากระบบ: หน้าเว็บลบ token ทิ้งเอง (`auth.clear()`) ไม่ต้องเรียก API
+
+| error | เมื่อ |
+|---|---|
+| 400 `VALIDATION_ERROR` | ไม่กรอก username หรือ password หรือยาวเกิน 100 ตัวอักษร |
+| 401 `INVALID_CREDENTIALS` | ไม่มี username นี้ หรือรหัสผ่านผิด (ข้อความเดียวกัน ไม่บอกว่าผิดช่องไหน) |
+| 403 `ACCOUNT_DISABLED` | รหัสถูก แต่บัญชีถูกปิด (`is_active = false`) |
+
+### `GET /auth/me`
+
+ต้องส่ง token ตอบ `{ "data": { ...user } }` รูปเดียวกับ `user` ใน login ใช้เช็กว่า token ยังใช้ได้และเป็นแอดมินไหม
 
 ---
 

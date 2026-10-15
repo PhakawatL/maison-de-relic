@@ -22,11 +22,20 @@ const env = {
     ? new RegExp(process.env.ALLOWED_ORIGIN_REGEX)
     : null,
 
-  jwtSecret: process.env.JWT_SECRET,
+  // ใช้เซ็น token ของระบบล็อกอิน (R2) — ตอน dev/test ถ้าไม่ได้ตั้งจะใช้ค่าสำหรับเครื่องตัวเอง
+  jwtSecret:
+    process.env.JWT_SECRET ||
+    (process.env.NODE_ENV === 'production' ? undefined : 'dev-only-secret-change-me'),
+  // อายุ token เช่น 8h, 30m, 7d — หมดแล้วต้องล็อกอินใหม่
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
 };
 
 if (!env.databaseUrl) {
   throw new Error('ไม่พบ DATABASE_URL — คัดลอก backend/.env.example เป็น backend/.env ก่อน');
+}
+
+if (!env.jwtSecret) {
+  throw new Error('ไม่พบ JWT_SECRET — บน production ต้องตั้งเป็นค่ายาวและสุ่ม');
 }
 
 module.exports = env;
