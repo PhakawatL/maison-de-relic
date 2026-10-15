@@ -75,4 +75,75 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | Method | URL | ต้องล็อกอิน | เจ้าของ | คำอธิบาย |
 |---|---|---|---|---|
 | GET | `/health` | - | R1 | เช็กว่า server และฐานข้อมูลทำงาน |
+| GET | `/products` | - | R3 | รายการสินค้าที่ขายอยู่ ค้นหา/กรอง/เรียง/แบ่งหน้า (ดูรายละเอียดด้านล่าง) |
+| GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | | | | | |
+
+---
+
+## สินค้า (R3)
+
+หน้าร้านเห็นเฉพาะสินค้า `status = 'available'` เท่านั้น สินค้า `draft` / `hidden` จะตอบ 404
+
+### `GET /products`
+
+| query | ค่า | ตัวอย่าง |
+|---|---|---|
+| `q` | คำค้นในชื่อและรายละเอียด (ไม่เกิน 100 ตัวอักษร) | `q=gundam` |
+| `category` | รหัสหรือ slug ของหมวดหมู่ | `category=figures` หรือ `category=2` |
+| `series` | รหัสหรือ slug ของซีรีส์ | `series=one-piece` |
+| `condition` | `new`, `like_new`, `excellent`, `good`, `fair`, `poor` | `condition=like_new` |
+| `minPrice`, `maxPrice` | ช่วงราคา (บาท) | `minPrice=500&maxPrice=2000` |
+| `inStock` | `true` = เฉพาะที่มีของ | `inStock=true` |
+| `sort` | `newest` (ค่าเริ่มต้น), `price_asc`, `price_desc` | `sort=price_asc` |
+| `page`, `pageSize` | หน้าที่ (เริ่ม 1) และจำนวนต่อหน้า (ค่าเริ่มต้น 20 สูงสุด 50) | `page=2&pageSize=12` |
+
+```json
+{
+  "data": [
+    {
+      "product_id": 12,
+      "title": "RX-78-2 Gundam Ver.Ka",
+      "price": 1500,
+      "condition": "like_new",
+      "condition_score": 8,
+      "status": "available",
+      "stock_quantity": 1,
+      "in_stock": true,
+      "cover_image_url": "https://...",
+      "category": { "category_id": 3, "name": "โมเดลพลาสติก", "slug": "model-kits" },
+      "series": { "series_id": 3, "name": "Gundam", "slug": "gundam" },
+      "created_at": "2026-10-14T01:00:00.000Z"
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+- `series` เป็น `null` ได้ถ้าสินค้าไม่อยู่ในซีรีส์ไหน
+- `price` และ `condition_score` เป็นตัวเลข (ไม่ใช่ string)
+- query ผิดจะตอบ 400 `VALIDATION_ERROR` และบอกช่องที่ผิดใน `details`
+
+### `GET /products/:id`
+
+ได้ทุกฟิลด์เหมือนรายการ และเพิ่ม `description`, `attributes` (JSON), `view_count`, `images` (เรียงตาม `seq`)
+
+```json
+{
+  "data": {
+    "product_id": 12,
+    "title": "RX-78-2 Gundam Ver.Ka",
+    "description": "...",
+    "attributes": {},
+    "view_count": 0,
+    "images": [
+      { "seq": 1, "url": "https://...", "alt_text": "ด้านหน้า", "is_cover": true }
+    ]
+  }
+}
+```
+
+| error | เมื่อ |
+|---|---|
+| 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
