@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ยืนยันอีเมล · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/auth.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- ยืนยันอีเมลด้วยรหัส OTP 6 หลัก (S1 · BR-01) · ผู้รับผิดชอบ: R2 -->
+    <section class="card auth-card">
+      <h1>ยืนยันอีเมล</h1>
+      <p>กรอกรหัส 6 หลักที่ส่งไปที่ <strong id="email"></strong></p>
+      <p class="muted">รหัสใช้ได้ 10 นาที ถ้าไม่เห็นอีเมล ลองดูในโฟลเดอร์สแปม</p>
+      <div id="notice" class="alert alert-success" role="status" hidden></div>
+      <form id="verify-form" novalidate>
+        <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+        <div class="field">
+          <label for="code">รหัสยืนยัน</label>
+          <input id="code" name="code" class="otp-input" inputmode="numeric" autocomplete="one-time-code"
+                 pattern="[0-9]{6}" maxlength="6" required>
+          <small class="field-error" data-error-for="code"></small>
+        </div>
+        <button class="btn btn-primary" type="submit">ยืนยัน</button>
+      </form>
+      <div class="auth-links">
+        <span class="muted">ไม่ได้รับรหัส?</span>
+        <button type="button" class="btn btn-ghost btn-sm" id="resend-btn">ส่งรหัสอีกครั้ง</button>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/verify-email.js"></script>
+</body>
+</html>

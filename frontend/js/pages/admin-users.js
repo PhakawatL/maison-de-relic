@@ -2,7 +2,7 @@
 // API: GET/POST /admins, GET/PATCH/DELETE /admins/:id (ดู docs/api.md หัวข้อ "จัดการผู้ดูแล")
 // แอดมินทุกคนดูรายชื่อได้ ส่วนปุ่มเพิ่ม / แก้ / ปิดบัญชีแสดงเฉพาะเจ้าของร้าน (owner)
 import { api, ApiError } from '../api.js';
-import { requireAdminPage } from '../admin-guard.js';
+import { requireAdminPage } from '../auth-guard.js';
 import { escapeHtml } from '../utils.js';
 
 const me = await requireAdminPage(); // ไม่ใช่แอดมิน → ส่งไปหน้า /login

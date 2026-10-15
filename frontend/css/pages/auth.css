@@ -1,0 +1,138 @@
+/* หน้าระบบสมาชิก: login, register, verify-email, forgot/reset-password, profile — R2 */
+
+/* .btn / .alert ตั้ง display ไว้ ซึ่งทับ attribute hidden — บังคับให้ซ่อนจริง */
+[hidden] {
+  display: none !important;
+}
+
+.auth-card {
+  max-width: 440px;
+  margin: 0 auto;
+}
+.auth-card h1 {
+  margin-top: 0;
+}
+.auth-card form .btn-primary {
+  width: 100%;
+  justify-content: center;
+}
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  min-width: 0;
+}
+.field input[type='checkbox'] {
+  width: auto;
+}
+.plain-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0 var(--space-3);
+}
+.field-error {
+  color: var(--color-danger);
+}
+.field-error:empty {
+  display: none;
+}
+input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+/* ช่องกรอก OTP 6 หลัก */
+.otp-input {
+  font-size: 1.75rem;
+  letter-spacing: 0.5em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- หน้าโปรไฟล์ ---------- */
+.profile-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  align-items: start;
+}
+.section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.section-head h2 {
+  margin: 0;
+}
+.address-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.address-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.address-item p {
+  margin: 0;
+}
+.address-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.badge {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+.btn-sm {
+  padding: var(--space-1) var(--space-2);
+  font-size: 0.9rem;
+}
+.btn-danger {
+  background: var(--color-danger);
+  color: #ffffff;
+}
+
+dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+dialog h2 {
+  margin-top: 0;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
