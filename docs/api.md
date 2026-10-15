@@ -78,6 +78,11 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/health` | - | R1 | เช็กว่า server และฐานข้อมูลทำงาน |
 | POST | `/auth/login` | - | R2 | ล็อกอินด้วย username + password ได้ token กลับไป |
 | GET | `/auth/me` | ✓ | R2 | ข้อมูลผู้ใช้ที่ล็อกอินอยู่ และสิทธิ์แอดมิน |
+| GET | `/admins` | แอดมิน | R2 | รายชื่อผู้ดูแล ค้นหา/กรองสถานะ/แบ่งหน้า |
+| GET | `/admins/:id` | แอดมิน | R2 | ผู้ดูแล 1 คน |
+| POST | `/admins` | owner | R2 | เพิ่มผู้ดูแล |
+| PATCH | `/admins/:id` | owner | R2 | แก้ข้อมูล / ระดับ / รหัสผ่าน / เปิดบัญชีคืน |
+| DELETE | `/admins/:id` | owner | R2 | ปิดบัญชี (`is_active = false` ไม่ลบจริง) |
 | GET | `/products` | - | R3 | รายการสินค้าที่ขายอยู่ ค้นหา/กรอง/เรียง/แบ่งหน้า (ดูรายละเอียดด้านล่าง) |
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | | | | | |
@@ -164,6 +169,82 @@ const me = await requireAdminPage();
 ### `GET /auth/me`
 
 ต้องส่ง token ตอบ `{ "data": { ...user } }` รูปเดียวกับ `user` ใน login ใช้เช็กว่า token ยังใช้ได้และเป็นแอดมินไหม
+
+---
+
+## จัดการผู้ดูแล (R2)
+
+ใช้กับหน้า `admin/users` · ผู้ดูแล = ผู้ใช้ที่มีแถวในตาราง `admin`
+
+- แอดมินทุกคน (owner และ staff) ดูรายชื่อได้
+- เพิ่ม / แก้ / ปิดบัญชีได้เฉพาะ **owner** (staff ได้ 403 `FORBIDDEN`)
+- owner เปลี่ยนระดับหรือปิดบัญชี**ของตัวเอง**ไม่ได้ (409 `CANNOT_CHANGE_SELF`) ร้านจึงมี owner ที่ใช้งานได้อย่างน้อย 1 คนเสมอ
+- ทุกการเพิ่ม / แก้ / ปิด / เปิดบัญชี บันทึกลง `admin_action_log` (BR-31) ด้วย `action_type` = `create_admin`, `update_admin`, `deactivate_admin`, `reactivate_admin` และ `target_type = 'user'`
+
+ข้อมูลผู้ดูแล 1 คน (ไม่มี `password_hash`)
+
+```json
+{
+  "user_id": 2,
+  "username": "staff",
+  "email": "staff@maison-de-relic.test",
+  "first_name": "ทีมงาน",
+  "last_name": "ร้าน",
+  "display_name": "ทีมงานร้าน",
+  "phone": null,
+  "admin_role": "staff",
+  "is_active": true,
+  "granted_at": "2026-10-15T05:00:00.000Z",
+  "created_at": "2026-10-15T05:00:00.000Z"
+}
+```
+
+### `GET /admins`
+
+| query | ค่า | ค่าเริ่มต้น |
+|---|---|---|
+| `q` | ค้นใน username, อีเมล, ชื่อ, นามสกุล, ชื่อที่แสดง (ไม่เกิน 100 ตัวอักษร) | - |
+| `status` | `all`, `active`, `inactive` | `all` |
+| `page`, `pageSize` | หน้าที่ (เริ่ม 1) และจำนวนต่อหน้า (สูงสุด 50) | 1, 20 |
+
+ตอบ `{ "data": [ ... ], "meta": { "page", "pageSize", "total" } }` เรียงคนที่ใช้งานอยู่ก่อน → owner ก่อน staff → username
+
+### `POST /admins` (owner)
+
+```json
+{
+  "username": "somchai",
+  "email": "somchai@example.com",
+  "password": "อย่างน้อย 8 ตัว",
+  "first_name": "สมชาย",
+  "last_name": "ใจดี",
+  "display_name": "สมชาย",
+  "phone": "081-234-5678",
+  "admin_role": "staff"
+}
+```
+
+- บังคับ: `username` (a-z, A-Z, 0-9, `_`, `.` ยาว 3–30), `email`, `password` (8–100), `first_name`, `last_name`
+- ไม่บังคับ: `display_name` (ไม่ใส่ = ใช้ชื่อจริง), `phone`, `admin_role` (ไม่ใส่ = `staff`)
+- อีเมลถูกแปลงเป็นตัวพิมพ์เล็ก · บัญชีที่แอดมินสร้างถือว่ายืนยันอีเมลแล้ว
+- ตอบ 201 พร้อมข้อมูลผู้ดูแล
+
+### `PATCH /admins/:id` (owner)
+
+ส่งเฉพาะช่องที่จะแก้: `email`, `first_name`, `last_name`, `display_name`, `phone` (ส่ง `""` = ลบเบอร์), `password` (ตั้งรหัสใหม่), `admin_role`, `is_active` (`true` = เปิดบัญชีคืน) · เปลี่ยน `username` ไม่ได้ · ตอบ 200 พร้อมข้อมูลล่าสุด
+
+### `DELETE /admins/:id` (owner)
+
+ปิดบัญชี (`is_active = false`) ตอบ 204 · คนนั้นล็อกอินไม่ได้และ token เดิมใช้ไม่ได้ทันที · ปิดซ้ำได้ไม่ error
+
+| error | เมื่อ |
+|---|---|
+| 400 `VALIDATION_ERROR` | ข้อมูลไม่ครบหรือผิดรูปแบบ (`details` บอกทุกช่องที่ผิด) |
+| 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
+| 403 `FORBIDDEN` | ไม่ใช่ owner (สำหรับ POST / PATCH / DELETE) |
+| 404 `ADMIN_NOT_FOUND` | ไม่มีผู้ใช้นี้ หรือเป็นลูกค้า ไม่ใช่ผู้ดูแล |
+| 409 `DUPLICATE` | username หรืออีเมลซ้ำ (`details[0].field` บอกช่อง) |
+| 409 `CANNOT_CHANGE_SELF` | เปลี่ยนระดับ / ปิดบัญชีของตัวเอง |
 
 ---
 
