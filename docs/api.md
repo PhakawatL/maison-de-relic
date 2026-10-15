@@ -83,6 +83,11 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/admins` | owner | R2 | เพิ่มผู้ดูแล |
 | PATCH | `/admins/:id` | owner | R2 | แก้ข้อมูล / ระดับ / รหัสผ่าน / เปิดบัญชีคืน |
 | DELETE | `/admins/:id` | owner | R2 | ปิดบัญชี (`is_active = false` ไม่ลบจริง) |
+| GET | `/addresses` | ✓ | R2 | ที่อยู่จัดส่งของตัวเอง (ที่อยู่หลักขึ้นก่อน) |
+| GET | `/addresses/:id` | ✓ | R2 | ที่อยู่ 1 ที่ของตัวเอง |
+| POST | `/addresses` | ✓ ยืนยันอีเมลแล้ว | R2 | เพิ่มที่อยู่ |
+| PATCH | `/addresses/:id` | ✓ ยืนยันอีเมลแล้ว | R2 | แก้ที่อยู่ / ตั้งเป็นที่อยู่หลัก |
+| DELETE | `/addresses/:id` | ✓ ยืนยันอีเมลแล้ว | R2 | ลบที่อยู่ |
 | GET | `/products` | - | R3 | รายการสินค้าที่ขายอยู่ ค้นหา/กรอง/เรียง/แบ่งหน้า (ดูรายละเอียดด้านล่าง) |
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | | | | | |
@@ -128,7 +133,7 @@ const me = await requireAdminPage();
 |---|---|---|
 | `owner` | `Owner@1234` | แอดมิน · เจ้าของร้าน |
 | `staff` | `Staff@1234` | แอดมิน · ทีมงาน |
-| `customer` | `Customer@1234` | ลูกค้า ยืนยันอีเมลแล้ว |
+| `customer` | `Customer@1234` | ลูกค้า ยืนยันอีเมลแล้ว มีที่อยู่ 2 ที่ (seed `003_addresses.sql`) |
 | `newbie` | `Newbie@1234` | ลูกค้า ยังไม่ยืนยันอีเมล |
 | `banned` | `Banned@1234` | ลูกค้า ถูกปิดบัญชี |
 
@@ -245,6 +250,74 @@ const me = await requireAdminPage();
 | 404 `ADMIN_NOT_FOUND` | ไม่มีผู้ใช้นี้ หรือเป็นลูกค้า ไม่ใช่ผู้ดูแล |
 | 409 `DUPLICATE` | username หรืออีเมลซ้ำ (`details[0].field` บอกช่อง) |
 | 409 `CANNOT_CHANGE_SELF` | เปลี่ยนระดับ / ปิดบัญชีของตัวเอง |
+
+---
+
+## ที่อยู่จัดส่ง (R2)
+
+ทำกับที่อยู่ของ**ตัวเอง**เท่านั้น (ผู้ใช้จาก token) ที่อยู่ของคนอื่นตอบ 404 เหมือนไม่มีอยู่ · ดูได้แค่ล็อกอิน ส่วนเพิ่ม / แก้ / ลบ ต้องยืนยันอีเมลแล้ว (403 `EMAIL_NOT_VERIFIED`)
+
+ที่อยู่หลัก (`is_default`) มีได้คนละหนึ่งที่:
+
+- ที่อยู่แรกเป็นที่อยู่หลักให้อัตโนมัติ
+- ตั้งที่อยู่ไหนเป็นหลัก (`is_default: true`) อันเดิมถูกยกเลิกให้เอง
+- ลบที่อยู่หลัก → ที่อยู่ที่เพิ่มล่าสุดที่เหลือกลายเป็นหลักแทน
+- ลบที่อยู่ที่ออเดอร์เก่าเคยใช้ได้ ออเดอร์ไม่กระทบเพราะคัดลอกที่อยู่ไว้ใน `ship_*` แล้ว
+
+```json
+{
+  "address_id": 7,
+  "label": "บ้าน",
+  "recipient_name": "สมชาย ใจดี",
+  "phone": "081-234-5678",
+  "line1": "99/1 ถนนพุทธมณฑลสาย 4",
+  "district": "ศาลายา",
+  "province": "นครปฐม",
+  "postcode": "73170",
+  "is_default": true
+}
+```
+
+### `GET /addresses`
+
+ตอบ `{ "data": [ ... ] }` ไม่แบ่งหน้า เรียงที่อยู่หลักก่อน แล้วตามด้วยที่เพิ่มล่าสุด · หน้า checkout ใช้ `data[0]` เป็นค่าเริ่มต้นได้เลย (ถ้า `data` ว่าง = ยังไม่มีที่อยู่ ให้พาไปเพิ่มก่อน)
+
+### `POST /addresses`
+
+- บังคับ: `recipient_name` (≤100), `phone` (ตัวเลข `+` `-` เว้นวรรค 9–20 ตัว), `line1` (≤255), `district`, `province` (≤100), `postcode` (ตัวเลข 5 หลัก)
+- ไม่บังคับ: `label` ชื่อเรียก เช่น บ้าน / ที่ทำงาน (≤50), `is_default`
+- ตอบ 201 พร้อมที่อยู่ที่เพิ่ม
+
+### `PATCH /addresses/:id`
+
+ส่งเฉพาะช่องที่จะแก้ · `label: ""` = ลบชื่อเรียก · `is_default` ส่งได้แค่ `true` (จะเปลี่ยนที่อยู่หลักให้ตั้งที่อื่นเป็นหลักแทน) · ตอบ 200
+
+### `DELETE /addresses/:id`
+
+ตอบ 204
+
+| error | เมื่อ |
+|---|---|
+| 400 `VALIDATION_ERROR` | ข้อมูลไม่ครบหรือผิดรูปแบบ (`details` บอกทุกช่องที่ผิด) |
+| 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
+| 403 `EMAIL_NOT_VERIFIED` | ยังไม่ยืนยันอีเมล (เพิ่ม / แก้ / ลบ) |
+| 404 `ADDRESS_NOT_FOUND` | ไม่มีที่อยู่นี้ หรือเป็นของคนอื่น |
+
+### สำหรับ R5: ใช้ที่อยู่ตอน checkout
+
+ไม่ต้องเรียก API ซ้ำ เรียก service ตรงใน transaction ของ checkout ได้เลย
+
+```js
+const addresses = require('../users/addresses.service');
+
+await withTransaction(async (client) => {
+  const address = await addresses.getForUser(req.user.user_id, addressId, client);
+  if (!address) throw AppError.notFound('ADDRESS_NOT_FOUND', 'ไม่พบที่อยู่นี้'); // ไม่ใช่ของผู้ซื้อก็ได้ null
+  const ship = addresses.toShippingSnapshot(address);
+  // ship = { ship_name, ship_phone, ship_line1, ship_district, ship_province, ship_postcode }
+  // INSERT INTO "order" (user_id, address_id, ship_name, ...) VALUES (..., address.address_id, ship.ship_name, ...)
+});
+```
 
 ---
 
