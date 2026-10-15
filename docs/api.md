@@ -78,6 +78,14 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/health` | - | R1 | เช็กว่า server และฐานข้อมูลทำงาน |
 | POST | `/auth/login` | - | R2 | ล็อกอินด้วย username + password ได้ token กลับไป |
 | GET | `/auth/me` | ✓ | R2 | ข้อมูลผู้ใช้ที่ล็อกอินอยู่ และสิทธิ์แอดมิน |
+| POST | `/auth/register` | - | R2 | สมัครสมาชิก ได้ token + ส่ง OTP ทางอีเมล |
+| POST | `/auth/verify-email` | ✓ | R2 | ยืนยันอีเมลด้วยรหัส OTP 6 หลัก |
+| POST | `/auth/resend-otp` | ✓ | R2 | ขอรหัส OTP ใหม่ (ทุก 60 วินาที) |
+| POST | `/auth/forgot-password` | - | R2 | ส่งลิงก์ตั้งรหัสผ่านใหม่ทางอีเมล |
+| POST | `/auth/reset-password` | - | R2 | ตั้งรหัสผ่านใหม่ด้วย token จากลิงก์ |
+| GET | `/profile` | ✓ | R2 | โปรไฟล์ของตัวเอง |
+| PATCH | `/profile` | ✓ ยืนยันอีเมลแล้ว | R2 | แก้ชื่อ เบอร์ รูปโปรไฟล์ |
+| PUT | `/profile/password` | ✓ ยืนยันอีเมลแล้ว | R2 | เปลี่ยนรหัสผ่าน (ได้ token ใหม่) |
 | GET | `/admins` | แอดมิน | R2 | รายชื่อผู้ดูแล ค้นหา/กรองสถานะ/แบ่งหน้า |
 | GET | `/admins/:id` | แอดมิน | R2 | ผู้ดูแล 1 คน |
 | POST | `/admins` | owner | R2 | เพิ่มผู้ดูแล |
@@ -119,12 +127,15 @@ router.get('/mine', requireAuth, controller.mine);                    // แค�
 - **เป็นแอดมิน = มีแถวในตาราง `admin`** (BR-30) ระดับดูจาก `admin.admin_role` (`owner` / `staff`) ไม่ได้ดูจาก `user.role`
 - สิทธิ์และสถานะบัญชีอ่านจากฐานข้อมูลใหม่ทุก request ปิดบัญชีหรือถอดสิทธิ์แอดมินแล้วมีผลทันที
 - token มีอายุ 8 ชั่วโมง (ตั้งได้ที่ `JWT_EXPIRES_IN`) หมดแล้วต้องล็อกอินใหม่
+- รีเซ็ตหรือเปลี่ยนรหัสผ่านแล้ว token เก่าทุกใบใช้ไม่ได้ทันที (`user.tokens_valid_after`) = ออกจากระบบทุกเครื่อง
 
-ฝั่งหน้าเว็บ หน้าแอดมินใส่ตัวกันบรรทัดบนสุด (ไม่ใช่แอดมินจะถูกส่งไป `/login`)
+ฝั่งหน้าเว็บ หน้าที่ต้องล็อกอินใส่ตัวกันบรรทัดบนสุด (ยังไม่ล็อกอินจะถูกส่งไป `/login?next=<หน้านี้>` แล้วกลับมาหลังล็อกอิน)
 
 ```js
-import { requireAdminPage } from '../admin-guard.js';
-const me = await requireAdminPage();
+import { requireLoginPage, requireAdminPage } from '../auth-guard.js';
+const me = await requireLoginPage();   // หน้าลูกค้า เช่น ตะกร้า, wishlist, ประวัติการซื้อ
+const me = await requireAdminPage();   // หน้าแอดมิน
+if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเมล: ซ่อนปุ่มที่เขียนข้อมูล หรือพาไป /verify-email */ }
 ```
 
 ### บัญชีทดสอบ (seed `002_users.sql`)
@@ -162,7 +173,8 @@ const me = await requireAdminPage();
 }
 ```
 
-- ลูกค้าก็ล็อกอินผ่าน endpoint นี้ได้ (`is_admin: false`, `admin_role: null`) หน้า `/login` ของแอดมินจะไม่ยอมให้ลูกค้าเข้า
+- แอดมินและลูกค้าใช้ endpoint และหน้า `/login` เดียวกัน: แอดมินไป `/admin/products` · ลูกค้าที่ยังไม่ยืนยันอีเมลไป `/verify-email` · ลูกค้าไปหน้าใน `?next=` หรือหน้าแรก
+- ผู้ใช้ที่ยังไม่ยืนยันอีเมลล็อกอินได้ (`is_email_verified: false`) แต่เขียนข้อมูลไม่ได้จนกว่าจะยืนยัน
 - ออกจากระบบ: หน้าเว็บลบ token ทิ้งเอง (`auth.clear()`) ไม่ต้องเรียก API
 
 | error | เมื่อ |
@@ -174,6 +186,109 @@ const me = await requireAdminPage();
 ### `GET /auth/me`
 
 ต้องส่ง token ตอบ `{ "data": { ...user } }` รูปเดียวกับ `user` ใน login ใช้เช็กว่า token ยังใช้ได้และเป็นแอดมินไหม
+
+---
+
+## สมัครสมาชิก · ยืนยันอีเมล · ลืมรหัสผ่าน (R2)
+
+หน้าเว็บ: `/register` → `/verify-email` · `/forgot-password` → (ลิงก์ในอีเมล) `/reset-password` · `/profile`
+
+### การส่งอีเมล
+
+ตั้งค่าในไฟล์ `.env` ที่ root ของโปรเจกต์ (ข้าง `docker-compose.yml`) แล้ว `docker compose up` ใหม่
+
+```
+MAIL_USER=your-shop@gmail.com
+MAIL_APP_PASSWORD=รหัส 16 ตัวจาก https://myaccount.google.com/apppasswords
+MAIL_FROM="Maison de Relic <your-shop@gmail.com>"
+```
+
+- App Password ต้องเปิด 2-Step Verification ของบัญชี Google ก่อน (ใช้รหัสผ่าน Gmail ปกติไม่ได้)
+- **ถ้าไม่ตั้ง** API จะไม่ส่งอีเมลจริง แต่พิมพ์อีเมล (รวมรหัส OTP และลิงก์รีเซ็ต) ไว้ใน log แทน ดูได้ด้วย `docker compose logs -f api` แล้วหาบรรทัด `[อีเมล]` — ทุกคนในทีมทดสอบ flow สมัครได้โดยไม่ต้องมี Gmail
+- test ไม่ส่งอีเมลจริง (`mailer.captureForTests()` เก็บไว้ใน `mailer.outbox`)
+
+### `POST /auth/register`
+
+```json
+{
+  "username": "somchai",
+  "email": "somchai@example.com",
+  "password": "อย่างน้อย 8 ตัว",
+  "first_name": "สมชาย",
+  "last_name": "ใจดี",
+  "display_name": "สมชาย",
+  "phone": "081-234-5678"
+}
+```
+
+- บังคับ: `username`, `email`, `password`, `first_name`, `last_name` · กติกาเดียวกับหน้าจัดการผู้ดูแล
+- ตอบ 201 `{ "data": { "token", "user", "email_sent", "otp_expires_at" } }` — ล็อกอินให้เลย (`is_email_verified: false`) และส่ง OTP ไปที่อีเมล
+- `email_sent: false` = ส่งอีเมลไม่สำเร็จ ให้กดขอรหัสใหม่
+- อีเมลนี้มีบัญชีที่**ยังไม่ยืนยัน**อยู่ → เขียนทับแถวเดิม (คนที่สมัครค้างไว้สมัครใหม่ได้) และ token เก่าของแถวนั้นใช้ไม่ได้
+- อีเมลนี้ยืนยันแล้ว / username ซ้ำ → 409 `DUPLICATE` (`details[0].field` บอกช่อง)
+
+### `POST /auth/verify-email` (ต้องล็อกอิน)
+
+`{ "code": "042917" }` → 200 ตอบข้อมูลผู้ใช้ (`is_email_verified: true`) · ยืนยันแล้วกดซ้ำก็ได้ 200
+
+- รหัสใช้ได้ 10 นาที กรอกผิดได้ 5 ครั้ง ใช้ได้เฉพาะรหัสล่าสุด
+
+| error | เมื่อ |
+|---|---|
+| 400 `VALIDATION_ERROR` | ไม่ใช่ตัวเลข 6 หลัก |
+| 400 `INVALID_OTP` | รหัสผิด (`details.remaining_attempts` = ลองได้อีกกี่ครั้ง) |
+| 400 `OTP_EXPIRED` | หมดอายุ / ผิดครบ 5 ครั้ง / ยังไม่เคยขอรหัส → ต้องกดขอรหัสใหม่ |
+
+### `POST /auth/resend-otp` (ต้องล็อกอิน)
+
+ส่งรหัสใหม่ ตอบ `{ "data": { "otp_expires_at", "email_sent" } }` · ขอได้ทุก 60 วินาที
+
+| error | เมื่อ |
+|---|---|
+| 409 `ALREADY_VERIFIED` | ยืนยันอีเมลแล้ว |
+| 429 `TOO_MANY_REQUESTS` | ขอถี่เกิน (`details.retry_after` = ต้องรออีกกี่วินาที) |
+
+### `POST /auth/forgot-password`
+
+`{ "email": "somchai@example.com" }` → 200 ข้อความเดียวกันเสมอ ไม่ว่าจะมีอีเมลนี้หรือไม่ (กันคนใช้หน้านี้เช็กว่าใครเป็นสมาชิก)
+
+- ถ้ามีบัญชีที่ใช้งานอยู่ ส่งลิงก์ `<APP_URL>/reset-password?token=...` ใช้ได้ 30 นาที ครั้งเดียว · ขอซ้ำภายใน 60 วินาทีจะไม่ส่งอีเมลซ้ำ
+
+### `POST /auth/reset-password`
+
+`{ "token": "จากลิงก์", "password": "รหัสใหม่" }` → 200
+
+- สำเร็จแล้ว: ลิงก์อื่นทุกอันที่ยังไม่ใช้ใช้ไม่ได้ · token เก่าทุกใบใช้ไม่ได้ · ถือว่ายืนยันอีเมลแล้ว (กดลิงก์จากอีเมลได้ = เป็นเจ้าของอีเมล)
+- token ผิด / หมดอายุ / ใช้แล้ว → 400 `INVALID_RESET_TOKEN`
+
+---
+
+## โปรไฟล์ (R2)
+
+ข้อมูลของผู้ใช้ที่ล็อกอินอยู่ · ดูได้แค่ล็อกอิน · แก้ไข / เปลี่ยนรหัสผ่าน ต้องยืนยันอีเมลแล้ว (403 `EMAIL_NOT_VERIFIED`)
+
+### `GET /profile`
+
+```json
+{
+  "data": {
+    "user_id": 3, "username": "customer", "email": "customer@maison-de-relic.test",
+    "first_name": "สมชาย", "last_name": "ใจดี", "display_name": "สมชาย",
+    "phone": null, "avatar_url": null, "is_email_verified": true, "created_at": "..."
+  }
+}
+```
+
+### `PATCH /profile`
+
+ส่งเฉพาะช่องที่จะแก้: `first_name`, `last_name`, `display_name`, `phone`, `avatar_url` (ลิงก์ http/https) · ส่ง `""` ในช่องที่ไม่บังคับ = ลบค่า · แก้ `email` / `username` ที่นี่ไม่ได้ · ตอบ 200 พร้อมข้อมูลล่าสุด
+
+### `PUT /profile/password`
+
+`{ "current_password": "...", "new_password": "..." }` → 200 `{ "data": { "token" } }`
+
+- รหัสปัจจุบันผิด → 400 `WRONG_PASSWORD`
+- สำเร็จแล้ว token เก่าทุกใบ (ทุกเครื่อง) ใช้ไม่ได้ หน้าเว็บต้องเก็บ `token` ใบใหม่ที่ได้กลับมาแทน
 
 ---
 

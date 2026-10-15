@@ -4,6 +4,7 @@
 const bcrypt = require('bcryptjs');
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
+const { rethrowDuplicate } = require('./account.validation');
 
 const BCRYPT_COST = 10;
 
@@ -40,19 +41,6 @@ function toAdmin(row) {
     granted_at: row.granted_at,
     created_at: row.created_at,
   };
-}
-
-/** แปลง error ข้อมูลซ้ำของ PostgreSQL เป็นข้อความที่บอกว่าช่องไหนซ้ำ */
-function rethrowDuplicate(err) {
-  if (err.code === '23505') {
-    if (err.constraint === 'user_username_key') {
-      throw AppError.conflict('DUPLICATE', 'ชื่อผู้ใช้นี้ถูกใช้แล้ว', [{ field: 'username', issue: 'ซ้ำ' }]);
-    }
-    if (err.constraint === 'user_email_key') {
-      throw AppError.conflict('DUPLICATE', 'อีเมลนี้ถูกใช้แล้ว', [{ field: 'email', issue: 'ซ้ำ' }]);
-    }
-  }
-  throw err;
 }
 
 async function logAction(client, adminId, actionType, targetId, note) {

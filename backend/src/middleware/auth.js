@@ -14,6 +14,7 @@
 //   * หน้าเว็บส่ง token มากับ header  Authorization: Bearer <token>
 //   * token เก็บแค่ user_id ส่วนสิทธิ์และสถานะบัญชีอ่านจากฐานข้อมูลใหม่ทุก request
 //     → ปิดบัญชี (is_active = false) หรือถอดสิทธิ์แอดมินแล้วมีผลทันที ไม่ต้องรอ token หมดอายุ
+//   * token ที่ออกก่อน user.tokens_valid_after ใช้ไม่ได้ (ตั้งตอนรีเซ็ต/เปลี่ยนรหัสผ่าน) = ออกจากระบบทุกเครื่อง
 //   * "เป็นแอดมิน" = มีแถวในตาราง admin (BR-30 specialization) — คอลัมน์ user.role ไม่ได้ใช้ตัดสินสิทธิ์
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
@@ -22,9 +23,13 @@ const AppError = require('../utils/AppError');
 
 const ALGORITHM = 'HS256';
 
-/** สร้าง token หลังล็อกอินสำเร็จ */
+/**
+ * สร้าง token หลังล็อกอินสำเร็จ
+ * t = เวลาที่ออก (มิลลิวินาที) ใช้เทียบกับ tokens_valid_after — iat มาตรฐานละเอียดแค่วินาที
+ * ถ้าใช้ iat token เก่าที่ออกในวินาทีเดียวกับที่สั่งยกเลิกจะยังใช้ได้
+ */
 function signToken(userId) {
-  return jwt.sign({ sub: String(userId) }, env.jwtSecret, {
+  return jwt.sign({ sub: String(userId), t: Date.now() }, env.jwtSecret, {
     algorithm: ALGORITHM,
     expiresIn: env.jwtExpiresIn,
   });
@@ -43,16 +48,24 @@ function toAuthUser(row) {
   };
 }
 
-/** ผู้ใช้ที่ยังเปิดใช้งานอยู่ พร้อมสิทธิ์แอดมิน (ถ้ามี) — ไม่พบหรือถูกปิดบัญชีแล้วได้ null */
-async function findActiveUser(userId) {
-  const { rows } = await query(
-    `SELECT u.user_id, u.username, u.email, u.display_name, u.is_email_verified, a.admin_role
+/**
+ * ผู้ใช้ที่ยังเปิดใช้งานอยู่ พร้อมสิทธิ์แอดมิน (ถ้ามี) — ไม่พบหรือถูกปิดบัญชีแล้วได้ null
+ * ส่ง client มาได้ถ้าอยู่ใน transaction
+ */
+async function findActiveUser(userId, db = { query }) {
+  const { rows } = await db.query(
+    `SELECT u.user_id, u.username, u.email, u.display_name, u.is_email_verified, a.admin_role,
+            (EXTRACT(EPOCH FROM u.tokens_valid_after) * 1000)::bigint AS tokens_valid_after_ms
        FROM "user" u
        LEFT JOIN admin a ON a.user_id = u.user_id
       WHERE u.user_id = $1 AND u.is_active`,
     [userId]
   );
-  return rows[0] ? toAuthUser(rows[0]) : null;
+  if (!rows[0]) return null;
+  // ซ่อนค่า tokens_valid_after ไว้ (ไม่ส่งให้หน้าเว็บ) แต่ requireAuth ยังอ่านได้
+  return Object.defineProperty(toAuthUser(rows[0]), 'tokensValidAfterMs', {
+    value: Number(rows[0].tokens_valid_after_ms),
+  });
 }
 
 /** ต้องล็อกอิน: ไม่มี token / token ผิดหรือหมดอายุ / บัญชีถูกปิด → 401 */
@@ -72,6 +85,11 @@ async function requireAuth(req, res, next) {
 
   const user = await findActiveUser(payload.sub);
   if (!user) throw AppError.unauthorized('บัญชีนี้ถูกปิดการใช้งานหรือไม่มีอยู่แล้ว');
+
+  const issuedAtMs = typeof payload.t === 'number' ? payload.t : payload.iat * 1000;
+  if (issuedAtMs < user.tokensValidAfterMs) {
+    throw AppError.unauthorized('รหัสผ่านถูกเปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่');
+  }
 
   req.user = user;
   next();
@@ -110,6 +128,7 @@ const requireAdmin = [requireAuth, requireRole('admin')];
 module.exports = {
   signToken,
   toAuthUser,
+  findActiveUser,
   requireAuth,
   requireRole,
   requireVerified,

@@ -1,15 +1,16 @@
 // controller จัดการบัญชีผู้ดูแล (R2): ตรวจข้อมูลที่ส่งมา → เรียก service → ตอบ { data }
 const AppError = require('../../utils/AppError');
 const service = require('./admins.service');
+const { parseAccountBody } = require('./account.validation');
 
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 const STATUSES = ['all', 'active', 'inactive'];
-const ADMIN_ROLES = ['owner', 'staff'];
 
-const USERNAME_RE = /^[A-Za-z0-9_.]{3,30}$/;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^[0-9+\-\s]{9,20}$/;
+// ช่องที่หน้าจัดการผู้ดูแลรับ (ตรวจด้วยกติกากลางใน account.validation.js)
+const ACCOUNT_FIELDS = ['username', 'email', 'password', 'first_name', 'last_name', 'display_name', 'phone'];
+const CREATE_FIELDS = [...ACCOUNT_FIELDS, 'admin_role'];
+const UPDATE_FIELDS = [...ACCOUNT_FIELDS, 'admin_role', 'is_active'];
 
 function parseId(raw) {
   const id = Number(raw);
@@ -57,110 +58,6 @@ function parseListQuery(qs) {
   return { q, status, page, pageSize };
 }
 
-/**
- * ตรวจข้อมูลบัญชีจาก body
- *   isCreate = true  → ช่องบังคับต้องมีครบ
- *   isCreate = false → ส่งมาเฉพาะช่องที่จะแก้ แต่ต้องมีอย่างน้อยหนึ่งช่อง
- * คืนค่าเฉพาะช่องที่ส่งมา (ตัด space หัวท้ายแล้ว ยกเว้นรหัสผ่าน)
- */
-function parseAccountBody(body, { isCreate }) {
-  const input = body && typeof body === 'object' ? body : {};
-  const errors = [];
-  const out = {};
-  const has = (key) => input[key] !== undefined;
-
-  const text = (key, { required = false, max = 100, pattern, issue, normalize } = {}) => {
-    if (!has(key) || input[key] === null || input[key] === '') {
-      if (required) errors.push({ field: key, issue: 'required' });
-      else if (has(key)) out[key] = null; // ช่องที่ไม่บังคับ ส่งค่าว่างมา = ลบค่าเดิม
-      return;
-    }
-    if (typeof input[key] !== 'string') {
-      errors.push({ field: key, issue: 'ต้องเป็นข้อความ' });
-      return;
-    }
-    let value = input[key].trim();
-    if (normalize) value = normalize(value);
-    if (value === '') {
-      if (required) errors.push({ field: key, issue: 'required' });
-      else out[key] = null;
-      return;
-    }
-    if (value.length > max) {
-      errors.push({ field: key, issue: `ยาวได้ไม่เกิน ${max} ตัวอักษร` });
-    } else if (pattern && !pattern.test(value)) {
-      errors.push({ field: key, issue });
-    } else {
-      out[key] = value;
-    }
-  };
-
-  if (isCreate) {
-    text('username', {
-      required: true,
-      pattern: USERNAME_RE,
-      issue: 'ใช้ได้เฉพาะ a-z, A-Z, 0-9, _ และ . ยาว 3–30 ตัว',
-    });
-  } else if (has('username')) {
-    errors.push({ field: 'username', issue: 'เปลี่ยนชื่อผู้ใช้ไม่ได้' });
-  }
-
-  text('email', {
-    required: isCreate,
-    max: 254,
-    pattern: EMAIL_RE,
-    issue: 'รูปแบบอีเมลไม่ถูกต้อง',
-    normalize: (v) => v.toLowerCase(),
-  });
-  text('first_name', { required: isCreate });
-  text('last_name', { required: isCreate });
-  text('display_name');
-  text('phone', { max: 20, pattern: PHONE_RE, issue: 'ใส่ได้เฉพาะตัวเลข + - และเว้นวรรค 9–20 ตัว' });
-
-  // ชื่อจริง นามสกุล ชื่อที่แสดง เป็น NOT NULL ในตาราง — ตอนแก้ห้ามส่งค่าว่างมา
-  for (const key of ['email', 'first_name', 'last_name', 'display_name']) {
-    if (!isCreate && out[key] === null) errors.push({ field: key, issue: 'required' });
-  }
-
-  if (has('password') && input.password !== '' && input.password !== null) {
-    const pw = input.password;
-    if (typeof pw !== 'string' || pw.length < 8 || pw.length > 100) {
-      errors.push({ field: 'password', issue: 'ต้องยาว 8–100 ตัวอักษร' });
-    } else {
-      out.password = pw;
-    }
-  } else if (isCreate) {
-    errors.push({ field: 'password', issue: 'required' });
-  }
-
-  if (has('admin_role')) {
-    if (!ADMIN_ROLES.includes(input.admin_role)) {
-      errors.push({ field: 'admin_role', issue: `ต้องเป็นหนึ่งใน ${ADMIN_ROLES.join(', ')}` });
-    } else {
-      out.admin_role = input.admin_role;
-    }
-  } else if (isCreate) {
-    out.admin_role = 'staff';
-  }
-
-  if (!isCreate && has('is_active')) {
-    if (typeof input.is_active !== 'boolean') {
-      errors.push({ field: 'is_active', issue: 'ต้องเป็น true หรือ false' });
-    } else {
-      out.is_active = input.is_active;
-    }
-  }
-
-  if (errors.length) {
-    throw AppError.badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', errors);
-  }
-  if (!isCreate && Object.keys(out).length === 0) {
-    throw AppError.badRequest('VALIDATION_ERROR', 'ไม่มีข้อมูลที่จะแก้ไข');
-  }
-  if (isCreate && !out.display_name) out.display_name = out.first_name;
-  return out;
-}
-
 // GET /api/admins
 async function list(req, res) {
   const filters = parseListQuery(req.query);
@@ -177,7 +74,7 @@ async function getById(req, res) {
 
 // POST /api/admins
 async function create(req, res) {
-  const data = parseAccountBody(req.body, { isCreate: true });
+  const data = parseAccountBody(req.body, { isCreate: true, fields: CREATE_FIELDS });
   const admin = await service.create(req.user.user_id, data);
   res.status(201).json({ data: admin });
 }
@@ -185,7 +82,7 @@ async function create(req, res) {
 // PATCH /api/admins/:id
 async function update(req, res) {
   const id = parseId(req.params.id);
-  const changes = parseAccountBody(req.body, { isCreate: false });
+  const changes = parseAccountBody(req.body, { isCreate: false, fields: UPDATE_FIELDS });
   // กันเจ้าของร้านล็อกตัวเองออก: ลดระดับหรือปิดบัญชีตัวเองไม่ได้
   // (ผลพลอยได้: ร้านมี owner ที่ใช้งานได้อย่างน้อย 1 คนเสมอ เพราะคนที่แก้ได้ต้องเป็น owner อยู่แล้ว)
   if (id === req.user.user_id && (changes.admin_role !== undefined || changes.is_active !== undefined)) {

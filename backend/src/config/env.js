@@ -28,6 +28,16 @@ const env = {
     (process.env.NODE_ENV === 'production' ? undefined : 'dev-only-secret-change-me'),
   // อายุ token เช่น 8h, 30m, 7d — หมดแล้วต้องล็อกอินใหม่
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
+
+  // ที่อยู่หน้าเว็บ ใช้สร้างลิงก์ในอีเมล เช่น ลิงก์รีเซ็ตรหัสผ่าน
+  appUrl: (process.env.APP_URL || 'http://localhost:5500').replace(/\/+$/, ''),
+
+  // ส่งอีเมล (OTP, ลิงก์รีเซ็ตรหัส) ผ่าน Gmail — ไม่ตั้งค่า = แสดงอีเมลใน log ของ API แทนการส่งจริง
+  mail: {
+    user: process.env.MAIL_USER || '',
+    appPassword: process.env.MAIL_APP_PASSWORD || '',
+    from: process.env.MAIL_FROM || process.env.MAIL_USER || '',
+  },
 };
 
 if (!env.databaseUrl) {
