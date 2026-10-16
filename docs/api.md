@@ -27,7 +27,7 @@
 ห่อข้อมูลไว้ใน `data` เสมอ
 
 ```json
-{ "data": { "product_id": 12, "name": "RX-78-2 Ver.Ka" } }
+{ "data": { "product_id": 12, "title": "RX-78-2 Gundam Ver.Ka" } }
 ```
 
 ถ้าเป็นรายการที่แบ่งหน้า ให้เพิ่ม `meta`

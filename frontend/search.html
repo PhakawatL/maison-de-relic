@@ -30,7 +30,16 @@
         </div>
         <div class="field">
           <label for="condition">สภาพสินค้า</label>
-          <select id="condition" name="condition"><option value="">ทั้งหมด</option></select>
+          <!-- value ต้องตรงกับค่าที่ API ของ R3 รับ (CONDITIONS ใน products.controller.js) -->
+          <select id="condition" name="condition">
+            <option value="">ทั้งหมด</option>
+            <option value="new">ของใหม่</option>
+            <option value="like_new">เหมือนใหม่</option>
+            <option value="excellent">สภาพดีมาก</option>
+            <option value="good">สภาพดี</option>
+            <option value="fair">พอใช้</option>
+            <option value="poor">มีตำหนิ</option>
+          </select>
         </div>
       </div>
       <button class="btn btn-primary" type="submit">ค้นหา</button>
