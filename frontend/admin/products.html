@@ -3,26 +3,248 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>จัดการสินค้า · Maison de Relic</title>
+  <title data-i18n="ap.pageTitle">จัดการสินค้า · Maison de Relic</title>
+  <meta name="robots" content="noindex">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin.css">
+  <!-- ตั้งธีม/ภาษาก่อนหน้าแสดงผล กันหน้ากระพริบ (แบบเดียวกับ index.html) -->
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+    })(document.documentElement);
+  </script>
 </head>
-<body>
-  <header id="site-header"></header>
+<body class="page-admin">
+  <!-- หน้าบังคับ: Product Management (Admin) — ค้นหา เพิ่ม แก้ไข ลบ สินค้า
+       ต้องล็อกอินก่อน · ผู้รับผิดชอบ: R3 · wireframe 05–08
+       หน้าเดียวมี 2 มุมมอง (สลับด้วย # ใน URL):
+         /admin/products            รายการสินค้า (05) + popup ยืนยันลบ (08)
+         /admin/products#new        ฟอร์มเพิ่มสินค้า (06)
+         /admin/products#edit/12    ฟอร์มแก้ไขสินค้า (07)
+       ข้อความทั้งหมดอยู่ใน js/locales/th.js และ en.js หมวด admin.* และ ap.* -->
+  <div id="admin-topbar"></div>
 
-  <main class="container">
-    <!-- หน้าบังคับ: Product Management (Admin) — ค้นหา เพิ่ม แก้ไข ลบ สินค้า
-         ต้องล็อกอินก่อน · ผู้รับผิดชอบ: R3 -->
-    <h1>จัดการสินค้า</h1>
-    <div id="page-error" class="alert alert-error" hidden></div>
-    <div class="table-wrap"><table id="product-table"></table></div>
-  </main>
+  <div class="container admin-shell">
+    <nav id="admin-sidenav"></nav>
 
-  <footer id="site-footer"></footer>
+    <main class="admin-main">
+      <div id="page-message" class="alert" role="status" hidden></div>
 
-  <script type="module" src="/js/layout.js"></script>
+      <!-- ===== 05 รายการสินค้า ===== -->
+      <section id="list-view" hidden>
+        <header class="page-head">
+          <div>
+            <p class="kicker" data-i18n="ap.kicker">แผงผู้ดูแล · คลังสินค้า</p>
+            <h1 class="page-title" data-i18n="ap.title">จัดการสินค้า</h1>
+            <p class="page-lede" data-i18n="ap.lede">ค้นหา เพิ่ม แก้ไข และลบสินค้าในร้าน</p>
+          </div>
+          <a href="#new" class="btn btn-ink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span data-i18n="ap.addBtn">เพิ่มสินค้า</span>
+          </a>
+        </header>
+
+        <form id="search-form" class="admin-toolbar" role="search">
+          <label class="search-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span class="visually-hidden" data-i18n="ap.searchLabel">ค้นหาสินค้า</span>
+            <input type="search" name="q" maxlength="100" autocomplete="off"
+                   placeholder="ค้นหาชื่อสินค้า / รหัสสินค้า เช่น P012" data-i18n-attr="placeholder:ap.searchPlaceholder">
+          </label>
+          <label class="select-pill">
+            <span class="visually-hidden" data-i18n="ap.categoryLabel">หมวดหมู่</span>
+            <select name="category">
+              <option value="" data-i18n="ap.allCategories">ทุกหมวดหมู่</option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-ghost btn-pill" data-i18n="ap.searchBtn">ค้นหา</button>
+        </form>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="ap.col.code">รหัส</th>
+                  <th scope="col" data-i18n="ap.col.name">ชื่อสินค้า</th>
+                  <th scope="col" class="num" data-i18n="ap.col.price">ราคา</th>
+                  <th scope="col" class="num" data-i18n="ap.col.stock">คงเหลือ</th>
+                  <th scope="col" data-i18n="ap.col.status">สถานะ</th>
+                  <th scope="col" class="actions" data-i18n="ap.col.actions">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="product-rows"></tbody>
+            </table>
+          </div>
+          <nav id="pager" class="pager"></nav>
+        </div>
+      </section>
+
+      <!-- ===== 06 เพิ่มสินค้า / 07 แก้ไขสินค้า ===== -->
+      <section id="form-view" hidden>
+        <header class="page-head">
+          <div>
+            <a href="#" class="back-link">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6 4 12l6 6M4 12h16"/></svg>
+              <span data-i18n="ap.back">กลับไปรายการสินค้า</span>
+            </a>
+            <h1 class="page-title" id="form-title">เพิ่มสินค้า</h1>
+          </div>
+        </header>
+
+        <form id="product-form" class="admin-form" novalidate>
+          <fieldset class="form-card">
+            <legend>
+              <span class="form-step">1</span>
+              <span data-i18n="ap.sec.main">ข้อมูลหลัก</span>
+              <small data-i18n="ap.sec.mainHint">ช่องที่มี * ต้องกรอก</small>
+            </legend>
+            <div class="form-grid">
+              <div class="field full">
+                <label for="f-title"><span data-i18n="ap.f.title">ชื่อสินค้า</span> <span class="req" aria-hidden="true">*</span></label>
+                <input id="f-title" name="title" maxlength="200" required
+                       placeholder="พิมพ์ชื่อสินค้า" data-i18n-attr="placeholder:ap.f.titlePh">
+              </div>
+
+              <div class="field">
+                <label for="f-series" data-i18n="ap.f.series">ซีรีส์</label>
+                <select id="f-series" name="series_id">
+                  <option value="" data-i18n="ap.f.seriesNone">ไม่มี / เลือกซีรีส์</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-status"><span data-i18n="ap.f.status">สถานะ</span> <span class="req" aria-hidden="true">*</span></label>
+                <select id="f-status" name="status" required>
+                  <option value="" data-i18n="ap.f.statusPh">เลือกสถานะ (แสดง / ซ่อน / ฉบับร่าง)</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="f-category"><span data-i18n="ap.f.category">หมวดหมู่</span> <span class="req" aria-hidden="true">*</span></label>
+                <select id="f-category" name="category_id" required>
+                  <option value="" data-i18n="ap.f.categoryPh">เลือกหมวดหมู่</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-price"><span data-i18n="ap.f.price">ราคา (บาท)</span> <span class="req" aria-hidden="true">*</span></label>
+                <div class="input-affix">
+                  <span aria-hidden="true">฿</span>
+                  <input id="f-price" name="price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" required>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="f-condition"><span data-i18n="ap.f.condition">สภาพ</span> <span class="req" aria-hidden="true">*</span></label>
+                <select id="f-condition" name="condition" required>
+                  <option value="" data-i18n="ap.f.conditionPh">เลือกสภาพสินค้า</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-stock"><span data-i18n="ap.f.stock">จำนวน</span> <span class="req" aria-hidden="true">*</span></label>
+                <div class="stepper">
+                  <button type="button" class="stepper-btn" data-step="-1" tabindex="-1" aria-hidden="true">−</button>
+                  <input id="f-stock" name="stock_quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required>
+                  <button type="button" class="stepper-btn" data-step="1" tabindex="-1" aria-hidden="true">+</button>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- ช่องในหมวดนี้เก็บใน product.attributes (JSON) -->
+          <fieldset class="form-card">
+            <legend>
+              <span class="form-step">2</span>
+              <span data-i18n="ap.sec.details">รายละเอียดของสะสม</span>
+              <small data-i18n="ap.sec.detailsHint">ไม่บังคับ ช่วยให้ลูกค้าตัดสินใจง่ายขึ้น</small>
+            </legend>
+            <div class="form-grid">
+              <div class="field">
+                <label for="f-year" data-i18n="ap.f.year">ปีที่ผลิต</label>
+                <input id="f-year" name="year" maxlength="20" placeholder="เช่น 2566" data-i18n-attr="placeholder:ap.f.yearPh">
+              </div>
+              <div class="field">
+                <label for="f-size" data-i18n="ap.f.size">ขนาด</label>
+                <input id="f-size" name="size" maxlength="60" placeholder="เช่น สูง 12 ซม." data-i18n-attr="placeholder:ap.f.sizePh">
+              </div>
+              <div class="field">
+                <label for="f-material" data-i18n="ap.f.material">วัสดุ</label>
+                <input id="f-material" name="material" maxlength="60" placeholder="เช่น PVC" data-i18n-attr="placeholder:ap.f.materialPh">
+              </div>
+              <div class="field">
+                <label for="f-box" data-i18n="ap.f.box">กล่องเดิม</label>
+                <select id="f-box" name="original_box">
+                  <option value="" data-i18n="ap.f.boxPh">เลือก (มี / ไม่มี)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-grader" data-i18n="ap.f.grader">บริษัทให้เกรด</label>
+                <select id="f-grader" name="grading_company">
+                  <option value="" data-i18n="ap.f.graderPh">เลือกบริษัทให้เกรด (ถ้ามี)</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="f-grade" data-i18n="ap.f.grade">เกรด</label>
+                <input id="f-grade" name="grade" maxlength="20" placeholder="เช่น 9.5" data-i18n-attr="placeholder:ap.f.gradePh">
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="form-card">
+            <legend>
+              <span class="form-step">3</span>
+              <span data-i18n="ap.sec.media">คำบรรยายและรูปภาพ</span>
+            </legend>
+            <div class="form-grid">
+              <div class="field full">
+                <label for="f-description" data-i18n="ap.f.description">คำบรรยาย</label>
+                <textarea id="f-description" name="description" maxlength="5000"
+                          placeholder="อธิบายสภาพสินค้า ที่มา และรายละเอียดอื่น ๆ" data-i18n-attr="placeholder:ap.f.descriptionPh"></textarea>
+              </div>
+              <div class="field full">
+                <span class="field-label" id="f-image-label" data-i18n="ap.f.image">อัปโหลดรูป</span>
+                <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-labelledby="f-image-label dropzone-text">
+                  <img id="image-preview" class="preview" alt="" hidden>
+                  <span class="drop-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></svg>
+                  </span>
+                  <span id="dropzone-text" data-i18n="ap.drop">ลากไฟล์มาวาง หรือคลิกเพื่อเลือกรูป</span>
+                  <small data-i18n="ap.dropHint">รองรับ JPG / PNG ขนาดไม่เกิน 5 MB</small>
+                </div>
+                <input id="f-image" type="file" accept="image/jpeg,image/png" hidden>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <a href="#" class="btn btn-ghost btn-pill" data-i18n="ap.cancel">ยกเลิก</a>
+            <button type="submit" class="btn btn-ink" id="save-btn" data-i18n="ap.save">บันทึก</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <!-- ===== 08 ยืนยันลบ ===== -->
+  <dialog id="delete-dialog" class="confirm-dialog" aria-labelledby="delete-title" aria-describedby="delete-desc">
+    <span class="confirm-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
+    </span>
+    <h2 id="delete-title" data-i18n="ap.del.title">ยืนยันลบสินค้านี้?</h2>
+    <p id="delete-desc"><strong id="delete-name"></strong><span data-i18n="ap.del.warn">การลบไม่สามารถย้อนกลับได้</span></p>
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost btn-pill" id="delete-cancel" data-i18n="ap.cancel">ยกเลิก</button>
+      <button type="button" class="btn btn-danger" id="delete-confirm" data-i18n="ap.del.confirm">ลบ</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="/js/admin-layout.js"></script>
   <script type="module" src="/js/pages/admin-products.js"></script>
 </body>
 </html>
