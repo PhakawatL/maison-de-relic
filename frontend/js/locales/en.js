@@ -79,6 +79,17 @@ export default {
   'home.sampleNote': 'Showing sample data because the product API is unavailable',
   'home.sampleEmpty': 'Showing sample data because the shop has no products yet',
 
+  // ---------------------------------------------------------------- Team page (R1)
+  'team.pageTitle': 'Our team · Maison de Relic',
+  'team.title1': 'Our ',
+  'team.title2': 'team',
+  'team.subtitle': 'ITDS241/242 course project, Faculty of Information and Communication Technology, Mahidol University',
+  'team.photoAlt': 'Photo of {name}',
+  'team.role.peem': 'Tech Lead · Core system · After-sales',
+  'team.role.bonus': 'Identity · Admin users',
+  'team.role.yu': 'Catalog · Inventory · Sales',
+  'team.role.pleng': 'Discovery · Recommender',
+  'team.role.narabodee': 'Cart · Checkout · Orders',
   // ---------------------------------------------------------------- Admin shell: top bar + side menu (R3 · shared with R2)
   'admin.brandTag': 'Admin',
   'admin.navLabel': 'Admin menu',
