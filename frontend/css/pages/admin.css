@@ -1,0 +1,1277 @@
+/* =========================================================
+   admin.css — หน้าฝั่งผู้ดูแลระบบ (แถบบน + เมนูซ้าย) และหน้าจัดการสินค้า · R3
+   ใช้คู่กับ js/admin-layout.js · หน้าแอดมินอื่น (เช่น admin/users ของ R2) ใช้ไฟล์นี้ได้เลย
+   ธีมเดียวกับหน้าร้าน: พื้นกระดาษ ปุ่มทึบสีหมึก หัวข้อ Noto Serif Thai สีเน้นส้มอิฐ + โหมดมืด
+   ไฟล์นี้มีทุกอย่างที่หน้าแอดมินต้องใช้ในตัว (โลโก้ ปุ่มภาษา ปุ่มธีม) และจำกัดไว้ใต้ .page-admin ไม่กระทบหน้าอื่น
+   ลำดับ: ตัวแปร → โครงหน้า → หัวหน้า → ค้นหา → ตาราง → ฟอร์ม → popup → animation → จอเล็ก
+   ========================================================= */
+.page-admin {
+  --ink: #1c1814;
+  --ink-2: #5f574d;
+  --ink-3: #8b8276;
+  --paper: #f4efe7;
+  --card: #fffdf9;
+  --line: #e6ddd0;
+  --line-soft: #efe8dd;
+  --accent: #c9541f;
+  --accent-soft: rgba(201, 84, 31, 0.12);
+  --ink-hover: #3a322a;
+  --on-ink: #fff;
+  --font-display: 'Noto Serif Thai', 'IBM Plex Sans Thai', serif;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --shadow-sm: 0 1px 2px rgba(28, 24, 20, 0.05), 0 6px 18px -12px rgba(28, 24, 20, 0.25);
+  --shadow-lg: 0 2px 4px rgba(28, 24, 20, 0.04), 0 24px 48px -24px rgba(28, 24, 20, 0.35);
+  --glass: rgba(244, 239, 231, 0.82);
+  --skel-a: #ece4d8;
+  --skel-b: #f6f0e7;
+  --ok: #2f6b45;
+  --ok-soft: rgba(47, 107, 69, 0.12);
+  --warn: #8a5a00;
+  --warn-soft: rgba(196, 140, 30, 0.16);
+  --danger: #b42318;
+  --danger-soft: rgba(180, 35, 24, 0.1);
+
+  color: var(--ink);
+  background: var(--paper);
+  color-scheme: light;
+}
+
+[data-theme='dark'] .page-admin {
+  color-scheme: dark;
+  --ink: #f1ebe2;
+  --ink-2: #bdb3a6;
+  --ink-3: #8f8579;
+  --paper: #13100d;
+  --card: #1c1814;
+  --line: #332b24;
+  --line-soft: #29231d;
+  --accent: #f08a5d;
+  --accent-soft: rgba(240, 138, 93, 0.14);
+  --ink-hover: #ffffff;
+  --on-ink: #13100d;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px -12px rgba(0, 0, 0, 0.7);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.3), 0 24px 48px -24px rgba(0, 0, 0, 0.8);
+  --glass: rgba(19, 16, 13, 0.8);
+  --skel-a: #221d18;
+  --skel-b: #2d2721;
+  --ok: #7fc79c;
+  --ok-soft: rgba(127, 199, 156, 0.14);
+  --warn: #e7bd6a;
+  --warn-soft: rgba(231, 189, 106, 0.14);
+  --danger: #f2877a;
+  --danger-soft: rgba(242, 135, 122, 0.12);
+}
+
+.page-admin svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+.page-admin :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.i18n-pending main [data-i18n],
+.i18n-pending .confirm-dialog [data-i18n] {
+  visibility: hidden;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- โลโก้ ปุ่มภาษา ปุ่มธีม (แบบเดียวกับ header หน้าร้าน) ---------- */
+.page-admin .brand {
+  font-family: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
+  font-optical-sizing: none;
+  font-variation-settings: 'opsz' 9;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: opacity 0.3s;
+}
+.page-admin .brand:hover {
+  opacity: 0.7;
+}
+.page-admin .lang-switch {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+.page-admin .lang-switch button {
+  font: 600 0.75rem/1 var(--font-body);
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: background 0.25s, color 0.25s;
+}
+.page-admin .lang-switch button:hover {
+  color: var(--ink);
+}
+.page-admin .lang-switch button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.page-admin .icon-btn {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.25s, transform 0.25s;
+}
+.page-admin .icon-btn:hover {
+  border-color: var(--ink);
+}
+.page-admin .icon-btn:active {
+  transform: scale(0.92);
+}
+.page-admin .theme-toggle svg {
+  grid-area: 1 / 1;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.5s var(--ease), opacity 0.3s;
+}
+.page-admin .theme-toggle .icon-sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+[data-theme='dark'] .page-admin .theme-toggle .icon-sun {
+  opacity: 1;
+  transform: none;
+}
+[data-theme='dark'] .page-admin .theme-toggle .icon-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+.page-admin .btn-pill {
+  border-radius: 999px;
+  padding: 7px 18px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  transition: background 0.25s, border-color 0.25s, transform 0.2s;
+}
+.page-admin .btn-pill:active {
+  transform: scale(0.96);
+}
+/* สลับธีมแบบวงกลมกระจาย — ปิด animation จางเริ่มต้นของเบราว์เซอร์ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* =========================================================
+   แถบบน
+   ========================================================= */
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+.admin-topbar.is-scrolled {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  border-bottom-color: var(--line);
+  box-shadow: 0 8px 24px -20px rgba(28, 24, 20, 0.5);
+}
+.admin-topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 76px;
+  flex-wrap: wrap;
+}
+.admin-topbar .brand {
+  font-size: 1.15rem;
+  margin-right: 0;
+  color: var(--ink);
+}
+.admin-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.admin-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+.admin-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 4px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+.admin-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+/* =========================================================
+   โครงหน้า + เมนูซ้าย
+   ========================================================= */
+.admin-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: clamp(20px, 3vw, 40px);
+  align-items: start;
+  padding-top: var(--space-3);
+  padding-bottom: var(--space-5);
+}
+.admin-shell > * {
+  min-width: 0; /* กันเนื้อหาข้างในดันให้หน้ากว้างเกินจอ */
+}
+.admin-main {
+  padding: 0; /* base.css ใส่ padding ให้ <main> ไว้ แต่ admin-shell เว้นระยะให้แล้ว */
+}
+
+.admin-sidenav {
+  position: sticky;
+  top: 92px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.admin-sidenav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: var(--ink-2);
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: background 0.2s, color 0.2s, transform 0.3s var(--ease);
+}
+.admin-sidenav a svg {
+  font-size: 1.1rem;
+  color: var(--ink-3);
+  transition: color 0.2s;
+}
+.admin-sidenav a:hover {
+  background: var(--line-soft);
+  color: var(--ink);
+  transform: translateX(3px);
+}
+.admin-sidenav a[aria-current='page'] {
+  background: var(--ink);
+  color: var(--on-ink);
+  font-weight: 600;
+}
+.admin-sidenav a[aria-current='page'] svg {
+  color: var(--on-ink);
+}
+.admin-sidenav a[aria-current='page']:hover {
+  transform: none;
+}
+.admin-sidenav .nav-back {
+  margin-top: 6px;
+  border-top: 1px solid var(--line-soft);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding-top: 14px;
+}
+
+/* =========================================================
+   หัวหน้า
+   ========================================================= */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.kicker {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 2.6vw, 2.1rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.page-lede {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  text-decoration: none;
+  transition: color 0.2s, gap 0.3s var(--ease);
+}
+.back-link:hover {
+  color: var(--ink);
+  gap: 10px;
+}
+
+/* ---------- ปุ่ม (เพิ่มจาก base.css) ---------- */
+.btn-ink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.25s var(--ease), background 0.25s, box-shadow 0.25s;
+}
+.btn-ink:hover {
+  background: var(--ink-hover);
+  box-shadow: 0 10px 24px -12px rgba(28, 24, 20, 0.7);
+}
+.btn-ink:active,
+.btn-danger:active {
+  transform: scale(0.97);
+}
+.btn-ink svg {
+  transition: transform 0.4s var(--ease);
+}
+.btn-ink:hover svg {
+  transform: rotate(90deg);
+}
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s, filter 0.2s;
+}
+[data-theme='dark'] .btn-danger {
+  color: #1c0d0b;
+}
+.btn-danger:hover {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 24px -12px rgba(180, 35, 24, 0.8);
+}
+.page-admin .btn-ghost {
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--card);
+}
+.page-admin .btn-ghost:hover {
+  border-color: var(--ink);
+}
+.btn.is-loading,
+.btn-ink.is-loading,
+.btn-danger.is-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+.is-loading::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--on-ink) 40%, transparent);
+  border-top-color: var(--on-ink);
+  animation: spin 0.7s linear infinite;
+}
+
+/* ---------- ข้อความแจ้ง ---------- */
+.page-admin .alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+}
+.page-admin .alert[hidden] {
+  display: none;
+}
+.page-admin .alert-error {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--danger);
+}
+.page-admin .alert-success {
+  background: var(--ok-soft);
+  border-color: color-mix(in srgb, var(--ok) 25%, transparent);
+  color: var(--ok);
+}
+
+/* =========================================================
+   แถบค้นหา
+   ========================================================= */
+.admin-toolbar {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.search-pill,
+.select-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.25s;
+}
+.search-pill {
+  flex: 1 1 280px;
+  padding: 0 6px 0 18px;
+  color: var(--ink-3);
+}
+.search-pill svg {
+  font-size: 1.1rem;
+}
+.search-pill input,
+.select-pill select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 11px 6px;
+  color: var(--ink);
+}
+.select-pill {
+  flex: 0 1 200px;
+  padding: 0 12px;
+}
+.search-pill input:focus,
+.select-pill select:focus {
+  outline: none;
+}
+.search-pill:hover,
+.select-pill:hover {
+  border-color: var(--ink-3);
+}
+.search-pill:focus-within,
+.select-pill:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* =========================================================
+   ตาราง
+   ========================================================= */
+.table-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.page-admin table {
+  background: transparent;
+}
+.admin-table {
+  min-width: 680px; /* จอแคบให้เลื่อนตารางซ้าย-ขวาแทนการบีบชื่อสินค้า */
+}
+.admin-table th,
+.admin-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line-soft);
+  vertical-align: middle;
+}
+.admin-table th {
+  background: color-mix(in srgb, var(--paper) 60%, var(--card));
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.admin-table tbody tr {
+  transition: background 0.2s;
+}
+.admin-table tbody tr:hover {
+  background: color-mix(in srgb, var(--paper) 45%, var(--card));
+}
+.admin-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.admin-table .code {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.admin-table .price {
+  font-weight: 600;
+}
+.admin-table .actions {
+  text-align: right;
+  white-space: nowrap;
+}
+/* ช่อง "รหัส · คงเหลือ · สถานะ" รวมกันในแถวเดียว ใช้เฉพาะจอเล็ก */
+.admin-table td.col-meta {
+  display: none;
+}
+
+.product-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.thumb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #f2e9da, #dfceb2);
+  color: var(--ink-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+[data-theme='dark'] .thumb {
+  background: linear-gradient(150deg, #2e271e, #3d3326);
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.product-name {
+  font-weight: 500;
+  line-height: 1.4;
+}
+.product-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+.cat-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: 2px;
+  background: var(--accent);
+}
+.cat-dot[data-cat='art-toys'] { background: #e0632a; }
+.cat-dot[data-cat='trading-cards'] { background: #3d6b47; }
+.cat-dot[data-cat='model-kits'] { background: #3a6b8f; }
+
+.stock-out {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--line-soft);
+  color: var(--ink-2);
+}
+.status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.status-available {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.status-available::before {
+  animation: pulse-dot 2.4s ease-out infinite;
+}
+.status-draft {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.row-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-3);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.25s var(--ease);
+}
+.row-btn svg {
+  font-size: 1.05rem;
+}
+.row-btn:hover {
+  background: var(--card);
+  border-color: var(--line);
+  color: var(--ink);
+  transform: translateY(-1px);
+}
+.row-btn.danger:hover {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.row-btn:active {
+  transform: scale(0.92);
+}
+
+.empty-state td {
+  padding: 56px 18px;
+  text-align: center;
+  color: var(--ink-2);
+}
+.empty-state .empty-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--line-soft);
+  color: var(--ink-3);
+  font-size: 1.5rem;
+}
+.empty-state .btn-ghost {
+  margin-top: 12px;
+}
+
+.skeleton td {
+  padding: 22px 18px;
+}
+.skeleton span {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--skel-a) 0%, var(--skel-b) 50%, var(--skel-a) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+/* ---------- แบ่งหน้า ---------- */
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 18px;
+  flex-wrap: wrap;
+}
+.pager-total {
+  margin-right: auto;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+.pager button {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.2s;
+}
+.pager button:hover:not(:disabled):not([aria-current='page']) {
+  border-color: var(--ink);
+}
+.pager button[aria-current='page'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.pager button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pager button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+/* =========================================================
+   ฟอร์มเพิ่ม / แก้ไข
+   ========================================================= */
+.admin-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.form-card {
+  margin: 0;
+  min-width: 0;
+  padding: var(--space-4);
+  padding-top: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.form-card legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  float: left; /* ให้ legend อยู่ในกรอบ ไม่ทับเส้นขอบ */
+  width: 100%;
+  padding: var(--space-4) 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.form-card legend small {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.form-card legend + * {
+  clear: both;
+}
+.form-step {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--space-3);
+  align-items: start; /* ข้อความแดงใต้ช่องหนึ่ง ไม่ดันช่องข้าง ๆ ให้สูงตาม */
+}
+.form-grid .full {
+  grid-column: 1 / -1;
+}
+.page-admin .field label,
+.field-label {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.req {
+  color: var(--accent);
+}
+.page-admin .field input,
+.page-admin .field select,
+.page-admin .field textarea {
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  transition: border-color 0.2s, box-shadow 0.25s;
+}
+.page-admin .field textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+.page-admin .field input::placeholder,
+.page-admin .field textarea::placeholder,
+.search-pill input::placeholder {
+  color: var(--ink-3);
+  opacity: 0.8;
+}
+.page-admin .field input:hover,
+.page-admin .field select:hover,
+.page-admin .field textarea:hover {
+  border-color: var(--ink-3);
+}
+.page-admin .field input:focus,
+.page-admin .field select:focus,
+.page-admin .field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+.field.has-error input,
+.field.has-error select,
+.field.has-error textarea {
+  border-color: var(--danger) !important;
+}
+.field.has-error input:focus,
+.field.has-error select:focus,
+.field.has-error textarea:focus {
+  box-shadow: 0 0 0 4px var(--danger-soft);
+}
+.field-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-size: 0.82rem;
+  animation: slide-down 0.25s var(--ease) both;
+}
+.field-error::before {
+  content: '!';
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--danger);
+  color: var(--card);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* ช่องราคามี ฿ นำหน้า */
+.input-affix {
+  position: relative;
+}
+.input-affix span {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.page-admin .input-affix input {
+  padding-left: 32px;
+}
+
+/* ช่องจำนวนมีปุ่ม − + */
+.stepper {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  gap: 6px;
+}
+.page-admin .stepper input {
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.stepper input::-webkit-inner-spin-button,
+.stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+.stepper-btn {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+.stepper-btn:hover {
+  border-color: var(--ink);
+}
+.stepper-btn:active {
+  transform: scale(0.92);
+}
+
+/* พื้นที่วางรูป */
+.dropzone {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: var(--space-5) var(--space-3);
+  border: 1.5px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--paper) 50%, var(--card));
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.3s var(--ease);
+}
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.dropzone.dragover {
+  transform: scale(1.01);
+  border-style: solid;
+}
+.dropzone small {
+  color: var(--ink-3);
+}
+.drop-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--accent);
+  font-size: 1.4rem;
+  transition: transform 0.4s var(--ease);
+}
+.dropzone:hover .drop-icon {
+  transform: translateY(-3px);
+}
+.dropzone .preview {
+  max-height: 180px;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  box-shadow: var(--shadow-sm);
+}
+.dropzone .preview:not([hidden]) {
+  animation: pop-in 0.3s var(--ease) both;
+}
+.dropzone .preview:not([hidden]) ~ .drop-icon {
+  display: none;
+}
+
+/* ปุ่มบันทึกติดขอบล่างจอ ฟอร์มยาวก็กดได้ทันทีไม่ต้องเลื่อน */
+.admin-form > .form-actions {
+  position: sticky;
+  bottom: 12px;
+  z-index: 5;
+  padding: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-lg);
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* =========================================================
+   popup ยืนยันลบ
+   ========================================================= */
+.confirm-dialog {
+  width: min(400px, calc(100vw - 32px));
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45);
+  text-align: center;
+}
+.confirm-dialog::backdrop {
+  background: rgba(28, 24, 20, 0.45);
+  backdrop-filter: blur(3px);
+}
+.confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 1.4rem;
+}
+.confirm-dialog h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.confirm-dialog p {
+  margin: 0 0 var(--space-4);
+  color: var(--ink-2);
+}
+.confirm-dialog p strong {
+  display: block;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+.confirm-dialog .form-actions {
+  justify-content: center;
+}
+
+/* =========================================================
+   Animation — สั้น ๆ ให้รู้สึกตอบสนอง (ปิดเองถ้าตั้ง "ลดการเคลื่อนไหว")
+   ========================================================= */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-out {
+  to { opacity: 0; transform: translateY(6px) scale(0.97); }
+}
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
+}
+@keyframes shake {
+  0%, 100% { transform: none; }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+@keyframes pulse-dot {
+  0%   { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 50%, transparent); }
+  70%  { box-shadow: 0 0 0 5px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.admin-sidenav {
+  animation: fade-up 0.5s var(--ease) both;
+}
+.view-enter .page-head {
+  animation: fade-up 0.5s var(--ease) both;
+}
+.view-enter .admin-toolbar,
+.view-enter .form-card:nth-of-type(1) {
+  animation: fade-up 0.5s var(--ease) 60ms both;
+}
+.view-enter .table-card,
+.view-enter .form-card:nth-of-type(2) {
+  animation: fade-up 0.5s var(--ease) 120ms both;
+}
+.view-enter .form-card:nth-of-type(3),
+.view-enter .admin-form > .form-actions {
+  animation: fade-up 0.5s var(--ease) 180ms both;
+}
+.admin-table tbody tr.row-enter {
+  animation: fade-up 0.35s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+#page-message.is-shown {
+  animation: slide-down 0.3s var(--ease) both;
+}
+.shake {
+  animation: shake 0.4s ease;
+}
+.confirm-dialog[open] {
+  animation: pop-in 0.3s var(--ease) both;
+}
+.confirm-dialog[open]::backdrop {
+  animation: fade-in 0.3s ease both;
+}
+.confirm-dialog.closing {
+  animation: pop-out 0.16s ease both;
+}
+.confirm-dialog.closing::backdrop {
+  animation: fade-in 0.16s ease reverse both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-admin *,
+  .page-admin *::before,
+  .page-admin *::after,
+  .page-admin ::backdrop {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+/* =========================================================
+   จอเล็ก
+   ========================================================= */
+@media (max-width: 860px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  .admin-sidenav {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    overflow-x: auto;
+    border-radius: 999px;
+    padding: 6px;
+  }
+  .admin-sidenav a {
+    border-radius: 999px;
+    padding: 8px 14px;
+  }
+  .admin-sidenav a:hover {
+    transform: none;
+  }
+  .admin-sidenav .nav-back {
+    margin: 0;
+    border: 0;
+    padding-top: 8px;
+    border-radius: 999px;
+  }
+}
+@media (max-width: 640px) {
+  .admin-topbar {
+    position: relative;
+  }
+  .admin-topbar-inner {
+    min-height: 0;
+    padding-block: 14px;
+    row-gap: 10px;
+  }
+  .admin-user-name {
+    display: none;
+  }
+  .admin-topbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-card {
+    padding-inline: var(--space-3);
+  }
+  .page-head .btn-ink {
+    width: 100%;
+    justify-content: center;
+  }
+  .select-pill {
+    flex: 1 1 auto;
+  }
+  .admin-form > .form-actions {
+    border-radius: var(--radius-lg);
+  }
+  .admin-form > .form-actions .btn,
+  .admin-form > .form-actions .btn-ink {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ตารางสินค้า → การ์ดทีละแถว อ่านง่ายบนมือถือ ไม่ต้องเลื่อนซ้าย-ขวา */
+  .admin-table {
+    min-width: 0;
+  }
+  .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .admin-table tbody tr:not(.empty-state):not(.skeleton) {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'name name'
+      'price actions'
+      'meta actions';
+    column-gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .admin-table tbody tr:not(.empty-state):not(.skeleton) td {
+    padding: 0;
+    border: 0;
+  }
+  .admin-table td.col-name { grid-area: name; margin-bottom: 8px; }
+  .admin-table td.col-price { grid-area: price; text-align: left; }
+  .admin-table td.col-actions { grid-area: actions; align-self: center; }
+  .admin-table td.col-meta {
+    grid-area: meta;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+  }
+  .admin-table td.col-code,
+  .admin-table td.col-stock,
+  .admin-table td.col-status {
+    display: none;
+  }
+  .admin-table tbody tr.skeleton td:nth-child(n + 3) {
+    display: none;
+  }
+}
+
