@@ -8,17 +8,137 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin-users.css">
 </head>
 <body>
   <header id="site-header"></header>
 
   <main class="container">
     <!-- หน้าบังคับ: User Account Management (Admin) — ค้นหา เพิ่ม แก้ไข ลบ บัญชีผู้ดูแล
-         ต้องล็อกอินก่อน · ผู้รับผิดชอบ: R2 -->
-    <h1>จัดการผู้ดูแลระบบ</h1>
-    <div id="page-error" class="alert alert-error" hidden></div>
-    <div class="table-wrap"><table id="user-table"></table></div>
+         ลบ = ปิดบัญชี (is_active = false) · ต้องล็อกอินเป็นแอดมิน · เพิ่ม/แก้/ปิดได้เฉพาะ owner
+         ผู้รับผิดชอบ: R2 -->
+    <div class="page-head">
+      <h1>จัดการผู้ดูแลระบบ</h1>
+      <button type="button" class="btn btn-primary" id="add-btn" hidden>+ เพิ่มผู้ดูแล</button>
+    </div>
+
+    <p class="muted" id="readonly-note" hidden>
+      บัญชีระดับทีมงาน (staff) ดูรายชื่อได้อย่างเดียว เพิ่ม แก้ไข หรือปิดบัญชีได้เฉพาะเจ้าของร้าน (owner)
+    </p>
+
+    <div id="page-alert" class="alert" role="status" hidden></div>
+
+    <form id="filter-form" class="filters" role="search">
+      <input type="search" name="q" maxlength="100" placeholder="ค้นหาชื่อผู้ใช้ ชื่อ หรืออีเมล"
+             aria-label="ค้นหาผู้ดูแล">
+      <select name="status" aria-label="สถานะบัญชี">
+        <option value="all">ทุกสถานะ</option>
+        <option value="active">ใช้งานอยู่</option>
+        <option value="inactive">ปิดบัญชีแล้ว</option>
+      </select>
+      <button type="submit" class="btn btn-ghost">ค้นหา</button>
+    </form>
+
+    <div class="table-wrap">
+      <table id="user-table">
+        <caption class="visually-hidden">รายชื่อผู้ดูแลระบบ</caption>
+        <thead>
+          <tr>
+            <th scope="col">ชื่อผู้ใช้</th>
+            <th scope="col">ชื่อ - นามสกุล</th>
+            <th scope="col">อีเมล</th>
+            <th scope="col">ระดับ</th>
+            <th scope="col">สถานะ</th>
+            <th scope="col">ได้สิทธิ์เมื่อ</th>
+            <th scope="col" id="actions-col"><span class="visually-hidden">จัดการ</span></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="muted" id="empty-note" hidden>ไม่พบผู้ดูแลที่ตรงกับเงื่อนไข</p>
+
+    <nav class="pager" aria-label="เปลี่ยนหน้า">
+      <button type="button" class="btn btn-ghost" id="prev-btn">← ก่อนหน้า</button>
+      <span id="page-info" class="muted"></span>
+      <button type="button" class="btn btn-ghost" id="next-btn">ถัดไป →</button>
+    </nav>
   </main>
+
+  <!-- ฟอร์มเพิ่ม / แก้ไขผู้ดูแล -->
+  <dialog id="user-dialog" aria-labelledby="user-dialog-title">
+    <form id="user-form" novalidate>
+      <h2 id="user-dialog-title">เพิ่มผู้ดูแล</h2>
+      <div id="form-alert" class="alert alert-error" role="alert" hidden></div>
+
+      <div class="field">
+        <label for="f-username">ชื่อผู้ใช้ (ใช้ล็อกอิน)</label>
+        <input id="f-username" name="username" autocomplete="off" required maxlength="30">
+        <small class="muted" id="username-hint">a-z, 0-9, _ และ . ยาว 3–30 ตัว · ตั้งแล้วเปลี่ยนไม่ได้</small>
+        <small class="field-error" data-error-for="username"></small>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="f-first-name">ชื่อ</label>
+          <input id="f-first-name" name="first_name" required maxlength="100">
+          <small class="field-error" data-error-for="first_name"></small>
+        </div>
+        <div class="field">
+          <label for="f-last-name">นามสกุล</label>
+          <input id="f-last-name" name="last_name" required maxlength="100">
+          <small class="field-error" data-error-for="last_name"></small>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-display-name">ชื่อที่แสดง</label>
+        <input id="f-display-name" name="display_name" maxlength="100" placeholder="เว้นว่างได้ ใช้ชื่อจริงแทน">
+        <small class="field-error" data-error-for="display_name"></small>
+      </div>
+      <div class="field">
+        <label for="f-email">อีเมล</label>
+        <input id="f-email" name="email" type="email" required maxlength="254" autocomplete="off">
+        <small class="field-error" data-error-for="email"></small>
+      </div>
+      <div class="field">
+        <label for="f-phone">เบอร์โทร (ไม่บังคับ)</label>
+        <input id="f-phone" name="phone" type="tel" maxlength="20">
+        <small class="field-error" data-error-for="phone"></small>
+      </div>
+      <div class="field">
+        <label for="f-admin-role">ระดับสิทธิ์</label>
+        <select id="f-admin-role" name="admin_role">
+          <option value="staff">ทีมงาน (staff) · ดูรายชื่อผู้ดูแลได้อย่างเดียว</option>
+          <option value="owner">เจ้าของร้าน (owner) · จัดการผู้ดูแลได้</option>
+        </select>
+        <small class="muted" id="role-hint" hidden>เปลี่ยนระดับสิทธิ์ของตัวเองไม่ได้</small>
+        <small class="field-error" data-error-for="admin_role"></small>
+      </div>
+      <div class="field">
+        <label for="f-password" id="password-label">รหัสผ่าน</label>
+        <input id="f-password" name="password" type="password" minlength="8" maxlength="100" autocomplete="new-password">
+        <small class="muted" id="password-hint">อย่างน้อย 8 ตัวอักษร</small>
+        <small class="field-error" data-error-for="password"></small>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-close>ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" id="save-btn">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ยืนยันปิดบัญชี -->
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">ปิดบัญชีผู้ดูแล?</h2>
+      <p id="confirm-text"></p>
+      <p class="muted">บัญชีจะยังอยู่ในระบบ (ประวัติสินค้าและ log ไม่หาย) และเปิดใช้งานคืนได้ภายหลัง</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn btn-ghost">ยกเลิก</button>
+        <button value="confirm" class="btn btn-danger" id="confirm-btn">ปิดบัญชี</button>
+      </div>
+    </form>
+  </dialog>
 
   <footer id="site-footer"></footer>
 

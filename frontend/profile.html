@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>โปรไฟล์ของฉัน · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/auth.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- โปรไฟล์ + ที่อยู่จัดส่ง (S2 · BR-03) · ต้องล็อกอิน · แก้ไขได้เมื่อยืนยันอีเมลแล้ว
+         ผู้รับผิดชอบ: R2 -->
+    <h1>โปรไฟล์ของฉัน</h1>
+
+    <div id="unverified" class="alert alert-error" role="alert" hidden>
+      ยังไม่ได้ยืนยันอีเมล จึงแก้ไขข้อมูลและเพิ่มที่อยู่ไม่ได้ <a href="/verify-email?next=/profile">ยืนยันอีเมลตอนนี้</a>
+    </div>
+    <div id="page-alert" class="alert" role="status" hidden></div>
+
+    <div class="profile-grid">
+      <!-- ข้อมูลส่วนตัว -->
+      <section class="card" aria-labelledby="info-title">
+        <h2 id="info-title">ข้อมูลส่วนตัว</h2>
+        <p class="muted">
+          ชื่อผู้ใช้ <strong id="p-username"></strong><br>
+          อีเมล <strong id="p-email"></strong>
+        </p>
+        <form id="profile-form" novalidate>
+          <fieldset id="profile-fields" class="plain-fieldset">
+            <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+            <div class="form-row">
+              <div class="field">
+                <label for="first_name">ชื่อ</label>
+                <input id="first_name" name="first_name" autocomplete="given-name" required maxlength="100">
+                <small class="field-error" data-error-for="first_name"></small>
+              </div>
+              <div class="field">
+                <label for="last_name">นามสกุล</label>
+                <input id="last_name" name="last_name" autocomplete="family-name" required maxlength="100">
+                <small class="field-error" data-error-for="last_name"></small>
+              </div>
+            </div>
+            <div class="field">
+              <label for="display_name">ชื่อที่แสดง</label>
+              <input id="display_name" name="display_name" autocomplete="nickname" required maxlength="100">
+              <small class="field-error" data-error-for="display_name"></small>
+            </div>
+            <div class="field">
+              <label for="phone">เบอร์โทร (ไม่บังคับ)</label>
+              <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="20">
+              <small class="field-error" data-error-for="phone"></small>
+            </div>
+            <div class="field">
+              <label for="avatar_url">ลิงก์รูปโปรไฟล์ (ไม่บังคับ)</label>
+              <input id="avatar_url" name="avatar_url" type="url" maxlength="500" placeholder="https://...">
+              <small class="field-error" data-error-for="avatar_url"></small>
+            </div>
+            <button class="btn btn-primary" type="submit">บันทึกข้อมูล</button>
+          </fieldset>
+        </form>
+      </section>
+
+      <!-- ที่อยู่จัดส่ง -->
+      <section class="card" aria-labelledby="address-title">
+        <div class="section-head">
+          <h2 id="address-title">ที่อยู่จัดส่ง</h2>
+          <button type="button" class="btn btn-ghost btn-sm" id="add-address-btn">+ เพิ่มที่อยู่</button>
+        </div>
+        <p class="muted" id="no-address" hidden>ยังไม่มีที่อยู่ เพิ่มไว้ก่อนเพื่อสั่งซื้อได้เร็วขึ้น</p>
+        <ul class="address-list" id="address-list"></ul>
+      </section>
+
+      <!-- เปลี่ยนรหัสผ่าน -->
+      <section class="card" aria-labelledby="password-title">
+        <h2 id="password-title">เปลี่ยนรหัสผ่าน</h2>
+        <form id="password-form" novalidate>
+          <fieldset id="password-fields" class="plain-fieldset">
+            <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+            <div class="field">
+              <label for="current_password">รหัสผ่านปัจจุบัน</label>
+              <input id="current_password" name="current_password" type="password" autocomplete="current-password" required maxlength="100">
+              <small class="field-error" data-error-for="current_password"></small>
+            </div>
+            <div class="field">
+              <label for="new_password">รหัสผ่านใหม่</label>
+              <input id="new_password" name="new_password" type="password" autocomplete="new-password" required minlength="8" maxlength="100">
+              <small class="muted">อย่างน้อย 8 ตัวอักษร · เปลี่ยนแล้วเครื่องอื่นที่ล็อกอินไว้จะออกจากระบบ</small>
+              <small class="field-error" data-error-for="new_password"></small>
+            </div>
+            <div class="field">
+              <label for="new_password_confirm">ยืนยันรหัสผ่านใหม่</label>
+              <input id="new_password_confirm" name="new_password_confirm" type="password" autocomplete="new-password" required maxlength="100">
+              <small class="field-error" data-error-for="new_password_confirm"></small>
+            </div>
+            <button class="btn btn-primary" type="submit">เปลี่ยนรหัสผ่าน</button>
+          </fieldset>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <!-- ฟอร์มเพิ่ม / แก้ไขที่อยู่ -->
+  <dialog id="address-dialog" aria-labelledby="address-dialog-title">
+    <form id="address-form" novalidate>
+      <h2 id="address-dialog-title">เพิ่มที่อยู่</h2>
+      <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+      <div class="field">
+        <label for="a-label">ชื่อเรียก (ไม่บังคับ)</label>
+        <input id="a-label" name="label" maxlength="50" placeholder="เช่น บ้าน, ที่ทำงาน">
+        <small class="field-error" data-error-for="label"></small>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="a-recipient">ชื่อผู้รับ</label>
+          <input id="a-recipient" name="recipient_name" autocomplete="name" required maxlength="100">
+          <small class="field-error" data-error-for="recipient_name"></small>
+        </div>
+        <div class="field">
+          <label for="a-phone">เบอร์โทรผู้รับ</label>
+          <input id="a-phone" name="phone" type="tel" autocomplete="tel" required maxlength="20">
+          <small class="field-error" data-error-for="phone"></small>
+        </div>
+      </div>
+      <div class="field">
+        <label for="a-line1">บ้านเลขที่ ถนน ซอย</label>
+        <input id="a-line1" name="line1" autocomplete="address-line1" required maxlength="255">
+        <small class="field-error" data-error-for="line1"></small>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="a-district">เขต / อำเภอ</label>
+          <input id="a-district" name="district" required maxlength="100">
+          <small class="field-error" data-error-for="district"></small>
+        </div>
+        <div class="field">
+          <label for="a-province">จังหวัด</label>
+          <input id="a-province" name="province" autocomplete="address-level1" required maxlength="100">
+          <small class="field-error" data-error-for="province"></small>
+        </div>
+      </div>
+      <div class="field">
+        <label for="a-postcode">รหัสไปรษณีย์</label>
+        <input id="a-postcode" name="postcode" inputmode="numeric" autocomplete="postal-code" required maxlength="5">
+        <small class="field-error" data-error-for="postcode"></small>
+      </div>
+      <div class="field">
+        <label><input type="checkbox" name="is_default" id="a-default"> ตั้งเป็นที่อยู่หลัก</label>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-close>ยกเลิก</button>
+        <button type="submit" class="btn btn-primary">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ยืนยันลบที่อยู่ -->
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">ลบที่อยู่นี้?</h2>
+      <p id="confirm-text"></p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn btn-ghost">ยกเลิก</button>
+        <button value="confirm" class="btn btn-danger">ลบ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/profile.js"></script>
+</body>
+</html>

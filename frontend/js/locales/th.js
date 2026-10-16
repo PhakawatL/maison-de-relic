@@ -17,9 +17,12 @@ export default {
   'nav.team': 'ทีมของเรา',
   'nav.adminProducts': 'จัดการสินค้า',
   'nav.adminUsers': 'จัดการผู้ดูแล',
+  'nav.profile': 'โปรไฟล์ของฉัน',
   'auth.signIn': 'เข้าสู่ระบบ',
   'auth.signUp': 'สมัครสมาชิก',
   'auth.logout': 'ออกจากระบบ',
+  'auth.verifyEmail': 'ยืนยันอีเมล',
+  'auth.greeting': 'สวัสดี, {name}',
   'lang.label': 'เลือกภาษา',
   'theme.toDark': 'เปลี่ยนเป็นโหมดมืด',
   'theme.toLight': 'เปลี่ยนเป็นโหมดสว่าง',
@@ -82,6 +85,7 @@ export default {
   'home.untitled': 'ไม่มีชื่อสินค้า',
   'home.shelfEmpty': 'ยังไม่มีสินค้าในหมวดนี้ ลองเลือกหมวดอื่นดูนะ',
   'home.sampleNote': 'แสดงข้อมูลตัวอย่าง เพราะยังเรียก API สินค้าไม่ได้',
+  'home.sampleEmpty': 'แสดงข้อมูลตัวอย่าง เพราะร้านยังไม่มีสินค้า',
 
   // ---------------------------------------------------------------- หน้าทีม (R1)
   'team.pageTitle': 'ทีมของเรา · Maison de Relic',

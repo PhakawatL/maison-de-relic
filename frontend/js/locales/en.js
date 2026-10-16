@@ -9,9 +9,12 @@ export default {
   'nav.team': 'Our team',
   'nav.adminProducts': 'Products',
   'nav.adminUsers': 'Admins',
+  'nav.profile': 'My profile',
   'auth.signIn': 'Sign in',
   'auth.signUp': 'Sign up',
   'auth.logout': 'Log out',
+  'auth.verifyEmail': 'Verify email',
+  'auth.greeting': 'Hi, {name}',
   'lang.label': 'Language',
   'theme.toDark': 'Switch to dark mode',
   'theme.toLight': 'Switch to light mode',
@@ -74,6 +77,7 @@ export default {
   'home.untitled': 'Untitled item',
   'home.shelfEmpty': 'Nothing in this category yet — try another one.',
   'home.sampleNote': 'Showing sample data because the product API is unavailable',
+  'home.sampleEmpty': 'Showing sample data because the shop has no products yet',
 
   // ---------------------------------------------------------------- Team page (R1)
   'team.pageTitle': 'Our team · Maison de Relic',

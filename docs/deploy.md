@@ -7,6 +7,7 @@
 | หน้าเว็บ (`frontend/`) | Docker บนเครื่อง (กล่อง `web`) และออนไลน์บน **Vercel** |
 | API (`backend/`) | Docker บนเครื่องเท่านั้น (กล่อง `api`) |
 | ฐานข้อมูล PostgreSQL | Docker บนเครื่องเท่านั้น (กล่อง `db`) |
+| ไฟล์รูปสินค้า | **Supabase Storage** (ฐานข้อมูลเก็บแค่ URL ของรูป) |
 
 > **ข้อจำกัดตอนนี้:** API กับฐานข้อมูลยังไม่ได้ขึ้นออนไลน์ หน้าเว็บบน Vercel จึงเปิดได้และแสดงหน้าตาได้ แต่ส่วนที่ต้องดึงข้อมูล (ค้นหา ล็อกอิน ฯลฯ) จะใช้ไม่ได้
 > การเดโมแบบใช้งานได้ครบให้เปิดจากเครื่องที่รัน `docker compose up` ที่ http://localhost:5500
@@ -36,15 +37,45 @@
 ## 2. GitHub — ตั้งค่าให้ทีม
 
 1. **Settings → Collaborators →** เชิญสมาชิก (ทำแล้ว)
-2. **Settings → Branches → Add branch ruleset** (หรือ Add rule) สำหรับ `main`:
+2. **Settings → Rules → Rulesets** สร้างกฎ `protect-main` สำหรับ `main` (ทำแล้ว 13 ต.ค. 2569):
    - Require a pull request before merging โดยต้องมี approval 1 คน
    - Require status checks to pass แล้วเลือก `backend` และ `docker` (มาจาก CI)
-   - Block force pushes
+   - Block force pushes และห้ามลบ main
+   - Bypass list: Repository admin (R1 push งานเอกสารตรงได้ตามกติกาใน README)
 3. `.github/CODEOWNERS` ใส่ username ของทุกคนแล้ว
 
 ---
 
-## รูปภาพที่อัปโหลด (แจ้ง R3)
+## 3. รูปสินค้า — Supabase Storage (แจ้ง R3, R4)
 
-ถ้าระบบให้แอดมินอัปโหลดรูปสินค้า ให้เก็บไฟล์ไว้ใน `backend/uploads/` (ไม่ขึ้น GitHub ตามที่ตั้งไว้ใน `.gitignore`) แล้วบันทึกแค่ path ลงในตาราง ProductImage
-ถ้าต้องการให้รูปตัวอย่างมีอยู่บนเครื่องทุกคน ให้วางไว้ใน `frontend/assets/products/` แล้วอ้างถึงจาก seed แทน
+ไฟล์รูปไม่เก็บในเครื่องหรือในกล่อง `api` แต่เก็บใน **Supabase Storage** แทน เพราะ
+- ทุกคนเห็นรูปชุดเดียวกัน ไม่ต้องส่งไฟล์รูปให้กัน
+- ลบกล่องหรือ `docker compose down -v` แล้วรูปไม่หาย
+- รูปมี URL สาธารณะ หน้าเว็บบน Vercel ก็เปิดรูปได้
+
+> ใช้ Supabase เฉพาะ **Storage** เท่านั้น ฐานข้อมูลยังเป็น PostgreSQL ในกล่อง `db` เหมือนเดิม
+
+### ทำงานอย่างไร
+
+1. แอดมินเลือกรูปในหน้าจัดการสินค้า → หน้าเว็บส่งไฟล์ให้ API
+2. API อัปโหลดไฟล์เข้า bucket `product-images` (ตั้งเป็น public) ด้วย key ฝั่ง server
+3. API บันทึก **URL สาธารณะ** ของรูปลง `product_image.url` (และ `product.cover_image_url` ถ้าเป็นรูปหน้าปก)
+4. หน้าเว็บแสดงรูปจาก URL ที่ได้จาก `GET /products` ตรง ๆ ไม่ต้องรู้จัก Supabase
+
+### key (สำคัญ)
+
+| ค่า | ใส่ที่ไหน |
+|---|---|
+| `SUPABASE_URL` | `.env` ที่ root → ส่งเข้ากล่อง `api` ผ่าน `docker-compose.yml` |
+| `SUPABASE_SERVICE_ROLE_KEY` | `.env` ที่ root เท่านั้น |
+
+- **ห้ามขึ้น GitHub** (`.env` อยู่ใน `.gitignore` แล้ว) ส่งให้กันทางแชตส่วนตัว
+- `service_role` ข้ามสิทธิ์ทุกอย่างของ Supabase ได้ จึงใช้ **เฉพาะใน `backend/`** ห้ามใส่ใน `frontend/` เด็ดขาด เพราะโค้ดหน้าเว็บทุกคนเปิดดูได้
+- ใครแก้ `docker-compose.yml` เพื่อเพิ่มค่าเหล่านี้ ให้บอก R1 ก่อน
+- เครื่องที่ยังไม่มี key ระบบยังเปิดได้ปกติ แค่อัปโหลดรูปใหม่ไม่ได้
+
+### รูปตัวอย่างใน seed
+
+รูปของสินค้าตัวอย่างที่อยากให้ทุกเครื่องเห็นโดยไม่ต้องมี key ให้วางไว้ใน `frontend/assets/products/` แล้วใน seed ใส่ URL เป็น `/assets/products/<ชื่อไฟล์>`
+
+> เดิมวางแผนเก็บไฟล์ใน `backend/uploads/` — **เลิกใช้แล้ว**
