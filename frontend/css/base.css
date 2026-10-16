@@ -137,10 +137,18 @@ a {
   color: var(--color-text);
   font-weight: 600;
 }
+.nav a {
+  white-space: nowrap; /* ไม่ให้ชื่อเมนูหักกลางคำบนจอแคบ */
+}
 .header-actions {
   display: flex;
   align-items: center;
+  margin-left: auto;
+  flex-wrap: wrap;
   gap: var(--space-2);
+}
+.header-user {
+  color: var(--color-muted);
 }
 
 /* ปุ่มสลับภาษา TH | EN */
@@ -209,6 +217,28 @@ a {
 [data-theme='dark'] .theme-toggle .icon-moon {
   opacity: 0;
   transform: rotate(90deg) scale(0.5);
+}
+
+/* จอแคบ: โลโก้กับปุ่มอยู่แถวบน เมนูลงไปเต็มแถวล่าง */
+@media (max-width: 720px) {
+  .header-inner {
+    gap: var(--space-2) var(--space-3);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    gap: var(--space-1) var(--space-3);
+  }
+  .header-actions .btn,
+  .header-actions .btn-pill {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+  .header-user {
+    display: none;
+  }
 }
 
 .site-footer {

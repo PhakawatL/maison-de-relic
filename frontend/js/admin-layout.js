@@ -10,14 +10,15 @@
 //     <script type="module" src="/js/admin-layout.js"></script>
 //   ต้องใส่ <link rel="stylesheet" href="/css/pages/admin.css"> ด้วย
 //
-// ยังไม่ล็อกอิน → ส่งไปหน้า /login (ระบบ login เป็นงานของ R2)
+// ไม่ใช่แอดมิน (ยังไม่ล็อกอิน / ลูกค้า / token หมดอายุ) → ส่งไปหน้า /login ด้วย requireAdminPage ของ R2
+// ชื่อแอดมินที่แถบบนมาจาก GET /auth/me (getMe ใน auth-guard.js ยิงครั้งเดียวต่อหน้า ใช้ร่วมกับไฟล์ของแต่ละหน้า)
 import { auth } from './api.js';
+import { requireAdminPage } from './auth-guard.js';
+import { escapeHtml } from './utils.js';
 import { t, getLang, setLang, initLang, applyI18n, onLangChange } from './i18n.js';
 import { getTheme, initTheme, toggleTheme } from './theme.js';
 
-if (!auth.getToken()) {
-  window.location.replace('/login');
-}
+let me = null; // ข้อมูลแอดมินที่ล็อกอินอยู่ (ได้มาหลังเรียก API เสร็จ)
 
 initLang();
 initTheme();
@@ -48,6 +49,8 @@ function isActive(href) {
 }
 
 const themeLabel = () => t(getTheme() === 'dark' ? 'theme.toLight' : 'theme.toDark');
+// ตัวอักษรแรกของชื่อ (รองรับภาษาไทย/อีโมจิ) ใช้ในวงกลมรูปโปรไฟล์
+const avatarLetter = () => [...(me?.display_name || 'A').trim()][0]?.toUpperCase() || 'A';
 
 function renderTopbar() {
   const el = document.getElementById('admin-topbar');
@@ -67,13 +70,12 @@ function renderTopbar() {
           ${ICON_SUN}${ICON_MOON}
         </button>
         <span class="admin-user" id="admin-username">
-          <span class="admin-avatar" aria-hidden="true">A</span>
-          <span class="admin-user-name">${t('admin.user')}</span>
+          <span class="admin-avatar" aria-hidden="true">${escapeHtml(avatarLetter())}</span>
+          <span class="admin-user-name">${escapeHtml(me?.display_name || t('admin.user'))}</span>
         </span>
         <button type="button" class="btn btn-ghost btn-pill" id="logout-btn">${t('auth.logout')}</button>
       </div>
     </div>`;
-  // TODO (R2): เมื่อมี API ข้อมูลผู้ที่ล็อกอิน (เช่น GET /auth/me) ให้แสดง username จริงใน #admin-username
 
   el.querySelector('.lang-switch').addEventListener('click', (event) => {
     const btn = event.target.closest('button[data-lang]');
@@ -114,6 +116,14 @@ onLangChange(({ detail }) => {
 renderTopbar();
 renderSidenav();
 applyI18n();
+
+// ถามว่าใครล็อกอินอยู่ ถ้าไม่ใช่แอดมิน requireAdminPage จะพาไปหน้า /login เอง
+// ถ้าเป็นแอดมิน วาดแถบบนใหม่เพื่อแสดงชื่อจริง
+requireAdminPage().then((user) => {
+  if (!user) return;
+  me = user;
+  renderTopbar();
+});
 
 // เลื่อนหน้าลง → แถบบนเป็นกระจกฝ้าและมีเงาบาง ๆ (เหมือน header หน้าร้าน)
 const topbar = document.getElementById('admin-topbar');

@@ -9,6 +9,10 @@
 import { api, ApiError } from '../api.js';
 import { escapeHtml, formatBaht } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
+import { requireAdminPage } from '../auth-guard.js';
+
+// ไม่ใช่แอดมิน (ยังไม่ล็อกอิน / ลูกค้า / token หมดอายุ) → ส่งไปหน้า /login แล้วกลับมาหน้านี้หลังล็อกอิน (R2)
+await requireAdminPage();
 
 const LIST_PATH = '/products'; // TODO (R3): เปลี่ยนเป็น endpoint ของแอดมินที่เห็นทุกสถานะ
 const PAGE_SIZE = 10;

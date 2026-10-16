@@ -5,9 +5,16 @@
 //   <footer id="site-footer"></footer>
 //   <script type="module" src="/js/layout.js"></script>
 // header มีปุ่มสลับภาษา (TH/EN) และปุ่มโหมดมืด/สว่าง — ดู js/i18n.js และ js/theme.js
+//
+// เมนูขึ้นกับว่าใครล็อกอินอยู่ (ถาม API ที่ GET /auth/me ครั้งเดียวต่อหน้า ผ่าน getMe ของ auth-guard.js):
+//   ยังไม่ล็อกอิน → เมนูหลัก + ปุ่มเข้าสู่ระบบ / สมัครสมาชิก
+//   ลูกค้า        → เมนูหลัก + เมนูลูกค้า + ชื่อผู้ใช้ + ออกจากระบบ (ยังไม่ยืนยันอีเมลมีปุ่มพาไปยืนยัน)
+//   แอดมิน        → เมนูลูกค้า + เมนูแอดมินด้วย
 import { auth } from './api.js';
+import { getMe } from './auth-guard.js';
 import { t, getLang, setLang, initLang, onLangChange } from './i18n.js';
 import { getTheme, initTheme, toggleTheme } from './theme.js';
+import { escapeHtml } from './utils.js';
 
 initLang();
 initTheme();
@@ -17,6 +24,13 @@ const NAV = [
   { href: '/', key: 'nav.home' },
   { href: '/search', key: 'nav.search' },
   { href: '/team', key: 'nav.team' },
+];
+
+// เมนูของคนที่ล็อกอินแล้ว (ลูกค้าและแอดมิน)
+// หน้าลูกค้าใหม่เพิ่มที่นี่ได้เลย เช่น { href: '/wishlist', key: 'nav.wishlist' } (R1), { href: '/cart', key: 'nav.cart' } (R5)
+// แล้วเพิ่มคำแปลของ key ใน js/locales/th.js และ en.js
+const CUSTOMER_NAV = [
+  { href: '/profile', key: 'nav.profile' },
 ];
 
 const ADMIN_NAV = [
@@ -41,18 +55,38 @@ function themeLabel() {
   return t(getTheme() === 'dark' ? 'theme.toLight' : 'theme.toDark');
 }
 
+// ผู้ใช้ที่ล็อกอินอยู่ (เก็บไว้วาด header ใหม่ตอนสลับภาษา)
+//   undefined = มี token แต่ยังรอคำตอบจาก API (ยังไม่รู้ว่าเป็นใคร: ยังไม่โชว์เมนูตามสิทธิ์)
+//   null      = ยังไม่ล็อกอิน
+//   object    = ผู้ใช้ที่ล็อกอินอยู่
+let me = auth.getToken() ? undefined : null;
+
+function accountActions() {
+  if (me === null) {
+    return `<a class="btn btn-ghost btn-pill" href="/login">${t('auth.signIn')}</a>
+               <a class="btn btn-solid btn-pill" href="/register">${t('auth.signUp')}</a>`;
+  }
+  const name = me
+    ? `<span class="header-user">${t('auth.greeting', { name: escapeHtml(me.display_name) })}</span>`
+    : '';
+  const verify =
+    me && !me.is_email_verified
+      ? `<a class="btn btn-solid btn-pill" href="/verify-email">${t('auth.verifyEmail')}</a>`
+      : '';
+  return `${name}${verify}<button type="button" class="btn btn-ghost btn-pill" id="logout-btn">${t('auth.logout')}</button>`;
+}
+
 function renderHeader() {
   const el = document.getElementById('site-header');
   if (!el) return;
-  const loggedIn = Boolean(auth.getToken());
   const lang = getLang();
+  const menu = [...NAV, ...(me ? CUSTOMER_NAV : []), ...(me?.is_admin ? ADMIN_NAV : [])];
   el.classList.add('site-header'); // ใช้ classList เพื่อไม่ลบคลาสที่หน้าอื่นเติมไว้ (เช่น is-scrolled)
   el.innerHTML = `
     <div class="container header-inner">
       <a class="brand" href="/">Maison de Relic</a>
       <nav class="nav" aria-label="${t('nav.label')}">
-        ${NAV.map(link).join('')}
-        ${loggedIn ? ADMIN_NAV.map(link).join('') : ''}
+        ${menu.map(link).join('')}
       </nav>
       <div class="header-actions">
         <div class="lang-switch" role="group" aria-label="${t('lang.label')}">
@@ -62,12 +96,7 @@ function renderHeader() {
         <button type="button" class="icon-btn theme-toggle" id="theme-toggle" aria-label="${themeLabel()}" title="${themeLabel()}">
           ${ICON_SUN}${ICON_MOON}
         </button>
-        ${
-          loggedIn
-            ? `<button type="button" class="btn btn-ghost btn-pill" id="logout-btn">${t('auth.logout')}</button>`
-            : `<a class="btn btn-ghost btn-pill" href="/login">${t('auth.signIn')}</a>
-               <a class="btn btn-solid btn-pill" href="/register">${t('auth.signUp')}</a>`
-        }
+        ${accountActions()}
       </div>
     </div>`;
 
@@ -113,5 +142,12 @@ onLangChange(({ detail }) => {
   document.querySelector(`.lang-switch [data-lang="${detail.lang}"]`)?.focus();
 });
 
+// วาดทันทีจากว่ามี token ไหม แล้ววาดใหม่เมื่อรู้ว่าเป็นใคร (token หมดอายุ → กลับเป็นยังไม่ล็อกอิน)
 renderHeader();
 renderFooter();
+if (me === undefined) {
+  getMe().then((user) => {
+    me = user;
+    renderHeader();
+  });
+}
