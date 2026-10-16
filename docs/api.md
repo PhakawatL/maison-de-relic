@@ -98,6 +98,8 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | DELETE | `/addresses/:id` | ✓ ยืนยันอีเมลแล้ว | R2 | ลบที่อยู่ |
 | GET | `/products` | - | R3 | รายการสินค้าที่ขายอยู่ ค้นหา/กรอง/เรียง/แบ่งหน้า (ดูรายละเอียดด้านล่าง) |
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
+| GET | `/categories` | - | R3 | หมวดหมู่ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
+| GET | `/series` | - | R3 | ซีรีส์ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
 | | | | | |
 
 ---
@@ -510,3 +512,18 @@ await withTransaction(async (client) => {
 |---|---|
 | 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
 | 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+
+### `GET /categories` และ `GET /series`
+
+ใช้ทำ dropdown หรือตัวกรอง แล้วส่ง `slug` (หรือ id) ไปที่ `GET /products?category=...&series=...`
+`product_count` นับเฉพาะสินค้าที่วางขายอยู่ (`available`)
+
+```json
+{
+  "data": [
+    { "category_id": 2, "name": "ฟิกเกอร์", "slug": "figures", "product_count": 12 }
+  ]
+}
+```
+
+`/series` ได้รูปเดียวกัน แต่ใช้ `series_id` แทน `category_id`

@@ -50,6 +50,9 @@ app.use('/api/admins', require('./modules/users/admins.routes'));          // R2
 app.use('/api/addresses', require('./modules/users/addresses.routes'));    // R2
 app.use('/api/profile', require('./modules/users/profile.routes'));        // R2
 app.use('/api/products', require('./modules/products/products.routes')); // R3
+const { categoriesRouter, seriesRouter } = require('./modules/products/catalog.routes');
+app.use('/api/categories', categoriesRouter);                             // R3
+app.use('/api/series', seriesRouter);                                     // R3
 // app.use('/api/search', require('./modules/search/search.routes'));      // R4
 // app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5
 // app.use('/api/orders', require('./modules/orders/orders.routes'));      // R5
