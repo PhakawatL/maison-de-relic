@@ -149,11 +149,15 @@ if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเม
 | `Neptz` | `Neptz@1234` | แอดมิน · เจ้าของร้าน (owner) |
 | `SuphawitBonus` | `SuphawitBonus@1234` | แอดมิน · เจ้าของร้าน (owner) |
 | `staff` | `Staff@1234` | แอดมิน · ทีมงาน (staff) ดูรายชื่อผู้ดูแลได้อย่างเดียว |
+| `tain` | `tain@1234` | แอดมิน · ทีมงาน (staff) |
+| `oicnssw` | `oicnssw@1234` | แอดมิน · ทีมงาน (staff) |
+| `PhakawatL` | `PhakawatL@1234` | แอดมิน · ทีมงาน (staff) |
 | `customer` | `Customer@1234` | ลูกค้า ยืนยันอีเมลแล้ว มีที่อยู่ 2 ที่ (seed `003_addresses.sql`) |
 | `newbie` | `Newbie@1234` | ลูกค้า ยังไม่ยืนยันอีเมล |
 | `banned` | `Banned@1234` | ลูกค้า ถูกปิดบัญชี |
 
 - username ตัวพิมพ์ใหญ่/เล็กต้องตรง (`Neptz` ไม่ใช่ `neptz`)
+- seed แต่ละไฟล์รันครั้งเดียว (จดชื่อไฟล์ไว้ในตาราง `schema_seeds`) — ถ้าเคยเปิดระบบมาก่อนแล้วไม่เห็นบัญชีใหม่ ให้ `docker compose down -v` แล้ว `docker compose up --build`
 - อีเมลทุกบัญชีเป็นโดเมน `.test` และไม่มีเบอร์โทร — repo นี้เป็น public ห้ามใส่ข้อมูลติดต่อจริงลง seed
 
 ### `POST /auth/login`
