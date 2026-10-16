@@ -44,6 +44,11 @@ services:
       DATABASE_URL: postgres://postgres:postgres@db:5432/maison_de_relic
       ALLOWED_ORIGINS: http://localhost:${WEB_PORT:-5500},http://127.0.0.1:${WEB_PORT:-5500}
       JWT_SECRET: dev-only-secret-change-me
+      # ส่งอีเมล OTP / ลิงก์รีเซ็ตรหัสผ่าน (R2) — ใส่ค่าในไฟล์ .env ที่ root ถ้าเว้นว่างอีเมลจะแสดงใน log ของ api แทน
+      APP_URL: http://localhost:${WEB_PORT:-5500}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     ports:
       - "${API_PORT:-3000}:3000"
     # เปิดเครื่องมาแล้ว: สร้าง/อัปเดตตาราง → ใส่ข้อมูลตัวอย่าง → เปิด API แบบรีสตาร์ตเองเมื่อแก้โค้ด

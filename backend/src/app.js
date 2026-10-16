@@ -45,8 +45,10 @@ app.get('/api/health', async (req, res) => {
 
 // ---------- Routes ของแต่ละ module ----------
 // เพิ่ม module ใหม่: สร้างไฟล์ใน src/modules/<ชื่อ>/ ตามแบบ src/modules/_template แล้วเพิ่มบรรทัดในนี้
-// app.use('/api/auth', require('./modules/auth/auth.routes'));            // R2
-// app.use('/api/users', require('./modules/users/users.routes'));         // R2
+app.use('/api/auth', require('./modules/auth/auth.routes'));               // R2
+app.use('/api/admins', require('./modules/users/admins.routes'));          // R2
+app.use('/api/addresses', require('./modules/users/addresses.routes'));    // R2
+app.use('/api/profile', require('./modules/users/profile.routes'));        // R2
 app.use('/api/products', require('./modules/products/products.routes')); // R3
 // app.use('/api/search', require('./modules/search/search.routes'));      // R4
 // app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5

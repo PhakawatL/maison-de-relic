@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สมัครสมาชิก · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/auth.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- สมัครสมาชิก (S1) → ส่งรหัส OTP ไปที่อีเมล แล้วไปหน้ายืนยัน · ผู้รับผิดชอบ: R2 -->
+    <section class="card auth-card">
+      <h1>สมัครสมาชิก</h1>
+      <form id="register-form" novalidate>
+        <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+        <div class="field">
+          <label for="username">ชื่อผู้ใช้ (ใช้ล็อกอิน)</label>
+          <input id="username" name="username" autocomplete="username" required maxlength="30">
+          <small class="muted">a-z, 0-9, _ และ . ยาว 3–30 ตัว</small>
+          <small class="field-error" data-error-for="username"></small>
+        </div>
+        <div class="field">
+          <label for="email">อีเมล</label>
+          <input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+          <small class="muted">เราจะส่งรหัสยืนยัน 6 หลักไปที่อีเมลนี้</small>
+          <small class="field-error" data-error-for="email"></small>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="first_name">ชื่อ</label>
+            <input id="first_name" name="first_name" autocomplete="given-name" required maxlength="100">
+            <small class="field-error" data-error-for="first_name"></small>
+          </div>
+          <div class="field">
+            <label for="last_name">นามสกุล</label>
+            <input id="last_name" name="last_name" autocomplete="family-name" required maxlength="100">
+            <small class="field-error" data-error-for="last_name"></small>
+          </div>
+        </div>
+        <div class="field">
+          <label for="phone">เบอร์โทร (ไม่บังคับ)</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" maxlength="20">
+          <small class="field-error" data-error-for="phone"></small>
+        </div>
+        <div class="field">
+          <label for="password">รหัสผ่าน</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" required minlength="8" maxlength="100">
+          <small class="muted">อย่างน้อย 8 ตัวอักษร</small>
+          <small class="field-error" data-error-for="password"></small>
+        </div>
+        <div class="field">
+          <label for="password_confirm">ยืนยันรหัสผ่าน</label>
+          <input id="password_confirm" name="password_confirm" type="password" autocomplete="new-password" required maxlength="100">
+          <small class="field-error" data-error-for="password_confirm"></small>
+        </div>
+        <button class="btn btn-primary" type="submit">สมัครสมาชิก</button>
+      </form>
+      <div class="auth-links">
+        <span class="muted">มีบัญชีแล้ว?</span>
+        <a href="/login">เข้าสู่ระบบ</a>
+      </div>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/register.js"></script>
+</body>
+</html>
