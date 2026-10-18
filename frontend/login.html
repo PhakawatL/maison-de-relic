@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>เข้าสู่ระบบ · Maison de Relic</title>
+  <title data-i18n="login.pageTitle">เข้าสู่ระบบ · Maison de Relic</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
@@ -18,25 +18,25 @@
          ใช้ร่วมกันทั้งแอดมินและลูกค้า: แอดมินไปหน้าจัดการ ลูกค้าที่ยังไม่ยืนยันอีเมลไปหน้า OTP
          ผู้รับผิดชอบ: R2 -->
     <section class="card auth-card">
-      <h1>เข้าสู่ระบบ</h1>
+      <h1 data-i18n="login.title">เข้าสู่ระบบ</h1>
       <div id="login-notice" class="alert alert-success" role="status" hidden></div>
       <form id="login-form" novalidate>
         <div class="alert alert-error" data-form-alert role="alert" hidden></div>
         <div class="field">
-          <label for="username">ชื่อผู้ใช้</label>
+          <label for="username" data-i18n="acct.username">ชื่อผู้ใช้</label>
           <input id="username" name="username" autocomplete="username" required maxlength="100">
           <small class="field-error" data-error-for="username"></small>
         </div>
         <div class="field">
-          <label for="password">รหัสผ่าน</label>
+          <label for="password" data-i18n="acct.password">รหัสผ่าน</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="100">
           <small class="field-error" data-error-for="password"></small>
         </div>
-        <button class="btn btn-primary" type="submit">เข้าสู่ระบบ</button>
+        <button class="btn btn-primary" type="submit" data-i18n="login.submit">เข้าสู่ระบบ</button>
       </form>
       <div class="auth-links">
-        <a href="/forgot-password">ลืมรหัสผ่าน?</a>
-        <a href="/register">สมัครสมาชิก</a>
+        <a href="/forgot-password" data-i18n="login.forgot">ลืมรหัสผ่าน?</a>
+        <a href="/register" data-i18n="login.register">สมัครสมาชิก</a>
       </div>
     </section>
   </main>

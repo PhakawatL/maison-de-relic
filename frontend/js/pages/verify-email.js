@@ -2,10 +2,12 @@
 // POST /api/auth/verify-email { code } · POST /api/auth/resend-otp (ขอได้ทุก 60 วินาที)
 import { api, ApiError } from '../api.js';
 import { requireLoginPage, safeNext } from '../auth-guard.js';
-import { clearErrors, showErrors, whileBusy } from '../forms.js';
+import { clearErrors, errorText, showErrors, whileBusy } from '../forms.js';
+import { applyI18n, onLangChange, t } from '../i18n.js';
 
 const RESEND_SECONDS = 60;
 
+applyI18n();
 const me = await requireLoginPage();
 if (me.is_email_verified) window.location.replace(safeNext('/'));
 
@@ -15,40 +17,53 @@ const resendBtn = document.getElementById('resend-btn');
 const codeInput = form.elements.code;
 document.getElementById('email').textContent = me.email;
 
-function showNotice(message, type = 'success') {
+// ข้อความแจ้งล่าสุด เก็บเป็นฟังก์ชันไว้วาดใหม่ตอนสลับภาษา
+let noticeText = null;
+function showNotice(text, type = 'success') {
+  noticeText = text;
   notice.className = `alert alert-${type}`;
-  notice.textContent = message;
+  notice.textContent = text();
   notice.hidden = false;
 }
 
 // ---------- นับถอยหลังปุ่มขอรหัสใหม่ ----------
 let timer = null;
+let left = 0;
+function renderResend() {
+  resendBtn.disabled = left > 0;
+  resendBtn.textContent = left > 0 ? t('verify.resendIn', { n: left }) : t('verify.resend');
+}
 function startCountdown(seconds) {
   clearInterval(timer);
-  let left = seconds;
-  const tick = () => {
-    resendBtn.disabled = left > 0;
-    resendBtn.textContent = left > 0 ? `ส่งรหัสอีกครั้ง (${left})` : 'ส่งรหัสอีกครั้ง';
-    if (left-- <= 0) clearInterval(timer);
-  };
-  tick();
-  timer = setInterval(tick, 1000);
+  left = seconds;
+  renderResend();
+  timer = setInterval(() => {
+    left -= 1;
+    renderResend();
+    if (left <= 0) clearInterval(timer);
+  }, 1000);
 }
+renderResend();
+
+onLangChange(() => {
+  renderResend();
+  if (noticeText) notice.textContent = noticeText();
+});
 
 const sent = new URLSearchParams(window.location.search).get('sent');
 if (sent === '1') {
-  showNotice('ส่งรหัสยืนยันไปที่อีเมลแล้ว');
+  showNotice(() => t('verify.sent'));
   startCountdown(RESEND_SECONDS);
 } else if (sent === '0') {
-  showNotice('สมัครสำเร็จ แต่ส่งอีเมลไม่สำเร็จ กรุณากด "ส่งรหัสอีกครั้ง"', 'error');
+  showNotice(() => t('verify.sendFailedAfterSignup'), 'error');
 }
 
 resendBtn.addEventListener('click', async () => {
   resendBtn.disabled = true;
   try {
     const { data } = await api.post('/auth/resend-otp');
-    if (data.email_sent) showNotice('ส่งรหัสใหม่แล้ว รหัสเก่าใช้ไม่ได้อีก');
-    else showNotice('ส่งอีเมลไม่สำเร็จ ลองใหม่อีกครั้ง', 'error');
+    if (data.email_sent) showNotice(() => t('verify.resent'));
+    else showNotice(() => t('verify.sendFailed'), 'error');
     startCountdown(RESEND_SECONDS);
     codeInput.value = '';
     codeInput.focus();
@@ -57,7 +72,7 @@ resendBtn.addEventListener('click', async () => {
       window.location.replace(safeNext('/'));
       return;
     }
-    showNotice(err.message, 'error');
+    showNotice(() => errorText(err), 'error');
     startCountdown(err.details?.retry_after ?? 0);
   }
 });
@@ -76,7 +91,7 @@ form.addEventListener('submit', (event) => {
       notice.hidden = true;
       form.hidden = true;
       resendBtn.closest('.auth-links').hidden = true;
-      showNotice('ยืนยันอีเมลสำเร็จ กำลังพาไปต่อ...');
+      showNotice(() => t('verify.done'));
       setTimeout(() => window.location.replace(safeNext('/')), 1200);
     } catch (err) {
       showErrors(form, err);

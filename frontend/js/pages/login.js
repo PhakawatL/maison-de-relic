@@ -4,14 +4,19 @@
 import { api, auth } from '../api.js';
 import { safeNext } from '../auth-guard.js';
 import { clearErrors, showErrors, whileBusy } from '../forms.js';
+import { applyI18n, onLangChange, t } from '../i18n.js';
+
+applyI18n();
 
 const form = document.getElementById('login-form');
 const notice = document.getElementById('login-notice');
 
 // มาจากหน้าตั้งรหัสใหม่สำเร็จ
 if (new URLSearchParams(window.location.search).get('reset') === '1') {
-  notice.textContent = 'ตั้งรหัสผ่านใหม่แล้ว เข้าสู่ระบบด้วยรหัสใหม่ได้เลย';
+  const showNotice = () => (notice.textContent = t('login.resetDone'));
+  showNotice();
   notice.hidden = false;
+  onLangChange(showNotice);
 }
 
 form.addEventListener('submit', (event) => {
@@ -31,7 +36,7 @@ form.addEventListener('submit', (event) => {
         window.location.href = safeNext('/');
       }
     } catch (err) {
-      showErrors(form, err); // ข้อความภาษาไทยจาก API เช่น ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
+      showErrors(form, err); // เช่น ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (forms.js แปลตามภาษาที่เลือก)
     }
   });
 });

@@ -159,7 +159,27 @@ a {
   gap: var(--space-2);
 }
 .header-user {
-  color: var(--color-muted);
+  max-width: 200px;
+}
+.header-user svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.header-user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-user[aria-current='page'] {
+  border-color: var(--color-text);
+}
+
+/* จอกลาง (แท็บเล็ต โน้ตบุ๊กจอเล็ก): โลโก้กับปุ่มอยู่แถวบน เมนูลงไปเต็มแถวล่าง ไม่ให้ชื่อเมนูตกบรรทัดกระจัดกระจาย */
+@media (max-width: 1100px) {
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+  }
 }
 
 /* ปุ่มสลับภาษา TH | EN */
@@ -247,7 +267,11 @@ a {
     padding: 6px 12px;
     font-size: 0.85rem;
   }
-  .header-user {
+}
+
+/* จอแคบ: ปุ่มชื่อผู้ใช้เหลือแค่ไอคอน (ชื่อเต็มอยู่ใน aria-label / title) ปุ่มทางขวาจะได้อยู่แถวเดียว */
+@media (max-width: 900px) {
+  .header-user span {
     display: none;
   }
 }
