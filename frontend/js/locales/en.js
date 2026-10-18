@@ -249,6 +249,7 @@ export default {
   'err.ACCOUNT_DISABLED': 'This account has been deactivated. Please contact the shop.',
   'err.EMAIL_NOT_VERIFIED': 'Please verify your email first.',
   'err.TOO_MANY_REQUESTS': 'Please wait {n} seconds and try again.',
+  'err.TOO_MANY_REQUESTS_MIN': 'Too many attempts. Please wait about {n} minutes and try again.',
   'err.INVALID_OTP': 'Incorrect code ({n} attempts left).',
   'err.OTP_EXPIRED': 'This code has expired or has been tried too many times. Please request a new one.',
   'err.INVALID_RESET_TOKEN': 'This link has expired or was already used. Please request a new one.',

@@ -40,8 +40,11 @@ export function issueText(issue) {
 /** ข้อความ error รวมตามภาษาที่เลือก (ภาษาไทยใช้ข้อความจาก API ซึ่งละเอียดกว่า) */
 export function errorText(err) {
   if (getLang() === 'th' || !(err instanceof ApiError) || !has(`err.${err.code}`)) return err.message;
+  // รอนาน (rate limit ของ login ฯลฯ) บอกเป็นนาที
+  const wait = err.details?.retry_after;
+  if (err.code === 'TOO_MANY_REQUESTS' && wait >= 60) return t('err.TOO_MANY_REQUESTS_MIN', { n: Math.ceil(wait / 60) });
   // ตัวเลขในข้อความ เช่น "กรุณารอ 42 วินาที", "ลองได้อีก 3 ครั้ง"
-  const n = err.details?.retry_after ?? err.message.match(/\d+/)?.[0] ?? '';
+  const n = wait ?? err.message.match(/\d+/)?.[0] ?? '';
   return t(`err.${err.code}`, { n });
 }
 
