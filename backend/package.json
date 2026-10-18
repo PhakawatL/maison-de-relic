@@ -14,7 +14,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "db:reset": "node scripts/reset.js",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --import ./test/setup.js --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

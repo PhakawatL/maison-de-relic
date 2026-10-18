@@ -8,6 +8,9 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// API อยู่หลัง reverse proxy → ให้ req.ip เป็น IP ของผู้ใช้จริง (rate limit นับตาม IP)
+app.set('trust proxy', env.trustProxy);
+
 // ---------- CORS ----------
 // หน้าเว็บ (localhost:5500 / Vercel) กับ API (localhost:3000) เป็นคนละ origin เบราว์เซอร์จึงต้องได้รับอนุญาตก่อนเรียก API
 app.use(

@@ -61,6 +61,7 @@
 | 403 | ล็อกอินแล้วแต่ไม่มีสิทธิ์ | `FORBIDDEN` |
 | 404 | ไม่พบข้อมูล | `PRODUCT_NOT_FOUND`, `ROUTE_NOT_FOUND` |
 | 409 | ชนกับข้อมูลที่มีอยู่ เช่น ข้อมูลซ้ำ หรือสต็อกไม่พอ | `DUPLICATE`, `OUT_OF_STOCK` |
+| 429 | เรียกถี่เกิน (`details.retry_after` = ต้องรออีกกี่วินาที) | `TOO_MANY_REQUESTS` |
 | 500 | ระบบพัง (ไม่ใช่ความผิดของผู้ใช้) | `INTERNAL_ERROR` |
 
 error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อมูลซ้ำ (unique) หรือ foreign key ผิด จะถูกแปลงเป็น 409 หรือ 400 ให้อัตโนมัติ
@@ -194,6 +195,23 @@ if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเม
 | 400 `VALIDATION_ERROR` | ไม่กรอก username หรือ password หรือยาวเกิน 100 ตัวอักษร |
 | 401 `INVALID_CREDENTIALS` | ไม่มี username นี้ หรือรหัสผ่านผิด (ข้อความเดียวกัน ไม่บอกว่าผิดช่องไหน) |
 | 403 `ACCOUNT_DISABLED` | รหัสถูก แต่บัญชีถูกปิด (`is_active = false`) |
+| 429 `TOO_MANY_REQUESTS` | ล็อกอินไม่สำเร็จเกิน 10 ครั้งใน 15 นาทีจาก IP เดียวกัน (ดู [จำกัดจำนวนครั้ง](#จำกัดจำนวนครั้ง-rate-limit)) |
+
+### จำกัดจำนวนครั้ง (rate limit)
+
+กันเดารหัสผ่านและกันใช้ระบบยิงอีเมลใส่คนอื่น นับต่อ IP แยกแต่ละ endpoint (`src/middleware/rateLimit.js`)
+
+| endpoint | ได้กี่ครั้ง | นับครั้งไหน |
+|---|---|---|
+| `POST /auth/login` | 10 ครั้ง / 15 นาที | เฉพาะที่ไม่สำเร็จ (ล็อกอินถูกไม่นับ) |
+| `POST /auth/register` | 10 ครั้ง / 1 ชั่วโมง | ทุกครั้ง |
+| `POST /auth/forgot-password` | 5 ครั้ง / 15 นาที | ทุกครั้ง |
+| `POST /auth/reset-password` | 10 ครั้ง / 15 นาที | เฉพาะที่ไม่สำเร็จ |
+
+- เกินแล้วได้ 429 `TOO_MANY_REQUESTS` พร้อม `details.retry_after` (วินาที) และ header `Retry-After` · ครบเวลาแล้วนับใหม่
+- นับในหน่วยความจำของ API: รีสตาร์ต API (`docker compose restart api`) = ล้างตัวนับ ใช้ตอนทดลองแล้วล็อกตัวเองออก
+- `RATE_LIMIT=off` ปิดได้ · `npm test` ปิดไว้ให้ (`test/setup.js`) ยกเว้น `test/rate-limit.test.js`
+- ถ้าวาง API หลัง reverse proxy ต้องตั้ง `TRUST_PROXY` (เช่น `1`) ไม่อย่างนั้นทุกคนได้ IP ของ proxy แล้วโดนนับรวมกัน
 
 ### `GET /auth/me`
 
