@@ -91,6 +91,10 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/admins` | owner | R2 | เพิ่มผู้ดูแล |
 | PATCH | `/admins/:id` | owner | R2 | แก้ข้อมูล / ระดับ / รหัสผ่าน / เปิดบัญชีคืน |
 | DELETE | `/admins/:id` | owner | R2 | ปิดบัญชี (`is_active = false` ไม่ลบจริง) |
+| GET | `/customers` | แอดมิน | R2 | รายชื่อลูกค้า ค้นหา/กรองสถานะ/แบ่งหน้า |
+| GET | `/customers/:id` | แอดมิน | R2 | ลูกค้า 1 คน |
+| PATCH | `/customers/:id` | แอดมิน (แก้ข้อมูล: owner) | R2 | เปิดบัญชีคืน / แก้ชื่อ อีเมล เบอร์ |
+| DELETE | `/customers/:id` | แอดมิน | R2 | ปิดบัญชีลูกค้า (`is_active = false` ไม่ลบจริง) |
 | GET | `/addresses` | ✓ | R2 | ที่อยู่จัดส่งของตัวเอง (ที่อยู่หลักขึ้นก่อน) |
 | GET | `/addresses/:id` | ✓ | R2 | ที่อยู่ 1 ที่ของตัวเอง |
 | POST | `/addresses` | ✓ ยืนยันอีเมลแล้ว | R2 | เพิ่มที่อยู่ |
@@ -148,7 +152,7 @@ if (!me.is_email_verified) { /* ยังไม่ยืนยันอีเม
 |---|---|---|
 | `Neptz` | `Neptz@1234` | แอดมิน · เจ้าของร้าน (owner) |
 | `SuphawitBonus` | `SuphawitBonus@1234` | แอดมิน · เจ้าของร้าน (owner) |
-| `staff` | `Staff@1234` | แอดมิน · ทีมงาน (staff) ดูรายชื่อผู้ดูแลได้อย่างเดียว |
+| `staff` | `Staff@1234` | แอดมิน · ทีมงาน (staff) ดูรายชื่อผู้ดูแลได้อย่างเดียว · ปิด/เปิดบัญชีลูกค้าได้ |
 | `tain` | `tain@1234` | แอดมิน · ทีมงาน (staff) |
 | `oicnssw` | `oicnssw@1234` | แอดมิน · ทีมงาน (staff) |
 | `PhakawatL` | `PhakawatL@1234` | แอดมิน · ทีมงาน (staff) |
@@ -379,6 +383,56 @@ MAIL_FROM="Maison de Relic <your-shop@gmail.com>"
 | 404 `ADMIN_NOT_FOUND` | ไม่มีผู้ใช้นี้ หรือเป็นลูกค้า ไม่ใช่ผู้ดูแล |
 | 409 `DUPLICATE` | username หรืออีเมลซ้ำ (`details[0].field` บอกช่อง) |
 | 409 `CANNOT_CHANGE_SELF` | เปลี่ยนระดับ / ปิดบัญชีของตัวเอง |
+
+---
+
+## จัดการลูกค้า (R2)
+
+ใช้กับหน้า `admin/customers` (ตารางลูกค้า แยกจากตารางผู้ดูแลที่ `admin/users`) · ลูกค้า = ผู้ใช้ที่**ไม่มี**แถวในตาราง `admin`
+
+- แอดมินทุกคน (owner และ staff) ดูรายชื่อ ปิดบัญชี และเปิดบัญชีคืนได้
+- แก้ข้อมูลลูกค้า (ชื่อ อีเมล เบอร์) ได้เฉพาะ **owner** (staff ได้ 403 `FORBIDDEN`)
+- ไม่มี `POST`: ลูกค้าสมัครเองที่ `/auth/register` · ไม่มีการตั้งรหัสผ่านให้ลูกค้า ลูกค้าใช้ `/auth/forgot-password` เอง
+- ทุกการแก้ / ปิด / เปิดบัญชี บันทึกลง `admin_action_log` (BR-31) ด้วย `action_type` = `update_user`, `deactivate_user`, `reactivate_user` และ `target_type = 'user'`
+
+ข้อมูลลูกค้า 1 คน (ไม่มี `password_hash`)
+
+```json
+{
+  "user_id": 7,
+  "username": "customer",
+  "email": "customer@maison-de-relic.test",
+  "first_name": "สมชาย",
+  "last_name": "ใจดี",
+  "display_name": "สมชาย",
+  "phone": null,
+  "is_email_verified": true,
+  "is_active": true,
+  "created_at": "2026-10-15T05:00:00.000Z"
+}
+```
+
+### `GET /customers`
+
+query เหมือน `GET /admins` (`q`, `status`, `page`, `pageSize`) · ตอบ `{ "data": [ ... ], "meta": { "page", "pageSize", "total" } }` เรียงคนที่ใช้งานอยู่ก่อน → สมัครล่าสุดก่อน
+
+### `PATCH /customers/:id`
+
+ส่งเฉพาะช่องที่จะแก้: `is_active` (`true` = เปิดบัญชีคืน · แอดมินทุกคน) และ `email`, `first_name`, `last_name`, `display_name`, `phone` (ส่ง `""` = ลบเบอร์ · owner เท่านั้น) · เปลี่ยน `username` ไม่ได้ · ตอบ 200 พร้อมข้อมูลล่าสุด
+
+เปลี่ยนอีเมล → `is_email_verified` กลับเป็น `false` ลูกค้าต้องยืนยันอีเมลใหม่ (ขอ OTP ใหม่ได้ที่หน้ายืนยันอีเมล)
+
+### `DELETE /customers/:id`
+
+ปิดบัญชี (`is_active = false`) ตอบ 204 · ลูกค้าล็อกอินไม่ได้และ token เดิมใช้ไม่ได้ทันที · ปิดซ้ำได้ไม่ error
+
+| error | เมื่อ |
+|---|---|
+| 400 `VALIDATION_ERROR` | ข้อมูลผิดรูปแบบหรือไม่มีอะไรให้แก้ (`details` บอกทุกช่องที่ผิด) |
+| 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
+| 403 `FORBIDDEN` | ไม่ใช่แอดมิน หรือ staff พยายามแก้ข้อมูลลูกค้า |
+| 404 `CUSTOMER_NOT_FOUND` | ไม่มีผู้ใช้นี้ หรือเป็นผู้ดูแล ไม่ใช่ลูกค้า |
+| 409 `DUPLICATE` | อีเมลซ้ำกับบัญชีอื่น |
 
 ---
 

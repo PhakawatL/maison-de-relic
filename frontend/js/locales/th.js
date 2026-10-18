@@ -267,6 +267,7 @@ export default {
   'err.DUPLICATE': 'ข้อมูลนี้ถูกใช้แล้ว',
   'err.ADDRESS_NOT_FOUND': 'ไม่พบที่อยู่นี้',
   'err.ADMIN_NOT_FOUND': 'ไม่พบผู้ดูแลคนนี้',
+  'err.CUSTOMER_NOT_FOUND': 'ไม่พบลูกค้าคนนี้',
 
   // ---------------------------------------------------------------- หน้าเข้าสู่ระบบ (R2)
   'login.pageTitle': 'เข้าสู่ระบบ · Maison de Relic',
@@ -400,4 +401,25 @@ export default {
   'admins.added': 'เพิ่มผู้ดูแล {name} แล้ว',
   'admins.reactivated': 'เปิดบัญชี {name} แล้ว',
   'admins.deactivated': 'ปิดบัญชี {name} แล้ว',
+
+  // ระบบสมาชิก: หน้าจัดการลูกค้า (R2 · admin/customers)
+  'accounts.tabsLabel': 'ประเภทบัญชี',
+  'accounts.tabAdmins': 'ผู้ดูแล',
+  'accounts.tabCustomers': 'ลูกค้า',
+  'customers.pageTitle': 'จัดการบัญชีลูกค้า · Maison de Relic',
+  'customers.title': 'จัดการบัญชีลูกค้า',
+  'customers.staffNote': 'บัญชีระดับทีมงาน (staff) ปิดและเปิดบัญชีลูกค้าได้ ส่วนการแก้ข้อมูลลูกค้าทำได้เฉพาะเจ้าของร้าน (owner)',
+  'customers.searchLabel': 'ค้นหาลูกค้า',
+  'customers.caption': 'รายชื่อลูกค้า',
+  'customers.colVerified': 'ยืนยันอีเมล',
+  'customers.colJoined': 'สมัครเมื่อ',
+  'customers.verified': 'ยืนยันแล้ว',
+  'customers.unverified': 'ยังไม่ยืนยัน',
+  'customers.empty': 'ไม่พบลูกค้าที่ตรงกับเงื่อนไข',
+  'customers.pageInfo': 'หน้า {page} / {pages} · ทั้งหมด {total} คน',
+  'customers.editTitle': 'แก้ไขข้อมูลลูกค้า {name}',
+  'customers.emailHint': 'ถ้าเปลี่ยนอีเมล ลูกค้าต้องยืนยันอีเมลใหม่อีกครั้ง',
+  'customers.passwordNote': 'ตั้งรหัสผ่านให้ลูกค้าไม่ได้ ลูกค้าใช้ "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบเอง',
+  'customers.confirmTitle': 'ปิดบัญชีลูกค้า?',
+  'customers.confirmNote': 'บัญชีจะยังอยู่ในระบบ (ออเดอร์และที่อยู่ไม่หาย) และเปิดใช้งานคืนได้ภายหลัง',
 };
