@@ -484,6 +484,10 @@ html[lang='en'] .hero-title .w {
     pop 1s var(--ease) both 1.1s,
     bob 6s ease-in-out infinite;
 }
+/* display: flex ด้านบนชนะ attribute hidden ของเบราว์เซอร์ ต้องสั่งซ่อนเองให้ fc2.hidden = true ใช้ได้ (เช่นตอนยังไม่มีคะแนนรีวิว) */
+.float-card[hidden] {
+  display: none;
+}
 .fc1 {
   left: -36px;
   top: 58%;
