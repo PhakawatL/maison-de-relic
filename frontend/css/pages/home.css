@@ -398,14 +398,6 @@ html[lang='en'] .hero-title .w {
   font-size: 1.1rem;
 }
 
-.hero-stats {
-  margin: var(--space-2) 0 0;
-  font-size: 0.82rem;
-  color: var(--ink-3);
-}
-.hero-stats:empty {
-  display: none;
-}
 
 /* ---------- ภาพตัดปะ ---------- */
 .hero-art {
