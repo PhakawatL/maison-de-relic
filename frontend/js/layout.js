@@ -27,7 +27,8 @@ const NAV = [
 ];
 
 // เมนูของคนที่ล็อกอินแล้ว (ลูกค้าและแอดมิน)
-// หน้าลูกค้าใหม่เพิ่มที่นี่ได้เลย เช่น { href: '/wishlist', key: 'nav.wishlist' } (R1), { href: '/cart', key: 'nav.cart' } (R5)
+// หน้าลูกค้าใหม่เพิ่มที่นี่ได้เลย เช่น { href: '/cart', key: 'nav.cart' } (R5)
+// (wishlist ของ R1 เป็นปุ่มไอคอนหัวใจทางขวาแทน ดู accountActions)
 // แล้วเพิ่มคำแปลของ key ใน js/locales/th.js และ en.js
 // (โปรไฟล์ไม่อยู่ในรายการนี้ — ชื่อผู้ใช้ทางขวาของ header คือลิงก์ไปหน้าโปรไฟล์)
 const CUSTOMER_NAV = [];
@@ -40,6 +41,7 @@ const ADMIN_NAV = [
 
 const ICON_SUN = `<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></svg>`;
 const ICON_USER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`;
+const ICON_HEART = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3s-7.6-4.6-9.2-9.4C1.7 7.6 3.9 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.3 0 5.5 3.1 4.4 6.4-1.6 4.8-9.2 9.4-9.2 9.4z"/></svg>`;
 const ICON_MOON = `<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6z"/></svg>`;
 
 function isActive(href) {
@@ -72,11 +74,16 @@ function accountActions() {
     ? `<a class="btn btn-ghost btn-pill header-user" href="/profile"${isActive('/profile') ? ' aria-current="page"' : ''}
           aria-label="${t('nav.profile')}: ${escapeHtml(me.display_name)}" title="${t('nav.profile')}">${ICON_USER}<span>${escapeHtml(me.display_name)}</span></a>`
     : '';
+  // ปุ่มหัวใจไปหน้ารายการที่ถูกใจ (R1 · Figma ใช้ไอคอน ♡ ใน header) — เป็นไอคอนแทนเมนูข้อความ เมนูจะได้ไม่ล้นบรรทัด
+  const wishlist = me
+    ? `<a class="icon-btn header-wishlist" href="/wishlist"${isActive('/wishlist') ? ' aria-current="page"' : ''}
+          aria-label="${t('nav.wishlist')}" title="${t('nav.wishlist')}">${ICON_HEART}</a>`
+    : '';
   const verify =
     me && !me.is_email_verified
       ? `<a class="btn btn-solid btn-pill" href="/verify-email">${t('auth.verifyEmail')}</a>`
       : '';
-  return `${name}${verify}<button type="button" class="btn btn-ghost btn-pill" id="logout-btn">${t('auth.logout')}</button>`;
+  return `${wishlist}${name}${verify}<button type="button" class="btn btn-ghost btn-pill" id="logout-btn">${t('auth.logout')}</button>`;
 }
 
 function renderHeader() {
