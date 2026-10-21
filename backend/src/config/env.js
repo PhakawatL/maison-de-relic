@@ -9,6 +9,13 @@ function list(value) {
     .filter(Boolean);
 }
 
+// TRUST_PROXY=1 → เชื่อ proxy 1 ชั้น · true / false · หรือชื่อแบบ Express เช่น loopback
+function parseTrustProxy(value) {
+  if (!value || value === 'false') return false;
+  if (value === 'true') return true;
+  return /^\d+$/.test(value) ? Number(value) : value;
+}
+
 const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
@@ -28,6 +35,11 @@ const env = {
     (process.env.NODE_ENV === 'production' ? undefined : 'dev-only-secret-change-me'),
   // อายุ token เช่น 8h, 30m, 7d — หมดแล้วต้องล็อกอินใหม่
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
+
+  // จำกัดจำนวนครั้งที่เรียก login / สมัคร / ลืมรหัสผ่าน ต่อ IP (R2 · middleware/rateLimit.js) — off = ปิด
+  rateLimit: { enabled: process.env.RATE_LIMIT !== 'off' },
+  // API อยู่หลัง reverse proxy กี่ชั้น (Express "trust proxy") — ไม่ตั้ง = ใช้ IP ที่ต่อเข้ามาตรง ๆ
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
 
   // ที่อยู่หน้าเว็บ ใช้สร้างลิงก์ในอีเมล เช่น ลิงก์รีเซ็ตรหัสผ่าน
   appUrl: (process.env.APP_URL || 'http://localhost:5500').replace(/\/+$/, ''),
