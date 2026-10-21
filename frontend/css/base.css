@@ -158,8 +158,9 @@ a {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* ชื่อยาวตัดเป็น … (ชื่อเต็มอยู่ใน title / aria-label) เผื่อที่ให้เมนูไม่ตกบรรทัดเมื่อฟอนต์ในเครื่องกว้างกว่าที่เราทดสอบ */
 .header-user {
-  max-width: 200px;
+  max-width: 140px;
 }
 .header-user svg {
   flex: none;

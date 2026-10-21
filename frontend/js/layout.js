@@ -70,7 +70,7 @@ function accountActions() {
   // ชื่อผู้ใช้ = ลิงก์ไปหน้าโปรไฟล์ (แทนเมนู "โปรไฟล์ของฉัน" + คำทักทาย เมนูจะได้ไม่ล้นบรรทัด)
   const name = me
     ? `<a class="btn btn-ghost btn-pill header-user" href="/profile"${isActive('/profile') ? ' aria-current="page"' : ''}
-          aria-label="${t('nav.profile')}: ${escapeHtml(me.display_name)}" title="${t('nav.profile')}">${ICON_USER}<span>${escapeHtml(me.display_name)}</span></a>`
+          aria-label="${t('nav.profile')}: ${escapeHtml(me.display_name)}" title="${t('nav.profile')}: ${escapeHtml(me.display_name)}">${ICON_USER}<span>${escapeHtml(me.display_name)}</span></a>`
     : '';
   const verify =
     me && !me.is_email_verified
