@@ -2,6 +2,7 @@
 //   สมัครสมาชิก     POST /api/auth/register
 //   แก้โปรไฟล์      PATCH /api/profile
 //   จัดการผู้ดูแล   POST / PATCH /api/admins
+//   จัดการลูกค้า    PATCH /api/customers
 const AppError = require('../../utils/AppError');
 
 const USERNAME_RE = /^[A-Za-z0-9_.]{3,30}$/;

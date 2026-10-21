@@ -107,7 +107,7 @@
 | Search | [03-Search](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=7-57) | `frontend/search.html` | `js/pages/search.js` | R4 |
 | Detail | [04-Detail](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=8-105) | `frontend/detail.html` | `js/pages/detail.js` | R4 |
 | Product Management | [05–08](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=11-152) | `frontend/admin/products.html` | `js/pages/admin-products.js` | R3 |
-| User Account Management | [09–12](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=26-2958) | `frontend/admin/users.html` | `js/pages/admin-users.js` | R2 |
+| User Account Management | [09–12](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=26-2958) | `frontend/admin/users.html` (ผู้ดูแล) · `frontend/admin/customers.html` (ลูกค้า) | `js/pages/admin-users.js` · `js/pages/admin-customers.js` | R2 |
 | Team | [13-Team](https://www.figma.com/design/Y7uNT37pCWR2ry4DyerwUO/ITDS241---เว็บขายของสะสม--Wireframe-?node-id=26-3421) | `frontend/team.html` | `js/pages/team.js` | R1 |
 
 ---

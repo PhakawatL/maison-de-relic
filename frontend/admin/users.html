@@ -17,6 +17,11 @@
     <!-- หน้าบังคับ: User Account Management (Admin) — ค้นหา เพิ่ม แก้ไข ลบ บัญชีผู้ดูแล
          ลบ = ปิดบัญชี (is_active = false) · ต้องล็อกอินเป็นแอดมิน · เพิ่ม/แก้/ปิดได้เฉพาะ owner
          ผู้รับผิดชอบ: R2 -->
+    <nav class="account-tabs" aria-label="ประเภทบัญชี" data-i18n-attr="aria-label:accounts.tabsLabel">
+      <a href="/admin/users" aria-current="page" data-i18n="accounts.tabAdmins">ผู้ดูแล</a>
+      <a href="/admin/customers" data-i18n="accounts.tabCustomers">ลูกค้า</a>
+    </nav>
+
     <div class="page-head">
       <h1 data-i18n="admins.title">จัดการผู้ดูแลระบบ</h1>
       <button type="button" class="btn btn-primary" id="add-btn" data-i18n="admins.add" hidden>+ เพิ่มผู้ดูแล</button>
