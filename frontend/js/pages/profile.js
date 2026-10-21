@@ -3,9 +3,11 @@
 // ผู้ใช้ที่ยังไม่ยืนยันอีเมลดูได้อย่างเดียว (API ตอบ 403 ถ้าพยายามแก้)
 import { api, auth } from '../api.js';
 import { requireLoginPage } from '../auth-guard.js';
-import { clearErrors, fieldError, showErrors, whileBusy } from '../forms.js';
+import { clearErrors, errorText, fieldError, showErrors, whileBusy } from '../forms.js';
+import { applyI18n, onLangChange, t } from '../i18n.js';
 import { escapeHtml } from '../utils.js';
 
+applyI18n();
 const me = await requireLoginPage(); // ยังไม่ล็อกอิน → /login แล้วกลับมาหน้านี้
 const canEdit = me.is_email_verified;
 
@@ -18,9 +20,12 @@ const addressDialog = document.getElementById('address-dialog');
 const addressForm = document.getElementById('address-form');
 const confirmDialog = document.getElementById('confirm-dialog');
 
-function showPageAlert(message, type = 'success') {
+// ข้อความแจ้งล่าสุด เก็บเป็นฟังก์ชันไว้วาดใหม่ตอนสลับภาษา
+let pageAlertText = null;
+function showPageAlert(text, type = 'success') {
+  pageAlertText = text;
   pageAlert.className = `alert alert-${type}`;
-  pageAlert.textContent = message;
+  pageAlert.textContent = text();
   pageAlert.hidden = false;
   pageAlert.scrollIntoView({ block: 'nearest' });
 }
@@ -46,7 +51,7 @@ profileForm.addEventListener('submit', (event) => {
     try {
       const { data } = await api.patch('/profile', body);
       fillProfile(data);
-      showPageAlert('บันทึกข้อมูลส่วนตัวแล้ว');
+      showPageAlert(() => t('profile.saved'));
     } catch (err) {
       showErrors(profileForm, err);
     }
@@ -60,7 +65,7 @@ passwordForm.addEventListener('submit', (event) => {
   clearErrors(passwordForm);
   const { current_password, new_password, new_password_confirm } = Object.fromEntries(new FormData(passwordForm));
   if (new_password !== new_password_confirm) {
-    fieldError(passwordForm, 'new_password_confirm', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+    fieldError(passwordForm, 'new_password_confirm', t('form.passwordMismatch'));
     return;
   }
   whileBusy(passwordForm, async () => {
@@ -68,7 +73,7 @@ passwordForm.addEventListener('submit', (event) => {
       const { data } = await api.put('/profile/password', { current_password, new_password });
       auth.setToken(data.token); // token เก่าใช้ไม่ได้แล้ว ใช้ใบใหม่ที่ได้กลับมาแทน
       passwordForm.reset();
-      showPageAlert('เปลี่ยนรหัสผ่านแล้ว เครื่องอื่นที่ล็อกอินไว้จะต้องเข้าสู่ระบบใหม่');
+      showPageAlert(() => t('profile.passwordChanged'));
     } catch (err) {
       showErrors(passwordForm, err);
     }
@@ -83,14 +88,14 @@ let editing = null; // null = เพิ่มใหม่
 function addressHtml(a) {
   const actions = canEdit
     ? `<div class="address-actions">
-         <button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="${a.address_id}">แก้ไข</button>
-         ${a.is_default ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-action="default" data-id="${a.address_id}">ตั้งเป็นที่อยู่หลัก</button>`}
-         <button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="${a.address_id}">ลบ</button>
+         <button type="button" class="btn btn-ghost btn-sm" data-action="edit" data-id="${a.address_id}">${t('acct.edit')}</button>
+         ${a.is_default ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-action="default" data-id="${a.address_id}">${t('address.setDefault')}</button>`}
+         <button type="button" class="btn btn-ghost btn-sm" data-action="delete" data-id="${a.address_id}">${t('acct.delete')}</button>
        </div>`
     : '';
   return `
     <li class="address-item">
-      <p><strong>${escapeHtml(a.label || 'ที่อยู่')}</strong> ${a.is_default ? '<span class="badge">ที่อยู่หลัก</span>' : ''}</p>
+      <p><strong>${escapeHtml(a.label || t('address.fallbackLabel'))}</strong> ${a.is_default ? `<span class="badge">${t('address.default')}</span>` : ''}</p>
       <p>${escapeHtml(a.recipient_name)} · ${escapeHtml(a.phone)}</p>
       <p class="muted">${escapeHtml(a.line1)} ${escapeHtml(a.district)} ${escapeHtml(a.province)} ${escapeHtml(a.postcode)}</p>
       ${actions}
@@ -100,15 +105,19 @@ function addressHtml(a) {
 async function loadAddresses() {
   const { data } = await api.get('/addresses');
   addresses = data;
-  addressList.innerHTML = data.map(addressHtml).join('');
-  document.getElementById('no-address').hidden = data.length > 0;
+  renderAddresses();
+}
+
+function renderAddresses() {
+  addressList.innerHTML = addresses.map(addressHtml).join('');
+  document.getElementById('no-address').hidden = addresses.length > 0;
 }
 
 function openAddressForm(address = null) {
   editing = address;
   addressForm.reset();
   clearErrors(addressForm);
-  document.getElementById('address-dialog-title').textContent = address ? 'แก้ไขที่อยู่' : 'เพิ่มที่อยู่';
+  document.getElementById('address-dialog-title').textContent = t(address ? 'address.editTitle' : 'address.addTitle');
   const f = addressForm.elements;
   if (address) {
     for (const key of ['label', 'recipient_name', 'phone', 'line1', 'district', 'province', 'postcode']) {
@@ -142,7 +151,8 @@ addressForm.addEventListener('submit', (event) => {
       if (editing) await api.patch(`/addresses/${editing.address_id}`, body);
       else await api.post('/addresses', body);
       addressDialog.close();
-      showPageAlert(editing ? 'บันทึกที่อยู่แล้ว' : 'เพิ่มที่อยู่แล้ว');
+      const key = editing ? 'address.updated' : 'address.added';
+      showPageAlert(() => t(key));
       await loadAddresses();
     } catch (err) {
       showErrors(addressForm, err);
@@ -155,7 +165,7 @@ addBtn.addEventListener('click', () => openAddressForm());
 
 function confirmDelete(address) {
   document.getElementById('confirm-text').textContent =
-    `${address.label || 'ที่อยู่'}: ${address.line1} ${address.district} ${address.province}`;
+    `${address.label || t('address.fallbackLabel')}: ${address.line1} ${address.district} ${address.province}`;
   confirmDialog.returnValue = '';
   confirmDialog.showModal();
   return new Promise((resolve) => {
@@ -174,15 +184,15 @@ addressList.addEventListener('click', async (event) => {
       openAddressForm(address);
     } else if (btn.dataset.action === 'default') {
       await api.patch(`/addresses/${address.address_id}`, { is_default: true });
-      showPageAlert('เปลี่ยนที่อยู่หลักแล้ว');
+      showPageAlert(() => t('address.defaultChanged'));
       await loadAddresses();
     } else if (btn.dataset.action === 'delete' && (await confirmDelete(address))) {
       await api.delete(`/addresses/${address.address_id}`);
-      showPageAlert('ลบที่อยู่แล้ว');
+      showPageAlert(() => t('address.deleted'));
       await loadAddresses();
     }
   } catch (err) {
-    showPageAlert(err.message, 'error');
+    showPageAlert(() => errorText(err), 'error');
   }
 });
 
@@ -199,5 +209,14 @@ try {
   const [{ data: profile }] = await Promise.all([api.get('/profile'), loadAddresses()]);
   fillProfile(profile);
 } catch (err) {
-  showPageAlert(err.message, 'error');
+  showPageAlert(() => errorText(err), 'error');
 }
+
+// สลับภาษา: ข้อความใน HTML แปลเองผ่าน data-i18n ส่วนที่สร้างด้วย JS วาดใหม่ที่นี่
+onLangChange(() => {
+  renderAddresses();
+  if (pageAlertText && !pageAlert.hidden) pageAlert.textContent = pageAlertText();
+  if (addressDialog.open) {
+    document.getElementById('address-dialog-title').textContent = t(editing ? 'address.editTitle' : 'address.addTitle');
+  }
+});

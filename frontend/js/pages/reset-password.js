@@ -2,6 +2,9 @@
 // ลิงก์: /reset-password?token=... → POST /api/auth/reset-password { token, password }
 import { api, auth } from '../api.js';
 import { clearErrors, fieldError, showErrors, whileBusy } from '../forms.js';
+import { applyI18n, t } from '../i18n.js';
+
+applyI18n();
 
 const form = document.getElementById('reset-form');
 const token = new URLSearchParams(window.location.search).get('token');
@@ -19,7 +22,7 @@ form.addEventListener('submit', (event) => {
   clearErrors(form);
   const { password, password_confirm: confirm } = Object.fromEntries(new FormData(form));
   if (password !== confirm) {
-    fieldError(form, 'password_confirm', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+    fieldError(form, 'password_confirm', t('form.passwordMismatch'));
     return;
   }
 

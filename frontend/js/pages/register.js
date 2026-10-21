@@ -2,6 +2,9 @@
 // POST /api/auth/register → ได้ token (ล็อกอินให้เลย) + ระบบส่ง OTP ไปที่อีเมล → ไปหน้ายืนยันอีเมล
 import { api, auth } from '../api.js';
 import { clearErrors, fieldError, showErrors, whileBusy } from '../forms.js';
+import { applyI18n, t } from '../i18n.js';
+
+applyI18n();
 
 const form = document.getElementById('register-form');
 
@@ -14,7 +17,7 @@ form.addEventListener('submit', (event) => {
   const { password_confirm: confirm, ...body } = Object.fromEntries(new FormData(form));
 
   if (body.password !== confirm) {
-    fieldError(form, 'password_confirm', 'รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+    fieldError(form, 'password_confirm', t('form.passwordMismatch'));
     return;
   }
 
