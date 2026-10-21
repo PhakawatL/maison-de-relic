@@ -19,6 +19,7 @@ export default {
   'nav.adminUsers': 'จัดการผู้ดูแล',
   'nav.admin': 'แอดมิน',
   'nav.profile': 'โปรไฟล์ของฉัน',
+  'nav.wishlist': 'รายการที่ถูกใจ',
   'auth.signIn': 'เข้าสู่ระบบ',
   'auth.signUp': 'สมัครสมาชิก',
   'auth.logout': 'ออกจากระบบ',
@@ -268,6 +269,7 @@ export default {
   'err.ADDRESS_NOT_FOUND': 'ไม่พบที่อยู่นี้',
   'err.ADMIN_NOT_FOUND': 'ไม่พบผู้ดูแลคนนี้',
   'err.CUSTOMER_NOT_FOUND': 'ไม่พบลูกค้าคนนี้',
+  'err.PRODUCT_NOT_FOUND': 'ไม่พบสินค้านี้ หรือสินค้ายังไม่ได้วางขาย',
 
   // ---------------------------------------------------------------- หน้าเข้าสู่ระบบ (R2)
   'login.pageTitle': 'เข้าสู่ระบบ · Maison de Relic',
@@ -422,4 +424,18 @@ export default {
   'customers.passwordNote': 'ตั้งรหัสผ่านให้ลูกค้าไม่ได้ ลูกค้าใช้ "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบเอง',
   'customers.confirmTitle': 'ปิดบัญชีลูกค้า?',
   'customers.confirmNote': 'บัญชีจะยังอยู่ในระบบ (ออเดอร์และที่อยู่ไม่หาย) และเปิดใช้งานคืนได้ภายหลัง',
+
+  // ---------------------------------------------------------------- Wishlist: หน้ารายการที่ถูกใจ + ปุ่มหัวใจ (R1)
+  'wishlist.pageTitle': 'รายการที่ถูกใจ · Maison de Relic',
+  'wishlist.title': 'รายการที่ถูกใจ',
+  'wishlist.count': '{n} ชิ้นที่คุณเก็บไว้',
+  'wishlist.viewDetail': 'ดูรายละเอียด',
+  'wishlist.soldOut': 'สินค้าหมด',
+  'wishlist.emptyTitle': 'ยังไม่มีของที่ถูกใจ',
+  'wishlist.emptyHint': 'กดรูปหัวใจที่สินค้าเพื่อเก็บไว้ดูทีหลัง',
+  'wishlist.startShopping': 'เริ่มเลือกซื้อ',
+  'wishlist.add': 'เพิ่มในรายการที่ถูกใจ',
+  'wishlist.remove': 'เอาออกจากรายการที่ถูกใจ',
+  'wishlist.needVerify': 'ยืนยันอีเมลก่อนจึงจะเก็บสินค้าที่ถูกใจได้',
+  'wishlist.verifyNow': 'ยืนยันอีเมล',
 };

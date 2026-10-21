@@ -67,7 +67,7 @@ jobs:
 
       - name: หน้าเว็บเปิดได้ (รวมลิงก์แบบไม่มี .html)
         run: |
-          for p in / /search /detail /team /login /admin/products /admin/users /js/api.js; do
+          for p in / /search /detail /team /login /wishlist /admin/products /admin/users /js/api.js; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:5500$p")
             echo "$p -> $code"
             test "$code" = "200"

@@ -170,6 +170,31 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* จอมือถือแคบ (≤ 420px): ปุ่มไอคอนเล็กลงนิดหนึ่ง ปุ่มหัวใจ + ชื่อผู้ใช้ + ออกจากระบบ จะได้อยู่แถวเดียวกัน */
+@media (max-width: 420px) {
+  .header-actions {
+    gap: 6px;
+  }
+  .header-actions .icon-btn,
+  .header-actions .header-user {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+.header-wishlist svg {
+  width: 18px;
+  height: 18px;
+}
+.header-wishlist:hover,
+.header-wishlist[aria-current='page'] {
+  border-color: var(--color-heart);
+  color: var(--color-heart);
+}
+.header-wishlist[aria-current='page'] svg {
+  fill: currentColor;
+}
 .header-user[aria-current='page'] {
   border-color: var(--color-text);
 }
@@ -391,4 +416,109 @@ td {
   text-align: left;
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
+}
+
+/* ---------- ปุ่มหัวใจ wishlist (R1 · js/wishlist-button.js) ----------
+   ใช้ได้ทุกหน้า: ใส่ในการ์ดสินค้า (วางมุมขวาบนของรูปด้วย .heart-btn--overlay) หรือข้างชื่อสินค้า */
+:root {
+  --color-heart: #d6453d;
+}
+[data-theme='dark'] {
+  --color-heart: #f2776d;
+}
+.heart-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: border-color 0.25s, color 0.25s, transform 0.2s;
+}
+.heart-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  transition: fill 0.25s;
+}
+.heart-btn:hover {
+  border-color: var(--color-heart);
+  color: var(--color-heart);
+}
+.heart-btn:active {
+  transform: scale(0.9);
+}
+.heart-btn:focus-visible {
+  outline: 2px solid var(--color-heart);
+  outline-offset: 2px;
+}
+.heart-btn[aria-pressed='true'] {
+  color: var(--color-heart);
+  border-color: color-mix(in srgb, var(--color-heart) 40%, var(--color-border));
+}
+.heart-btn[aria-pressed='true'] svg {
+  fill: currentColor;
+}
+.heart-btn.is-popping svg {
+  animation: heart-pop 0.45s cubic-bezier(0.17, 0.89, 0.32, 1.49);
+}
+@keyframes heart-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+/* วางทับมุมขวาบนของรูปสินค้า (กล่องรูปต้องมี position: relative) */
+.heart-btn--overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  border-color: transparent;
+}
+
+/* ข้อความแจ้งเล็ก ๆ มุมล่าง (เช่น "กรุณายืนยันอีเมลก่อน") */
+.wl-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 50;
+  max-width: min(92vw, 420px);
+  padding: 12px 18px;
+  border-radius: 14px;
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-size: 0.9rem;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 12px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.wl-toast.is-shown {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.wl-toast a {
+  color: inherit;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart-btn.is-popping svg {
+    animation: none;
+  }
+  .wl-toast {
+    transition: none;
+  }
 }

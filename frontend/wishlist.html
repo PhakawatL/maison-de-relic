@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="wishlist.pageTitle">รายการที่ถูกใจ · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/wishlist.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- รายการที่ถูกใจ (S6 · BR-12, BR-13) · ต้องล็อกอิน
+         Figma: 21-Wishlist, 21b-Wishlist-Empty · ผู้รับผิดชอบ: R1 -->
+    <div class="wl-head">
+      <h1 data-i18n="wishlist.title">รายการที่ถูกใจ</h1>
+      <p id="wl-count" class="muted" aria-live="polite"></p>
+    </div>
+
+    <div id="wl-alert" class="alert alert-error" role="alert" hidden></div>
+
+    <!-- ระหว่างโหลดแสดงการ์ดเปล่า 4 ใบ -->
+    <ul id="wl-grid" class="wl-grid" aria-busy="true">
+      <li class="wl-card is-loading" aria-hidden="true"><div class="wl-media"></div><div class="wl-body"><span class="skel"></span><span class="skel short"></span></div></li>
+      <li class="wl-card is-loading" aria-hidden="true"><div class="wl-media"></div><div class="wl-body"><span class="skel"></span><span class="skel short"></span></div></li>
+      <li class="wl-card is-loading" aria-hidden="true"><div class="wl-media"></div><div class="wl-body"><span class="skel"></span><span class="skel short"></span></div></li>
+      <li class="wl-card is-loading" aria-hidden="true"><div class="wl-media"></div><div class="wl-body"><span class="skel"></span><span class="skel short"></span></div></li>
+    </ul>
+
+    <section id="wl-empty" class="wl-empty card" hidden>
+      <div class="wl-empty-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-9.2-9.4C1.7 7.6 3.9 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.3 0 5.5 3.1 4.4 6.4-1.6 4.8-9.2 9.4-9.2 9.4z"/></svg>
+      </div>
+      <h2 data-i18n="wishlist.emptyTitle">ยังไม่มีของที่ถูกใจ</h2>
+      <p class="muted" data-i18n="wishlist.emptyHint">กดรูปหัวใจที่สินค้าเพื่อเก็บไว้ดูทีหลัง</p>
+      <a class="btn btn-solid btn-pill" href="/search" data-i18n="wishlist.startShopping">เริ่มเลือกซื้อ</a>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/wishlist.js"></script>
+</body>
+</html>

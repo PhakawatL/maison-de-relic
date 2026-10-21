@@ -132,4 +132,5 @@ async function getById(id) {
   };
 }
 
-module.exports = { list, getById, SORTS };
+// SUMMARY_COLUMNS / FROM_JOINS / toSummary ใช้ร่วมกับ module อื่นที่ต้องแสดงการ์ดสินค้าแบบเดียวกัน (เช่น wishlist ของ R1)
+module.exports = { list, getById, SORTS, SUMMARY_COLUMNS, FROM_JOINS, toSummary };
