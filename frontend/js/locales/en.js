@@ -64,7 +64,6 @@ export default {
   'home.catArttoyDesc': 'Designer figures, blind boxes, special characters',
   'home.catCardDesc': 'Game cards, artist cards',
   'home.catModelDesc': 'Cars, planes, vintage pieces',
-  'home.count': '{n} items',
   'home.recKicker': '01 · Curated for you',
   'home.recTitle': 'Recommended pieces',
   'home.viewAll': 'View all',

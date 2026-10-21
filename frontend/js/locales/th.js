@@ -72,7 +72,6 @@ export default {
   'home.catArttoyDesc': 'ฟิกเกอร์ดีไซเนอร์ กล่องสุ่ม ตัวละครพิเศษ',
   'home.catCardDesc': 'การ์ดเกม การ์ดศิลปิน',
   'home.catModelDesc': 'รถ เครื่องบิน ของเก่า',
-  'home.count': '{n} ชิ้น',
   'home.recKicker': '01 · คัดมาให้',
   'home.recTitle': 'ของสะสมที่แนะนำ',
   'home.viewAll': 'ดูทั้งหมด',
