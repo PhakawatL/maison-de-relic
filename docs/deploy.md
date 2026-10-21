@@ -58,7 +58,8 @@
 ### ทำงานอย่างไร
 
 1. แอดมินเลือกรูปในหน้าจัดการสินค้า → หน้าเว็บส่งไฟล์ให้ API
-2. API อัปโหลดไฟล์เข้า bucket `product-images` (ตั้งเป็น public) ด้วย key ฝั่ง server
+2. API อัปโหลดไฟล์เข้า bucket **`Product_image`** (ตัว P ใหญ่ + ขีดล่าง, ตั้งเป็น public) ด้วย key ฝั่ง server
+   - key แบบใหม่ (`sb_secret_...`) ต้องส่งทั้ง header `apikey: <key>` และ `Authorization: Bearer <key>`
 3. API บันทึก **URL สาธารณะ** ของรูปลง `product_image.url` (และ `product.cover_image_url` ถ้าเป็นรูปหน้าปก)
 4. หน้าเว็บแสดงรูปจาก URL ที่ได้จาก `GET /products` ตรง ๆ ไม่ต้องรู้จัก Supabase
 
@@ -69,13 +70,16 @@
 | `SUPABASE_URL` | `.env` ที่ root → ส่งเข้ากล่อง `api` ผ่าน `docker-compose.yml` |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env` ที่ root เท่านั้น |
 
-- **ห้ามขึ้น GitHub** (`.env` อยู่ใน `.gitignore` แล้ว) ส่งให้กันทางแชตส่วนตัว
+- **ห้ามขึ้น GitHub** (`.env` อยู่ใน `.gitignore` แล้ว) ค่าจริงอยู่ใน **Notion ของทีม**
 - `service_role` ข้ามสิทธิ์ทุกอย่างของ Supabase ได้ จึงใช้ **เฉพาะใน `backend/`** ห้ามใส่ใน `frontend/` เด็ดขาด เพราะโค้ดหน้าเว็บทุกคนเปิดดูได้
 - ใครแก้ `docker-compose.yml` เพื่อเพิ่มค่าเหล่านี้ ให้บอก R1 ก่อน
 - เครื่องที่ยังไม่มี key ระบบยังเปิดได้ปกติ แค่อัปโหลดรูปใหม่ไม่ได้
 
 ### รูปตัวอย่างใน seed
 
-รูปของสินค้าตัวอย่างที่อยากให้ทุกเครื่องเห็นโดยไม่ต้องมี key ให้วางไว้ใน `frontend/assets/products/` แล้วใน seed ใส่ URL เป็น `/assets/products/<ชื่อไฟล์>`
+รูปของสินค้าตัวอย่าง (`backend/db/seeds/004_products.sql`, #46) อยู่ใน bucket `Product_image` โฟลเดอร์ `seed/` แล้ว
+- bucket เป็น public ทุกเครื่องเห็นรูปได้**โดยไม่ต้องมี key**
+- อัปโหลดด้วย `node backend/scripts/upload-seed-images.js` (อัปโหลดไปแล้ว ไม่ต้องรันซ้ำ) · `--check` = เช็กว่าเปิดรูปได้ครบ
+- รายชื่อรูปอยู่ใน `backend/scripts/seed-images.json` · เครดิตช่างภาพใน `backend/db/seeds/004_products.credits.md`
 
 > เดิมวางแผนเก็บไฟล์ใน `backend/uploads/` — **เลิกใช้แล้ว**
