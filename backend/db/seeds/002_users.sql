@@ -7,7 +7,7 @@
 --   username        รหัสผ่าน              เป็นอะไร
 --   Neptz           Neptz@1234            แอดมิน · เจ้าของร้าน (owner)
 --   SuphawitBonus   SuphawitBonus@1234    แอดมิน · เจ้าของร้าน (owner)
---   staff           Staff@1234            แอดมิน · ทีมงาน (staff) ดูรายชื่อผู้ดูแลได้อย่างเดียว
+--   staff           Staff@1234            แอดมิน · ทีมงาน (staff) ดูรายชื่อผู้ดูแลได้อย่างเดียว · ปิด/เปิดบัญชีลูกค้าได้
 --   tain            tain@1234             แอดมิน · ทีมงาน (staff)
 --   oicnssw         oicnssw@1234          แอดมิน · ทีมงาน (staff)
 --   PhakawatL       PhakawatL@1234        แอดมิน · ทีมงาน (staff)

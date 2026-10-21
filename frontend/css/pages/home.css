@@ -398,14 +398,6 @@ html[lang='en'] .hero-title .w {
   font-size: 1.1rem;
 }
 
-.hero-stats {
-  margin: var(--space-2) 0 0;
-  font-size: 0.82rem;
-  color: var(--ink-3);
-}
-.hero-stats:empty {
-  display: none;
-}
 
 /* ---------- ภาพตัดปะ ---------- */
 .hero-art {
@@ -483,6 +475,10 @@ html[lang='en'] .hero-title .w {
   animation:
     pop 1s var(--ease) both 1.1s,
     bob 6s ease-in-out infinite;
+}
+/* display: flex ด้านบนชนะ attribute hidden ของเบราว์เซอร์ ต้องสั่งซ่อนเองให้ fc2.hidden = true ใช้ได้ (เช่นตอนยังไม่มีคะแนนรีวิว) */
+.float-card[hidden] {
+  display: none;
 }
 .fc1 {
   left: -36px;

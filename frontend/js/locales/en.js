@@ -64,7 +64,6 @@ export default {
   'home.catArttoyDesc': 'Designer figures, blind boxes, special characters',
   'home.catCardDesc': 'Game cards, artist cards',
   'home.catModelDesc': 'Cars, planes, vintage pieces',
-  'home.count': '{n} items',
   'home.recKicker': '01 · Curated for you',
   'home.recTitle': 'Recommended pieces',
   'home.viewAll': 'View all',
@@ -260,6 +259,7 @@ export default {
   'err.DUPLICATE': 'This is already in use.',
   'err.ADDRESS_NOT_FOUND': 'Address not found.',
   'err.ADMIN_NOT_FOUND': 'Admin not found.',
+  'err.CUSTOMER_NOT_FOUND': 'Customer not found.',
 
   // ---------------------------------------------------------------- หน้าเข้าสู่ระบบ (R2)
   'login.pageTitle': 'Sign in · Maison de Relic',
@@ -393,4 +393,25 @@ export default {
   'admins.added': 'Added admin {name}.',
   'admins.reactivated': 'Reactivated {name}.',
   'admins.deactivated': 'Deactivated {name}.',
+
+  // ระบบสมาชิก: หน้าจัดการลูกค้า (R2 · admin/customers)
+  'accounts.tabsLabel': 'Account type',
+  'accounts.tabAdmins': 'Admins',
+  'accounts.tabCustomers': 'Customers',
+  'customers.pageTitle': 'Customer accounts · Maison de Relic',
+  'customers.title': 'Customer accounts',
+  'customers.staffNote': 'Staff can deactivate and reactivate customers. Only owners can edit customer details.',
+  'customers.searchLabel': 'Search customers',
+  'customers.caption': 'Customer accounts',
+  'customers.colVerified': 'Email verified',
+  'customers.colJoined': 'Joined',
+  'customers.verified': 'Verified',
+  'customers.unverified': 'Not verified',
+  'customers.empty': 'No customers match your search.',
+  'customers.pageInfo': 'Page {page} of {pages} · {total} customers',
+  'customers.editTitle': 'Edit customer {name}',
+  'customers.emailHint': 'If you change the email, the customer must verify the new address.',
+  'customers.passwordNote': 'You can’t set a customer’s password. Customers can use “Forgot password” on the sign-in page.',
+  'customers.confirmTitle': 'Deactivate this customer?',
+  'customers.confirmNote': 'The account stays in the system (orders and addresses are kept) and can be reactivated later.',
 };

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="customers.pageTitle">จัดการบัญชีลูกค้า · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin-users.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- หน้าจัดการบัญชีลูกค้า (ตารางลูกค้า แยกจากตารางผู้ดูแลที่ /admin/users)
+         ลบ = ปิดบัญชี (is_active = false) · ต้องล็อกอินเป็นแอดมิน
+         ค้นหา / ปิด / เปิดบัญชี: แอดมินทุกคน · แก้ข้อมูลลูกค้า: เฉพาะ owner
+         ผู้รับผิดชอบ: R2 -->
+    <nav class="account-tabs" aria-label="ประเภทบัญชี" data-i18n-attr="aria-label:accounts.tabsLabel">
+      <a href="/admin/users" data-i18n="accounts.tabAdmins">ผู้ดูแล</a>
+      <a href="/admin/customers" aria-current="page" data-i18n="accounts.tabCustomers">ลูกค้า</a>
+    </nav>
+
+    <div class="page-head">
+      <h1 data-i18n="customers.title">จัดการบัญชีลูกค้า</h1>
+    </div>
+
+    <p class="muted" id="staff-note" data-i18n="customers.staffNote" hidden>
+      บัญชีระดับทีมงาน (staff) ปิดและเปิดบัญชีลูกค้าได้ ส่วนการแก้ข้อมูลลูกค้าทำได้เฉพาะเจ้าของร้าน (owner)
+    </p>
+
+    <div id="page-alert" class="alert" role="status" hidden></div>
+
+    <form id="filter-form" class="filters" role="search">
+      <input type="search" name="q" maxlength="100" placeholder="ค้นหาชื่อผู้ใช้ ชื่อ หรืออีเมล"
+             aria-label="ค้นหาลูกค้า" data-i18n-attr="placeholder:admins.searchPlaceholder; aria-label:customers.searchLabel">
+      <select name="status" aria-label="สถานะบัญชี" data-i18n-attr="aria-label:admins.statusLabel">
+        <option value="all" data-i18n="admins.statusAll">ทุกสถานะ</option>
+        <option value="active" data-i18n="admins.statusActive">ใช้งานอยู่</option>
+        <option value="inactive" data-i18n="admins.statusInactive">ปิดบัญชีแล้ว</option>
+      </select>
+      <button type="submit" class="btn btn-ghost" data-i18n="admins.search">ค้นหา</button>
+    </form>
+
+    <div class="table-wrap">
+      <table id="user-table">
+        <caption class="visually-hidden" data-i18n="customers.caption">รายชื่อลูกค้า</caption>
+        <thead>
+          <tr>
+            <th scope="col" data-i18n="admins.colUsername">ชื่อผู้ใช้</th>
+            <th scope="col" data-i18n="admins.colName">ชื่อ - นามสกุล</th>
+            <th scope="col" data-i18n="admins.colEmail">อีเมล</th>
+            <th scope="col" data-i18n="customers.colVerified">ยืนยันอีเมล</th>
+            <th scope="col" data-i18n="admins.colStatus">สถานะ</th>
+            <th scope="col" data-i18n="customers.colJoined">สมัครเมื่อ</th>
+            <th scope="col"><span class="visually-hidden" data-i18n="admins.colActions">จัดการ</span></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="muted" id="empty-note" data-i18n="customers.empty" hidden>ไม่พบลูกค้าที่ตรงกับเงื่อนไข</p>
+
+    <nav class="pager" aria-label="เปลี่ยนหน้า" data-i18n-attr="aria-label:admins.pagerLabel">
+      <button type="button" class="btn btn-ghost" id="prev-btn" data-i18n="admins.prev">← ก่อนหน้า</button>
+      <span id="page-info" class="muted"></span>
+      <button type="button" class="btn btn-ghost" id="next-btn" data-i18n="admins.next">ถัดไป →</button>
+    </nav>
+  </main>
+
+  <!-- ฟอร์มแก้ไขข้อมูลลูกค้า (owner) -->
+  <dialog id="user-dialog" aria-labelledby="user-dialog-title">
+    <form id="user-form" novalidate>
+      <h2 id="user-dialog-title"></h2>
+      <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+
+      <div class="form-row">
+        <div class="field">
+          <label for="f-first-name" data-i18n="acct.firstName">ชื่อ</label>
+          <input id="f-first-name" name="first_name" required maxlength="100">
+          <small class="field-error" data-error-for="first_name"></small>
+        </div>
+        <div class="field">
+          <label for="f-last-name" data-i18n="acct.lastName">นามสกุล</label>
+          <input id="f-last-name" name="last_name" required maxlength="100">
+          <small class="field-error" data-error-for="last_name"></small>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-display-name" data-i18n="acct.displayName">ชื่อที่แสดง</label>
+        <input id="f-display-name" name="display_name" required maxlength="100">
+        <small class="field-error" data-error-for="display_name"></small>
+      </div>
+      <div class="field">
+        <label for="f-email" data-i18n="acct.email">อีเมล</label>
+        <input id="f-email" name="email" type="email" required maxlength="254" autocomplete="off" aria-describedby="email-hint">
+        <small class="muted" id="email-hint" data-i18n="customers.emailHint">ถ้าเปลี่ยนอีเมล ลูกค้าต้องยืนยันอีเมลใหม่อีกครั้ง</small>
+        <small class="field-error" data-error-for="email"></small>
+      </div>
+      <div class="field">
+        <label for="f-phone" data-i18n="acct.phoneOptional">เบอร์โทร (ไม่บังคับ)</label>
+        <input id="f-phone" name="phone" type="tel" maxlength="20">
+        <small class="field-error" data-error-for="phone"></small>
+      </div>
+      <p class="muted" data-i18n="customers.passwordNote">ตั้งรหัสผ่านให้ลูกค้าไม่ได้ ลูกค้าใช้ "ลืมรหัสผ่าน" ที่หน้าเข้าสู่ระบบเอง</p>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" data-close data-i18n="acct.cancel">ยกเลิก</button>
+        <button type="submit" class="btn btn-primary" id="save-btn" data-i18n="acct.save">บันทึก</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ยืนยันปิดบัญชี -->
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title" data-i18n="customers.confirmTitle">ปิดบัญชีลูกค้า?</h2>
+      <p id="confirm-text"></p>
+      <p class="muted" data-i18n="customers.confirmNote">บัญชีจะยังอยู่ในระบบ (ออเดอร์และที่อยู่ไม่หาย) และเปิดใช้งานคืนได้ภายหลัง</p>
+      <div class="dialog-actions">
+        <button value="cancel" class="btn btn-ghost" data-i18n="acct.cancel">ยกเลิก</button>
+        <button value="confirm" class="btn btn-danger" data-i18n="admins.deactivate">ปิดบัญชี</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/admin-customers.js"></script>
+</body>
+</html>

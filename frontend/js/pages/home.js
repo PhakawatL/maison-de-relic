@@ -34,7 +34,6 @@ let usingSample = false;
 
 // สินค้าที่แสดงอยู่ เก็บไว้วาดใหม่ตอนสลับภาษาโดยไม่ต้องโหลดซ้ำ
 const shown = { recommended: [], newest: [] };
-let categoryCounts = null;
 
 const priceFormat = new Intl.NumberFormat('th-TH', {
   style: 'currency',
@@ -296,58 +295,11 @@ function setupMarquee() {
   track.after(clone);
 }
 
-// ตัวเลขนับขึ้นจาก 0
-function countUp(el, target, format) {
-  if (reduceMotion) {
-    el.textContent = format(target);
-    return;
-  }
-  const start = performance.now();
-  const duration = 1200;
-  const step = (now) => {
-    const progress = Math.min((now - start) / duration, 1);
-    const eased = 1 - (1 - progress) ** 3;
-    el.textContent = format(Math.round(target * eased));
-    if (progress < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-}
-
-// จำนวนสินค้าต่อหมวด (ถ้า API หมวดหมู่ส่ง product_count มา)
-const countText = (n) => t('home.count', { n: n.toLocaleString('th-TH') });
-
-function renderCategoryCounts(animate) {
-  if (!categoryCounts) return;
-  const parts = [];
-  document.querySelectorAll('.cat-count[data-cat]').forEach((el) => {
-    const count = categoryCounts[el.dataset.cat];
-    if (count == null) return;
-    delete el.dataset.i18n; // ไม่ให้ระบบแปลเขียนทับตัวเลขด้วยคำว่า "ดูทั้งหมด"
-    if (animate) countUp(el, count, countText);
-    else el.textContent = countText(count);
-    parts.push(`${t(`cat.${el.dataset.cat}`)} ${countText(count)}`);
-  });
-  document.getElementById('hero-stats').textContent = parts.join(' · ');
-}
-
-async function loadCategoryCounts() {
-  try {
-    const { data } = await api.get('/categories');
-    categoryCounts = Object.fromEntries(
-      data.filter((c) => c.product_count != null).map((c) => [c.slug, Number(c.product_count)])
-    );
-    renderCategoryCounts(true);
-  } catch {
-    // ยังไม่มี API หมวดหมู่ ก็แสดง "ดูทั้งหมด" ตามเดิม
-  }
-}
-
 // สลับภาษา: วาดส่วนที่สร้างด้วย JS ใหม่ (ข้อความใน HTML แปลโดย applyI18n แล้ว)
 onLangChange(() => {
   renderShelf(document.getElementById('recommended'), shown.recommended);
   renderShelf(document.getElementById('newest'), shown.newest);
   fillHeroArt(shown.recommended);
-  renderCategoryCounts(false);
 });
 
 setupStickyHeader();
@@ -356,6 +308,5 @@ setupReveal();
 setupParallax();
 setupSearchHints();
 setupNewestFilter();
-loadCategoryCounts();
 await loadRecommended();
 loadNewest();

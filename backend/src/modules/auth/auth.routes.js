@@ -4,17 +4,26 @@
 const { Router } = require('express');
 const controller = require('./auth.controller');
 const { requireAuth } = require('../../middleware/auth');
+const { rateLimit } = require('../../middleware/rateLimit');
 
 const router = Router();
 
-router.post('/login', controller.login);                          // POST /api/auth/login           { username, password }
+// จำกัดจำนวนครั้งต่อ IP (ดู middleware/rateLimit.js) — เกินได้ 429 TOO_MANY_REQUESTS
+//   verify-email / resend-otp ไม่ต้อง: มีกติกาของตัวเองอยู่แล้ว (กรอกผิดได้ 5 ครั้ง, ขอรหัสใหม่ทุก 60 วินาที)
+const MINUTE = 60 * 1000;
+const loginLimit = rateLimit({ name: 'login', max: 10, windowMs: 15 * MINUTE, onlyFailed: true }); // เดารหัสผ่าน
+const registerLimit = rateLimit({ name: 'register', max: 10, windowMs: 60 * MINUTE });               // สร้างบัญชีรัว ๆ
+const forgotLimit = rateLimit({ name: 'forgot', max: 5, windowMs: 15 * MINUTE });                    // ยิงอีเมลใส่คนอื่น
+const resetLimit = rateLimit({ name: 'reset', max: 10, windowMs: 15 * MINUTE, onlyFailed: true });   // เดา token
+
+router.post('/login', loginLimit, controller.login);              // POST /api/auth/login           { username, password }
 router.get('/me', requireAuth, controller.me);                    // GET  /api/auth/me              ผู้ใช้ที่ล็อกอินอยู่
 
-router.post('/register', controller.register);                    // POST /api/auth/register        สมัคร → ได้ token + ส่ง OTP
+router.post('/register', registerLimit, controller.register);     // POST /api/auth/register        สมัคร → ได้ token + ส่ง OTP
 router.post('/verify-email', requireAuth, controller.verifyEmail); // POST /api/auth/verify-email    { code }
 router.post('/resend-otp', requireAuth, controller.resendOtp);     // POST /api/auth/resend-otp      ขอรหัสใหม่
 
-router.post('/forgot-password', controller.forgotPassword);        // POST /api/auth/forgot-password { email }
-router.post('/reset-password', controller.resetPassword);          // POST /api/auth/reset-password  { token, password }
+router.post('/forgot-password', forgotLimit, controller.forgotPassword); // POST /api/auth/forgot-password { email }
+router.post('/reset-password', resetLimit, controller.resetPassword); // POST /api/auth/reset-password  { token, password }
 
 module.exports = router;

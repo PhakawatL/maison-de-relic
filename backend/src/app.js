@@ -8,6 +8,9 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
 
+// API อยู่หลัง reverse proxy → ให้ req.ip เป็น IP ของผู้ใช้จริง (rate limit นับตาม IP)
+app.set('trust proxy', env.trustProxy);
+
 // ---------- CORS ----------
 // หน้าเว็บ (localhost:5500 / Vercel) กับ API (localhost:3000) เป็นคนละ origin เบราว์เซอร์จึงต้องได้รับอนุญาตก่อนเรียก API
 app.use(
@@ -47,6 +50,7 @@ app.get('/api/health', async (req, res) => {
 // เพิ่ม module ใหม่: สร้างไฟล์ใน src/modules/<ชื่อ>/ ตามแบบ src/modules/_template แล้วเพิ่มบรรทัดในนี้
 app.use('/api/auth', require('./modules/auth/auth.routes'));               // R2
 app.use('/api/admins', require('./modules/users/admins.routes'));          // R2
+app.use('/api/customers', require('./modules/users/customers.routes'));    // R2
 app.use('/api/addresses', require('./modules/users/addresses.routes'));    // R2
 app.use('/api/profile', require('./modules/users/profile.routes'));        // R2
 app.use('/api/products', require('./modules/products/products.routes')); // R3
