@@ -1,0 +1,159 @@
+/* popup "รายงานสินค้านี้" (R1 · Figma 29-Report-Popup) — js/report-dialog.js โหลดไฟล์นี้ให้เอง */
+.report-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.4);
+}
+.report-dialog::backdrop {
+  background: rgb(28 24 20 / 0.45);
+  backdrop-filter: blur(3px);
+}
+.report-dialog[open] {
+  animation: report-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes report-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+.report-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.report-head h2,
+.report-done h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+.report-x {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.report-x svg {
+  width: 20px;
+  height: 20px;
+}
+.report-x:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.report-product {
+  margin: 2px 0 12px;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.report-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+.report-note a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.report-reasons {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.report-reasons legend,
+.report-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+.report-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+.report-option:hover {
+  background: var(--color-bg);
+}
+.report-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--color-text);
+}
+
+.report-dialog textarea {
+  width: 100%;
+  min-height: 92px;
+  resize: vertical;
+  border-radius: 14px;
+  background: var(--color-bg);
+}
+.report-error {
+  margin: 10px 0 0;
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+.report-actions .btn-pill {
+  padding: 9px 20px;
+}
+
+.report-done {
+  text-align: center;
+  padding: 8px 0 0;
+}
+.report-done-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
+  color: var(--color-success);
+}
+.report-done-icon svg {
+  width: 26px;
+  height: 26px;
+}
+.report-done p {
+  margin: 6px 0 0;
+  color: var(--color-muted);
+}
+.report-done .report-actions {
+  justify-content: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-dialog[open] {
+    animation: none;
+  }
+}
