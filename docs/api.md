@@ -13,6 +13,7 @@
 
 - ใช้คำนามพหูพจน์ ตัวพิมพ์เล็ก ถ้ามีหลายคำให้คั่นด้วย `-` เช่น `/products`, `/refund-requests`
 - ใช้ HTTP method บอกการกระทำ ไม่ใส่คำกริยาใน URL
+- ข้อมูลเดียวกันที่ลูกค้าเห็นแค่ของตัวเอง แต่ผู้ดูแลเห็นทั้งหมด ให้แยก URL ฝั่งผู้ดูแลไว้ใต้ `/admin/` เช่น ลูกค้า `GET /support-tickets` (เคสของตัวเอง) · ผู้ดูแล `GET /admin/support-tickets` (ทุกเคส) จะได้ใส่ตัวกันสิทธิ์ทีเดียวทั้ง router
 
 | ทำอะไร | Method + URL | สำเร็จได้ status |
 |---|---|---|
@@ -109,6 +110,14 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
 | DELETE | `/wishlist/:productId` | ✓ ยืนยันอีเมลแล้ว | R1 | เอาสินค้าออกจาก wishlist |
+| GET | `/support-tickets` | ✓ | R1 | เคสแจ้งปัญหาของตัวเอง (ล่าสุดขึ้นก่อน) |
+| GET | `/support-tickets/:id` | ✓ | R1 | เคสของตัวเอง 1 เคส พร้อมคำตอบจากร้าน |
+| POST | `/support-tickets` | ✓ ยืนยันอีเมลแล้ว | R1 | แจ้งปัญหา หรือรายงานสินค้า |
+| GET | `/admin/support-tickets` | แอดมิน | R1 | ทุกเคส ค้นหา/กรองหมวด สถานะ ผู้รับผิดชอบ + จำนวนแต่ละสถานะ |
+| GET | `/admin/support-tickets/assignees` | แอดมิน | R1 | ผู้ดูแลที่เลือกเป็นผู้รับผิดชอบเคสได้ |
+| GET | `/admin/support-tickets/:id` | แอดมิน | R1 | เคส 1 เคสพร้อมผู้แจ้งและคำสั่งซื้อที่อ้างถึง |
+| PATCH | `/admin/support-tickets/:id` | แอดมิน | R1 | ตอบกลับ / เปลี่ยนสถานะ / มอบหมายผู้รับผิดชอบ |
+| DELETE | `/admin/support-tickets/:id` | owner | R1 | ลบเคส |
 | | | | | |
 
 ---
@@ -682,4 +691,103 @@ setupHeartButtons(container);
 - ยังไม่ล็อกอิน → กดแล้วพาไปหน้าเข้าสู่ระบบ แล้วกลับมาหน้าเดิม
 - ยังไม่ยืนยันอีเมล → แสดงข้อความให้ไปยืนยันก่อน
 - ปุ่มอยู่ใน `<a>` ของการ์ดได้ (กดหัวใจแล้วไม่เปิดหน้ารายละเอียด)
+
+---
+
+## แจ้งปัญหา · รายงานสินค้า (R1)
+
+เคส 1 เคส = ลูกค้าแจ้งเรื่อง 1 เรื่อง (ตาราง `support_ticket` · BR-27–29) ผู้ดูแลตอบกลับได้ 1 ข้อความ และเปลี่ยนสถานะได้
+
+| สถานะ | ความหมาย |
+|---|---|
+| `open` | รอดำเนินการ (ยังไม่มีใครทำ) |
+| `pending` | กำลังดำเนินการ |
+| `closed` | ปิดเคสแล้ว (`closed_at` = เวลาที่ปิด) |
+
+| หมวด (`category`) | ใช้กับ |
+|---|---|
+| `not_as_described` ของไม่ตรงปก · `damaged` ของเสียหาย · `not_delivered` พัสดุไม่ถึง · `product_question` สอบถามสินค้า · `payment` การชำระเงิน · `account` บัญชีผู้ใช้ | แจ้งปัญหาทั่วไป |
+| `counterfeit` สินค้าปลอม · `wrong_images` รูปไม่ตรงกับสินค้า · `misleading_price` ราคาหลอกลวง · `inappropriate` เนื้อหาไม่เหมาะสม | รายงานสินค้า |
+| `other` อื่น ๆ | ทั้งสองแบบ |
+
+หน้าเว็บแสดงชื่อหมวดจากคำแปล `support.cat.<category>` ใน `js/locales/*.js` (เก็บในฐานข้อมูลเป็นรหัสภาษาอังกฤษ)
+
+### `POST /support-tickets`
+
+แจ้งปัญหาทั่วไป (อ้างถึงคำสั่งซื้อของตัวเองได้ ไม่บังคับ)
+
+```json
+{ "subject": "กล่องบุบระหว่างขนส่ง", "category": "damaged", "body": "ได้รับของแล้วกล่องบุบ...", "order_id": 15 }
+```
+
+รายงานสินค้า (ปุ่ม "รายงานสินค้านี้" ในหน้า Detail) — ไม่ต้องส่ง `subject` ระบบตั้งเป็น `[P012] ชื่อสินค้า` ให้ · `body` ไม่บังคับ
+
+```json
+{ "product_id": 12, "category": "counterfeit", "body": "โลโก้บนกล่องไม่เหมือนของแท้" }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + เคส | สำเร็จ |
+| 400 `VALIDATION_ERROR` | หัวข้อสั้นกว่า 3 / ยาวเกิน 150 ตัวอักษร · ไม่มีรายละเอียด (เคสทั่วไป) · หมวดไม่อยู่ในรายการ |
+| 404 `ORDER_NOT_FOUND` | `order_id` ไม่ใช่คำสั่งซื้อของตัวเอง |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+
+### `GET /support-tickets?status=&page=&pageSize=`
+
+`status` = `all` (ค่าเริ่มต้น) / `open` / `pending` / `closed`
+
+```json
+{
+  "data": [
+    {
+      "ticket_id": 12, "code": "TK012", "subject": "กล่องบุบระหว่างขนส่ง", "category": "damaged",
+      "body": "...", "status": "pending", "admin_reply": "ขออภัยครับ ...", "order_id": 15,
+      "created_at": "2026-10-24T03:00:00.000Z", "closed_at": null
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+### `GET /admin/support-tickets` (แอดมิน)
+
+| query | ค่า |
+|---|---|
+| `q` | รหัสเคส (`TK012`) · ตัวเลข (รหัสเคสหรือเลขคำสั่งซื้อ) · คำในหัวข้อ / ชื่อผู้ใช้ / อีเมลของผู้แจ้ง |
+| `category` | `all` หรือหมวดด้านบน |
+| `status` | `all` / `open` / `pending` / `closed` |
+| `assigned` | `all` / `me` (เคสที่ฉันรับผิดชอบ) / `unassigned` (ยังไม่มีคนรับ) |
+| `page`, `pageSize` | ค่าเริ่มต้น 1 และ 20 (สูงสุด 50) |
+
+ได้เคสเหมือนฝั่งลูกค้า และเพิ่ม `reporter` (ผู้แจ้ง) กับ `assignee` (ผู้รับผิดชอบ หรือ `null`) ส่วน `meta.counts` คือจำนวนเคสแต่ละสถานะตามเงื่อนไขอื่นที่เลือก (ใช้ทำตัวเลขบนแท็บ)
+
+```json
+{ "meta": { "page": 1, "pageSize": 20, "total": 7, "counts": { "open": 3, "pending": 2, "closed": 2 } } }
+```
+
+`GET /admin/support-tickets/:id` เพิ่ม `order` (สถานะ ยอดรวม เลขพัสดุของคำสั่งซื้อที่อ้างถึง หรือ `null`)
+
+### `PATCH /admin/support-tickets/:id` (แอดมิน)
+
+ส่งเฉพาะช่องที่จะแก้ อย่างน้อย 1 ช่อง
+
+```json
+{ "admin_reply": "ขออภัยครับ ส่งรูปกล่องมาที่อีเมลได้เลย", "status": "pending", "assigned_to": 3 }
+```
+
+- ตอบกลับเคสที่ยัง `open` โดยไม่ส่ง `status` → เปลี่ยนเป็น `pending` ให้เอง
+- เคสที่ยังไม่มีผู้รับผิดชอบ แล้วผู้ดูแลตอบหรือเปลี่ยนสถานะ → ผู้ดูแลคนนั้นเป็นผู้รับผิดชอบให้เอง
+- `assigned_to: null` = ยกเลิกผู้รับผิดชอบ · ต้องเป็นผู้ดูแลที่ใช้งานอยู่ (ดูรายชื่อจาก `GET /admin/support-tickets/assignees`)
+- `admin_reply: ""` หรือ `null` = ลบคำตอบ
+- บันทึก `admin_action_log` (`target_type = 'support_ticket'`) แยกตามเรื่อง: `reply_ticket`, `update_ticket_status`, `assign_ticket` · ลบเคส = `delete_ticket`
+
+### บันทึกการกระทำของแอดมินใน module ของตัวเอง (BR-31)
+
+ใช้ `logAdminAction` จาก `backend/src/modules/support/action-log.service.js` ใน transaction เดียวกับการเปลี่ยนข้อมูล
+
+```js
+const { logAdminAction } = require('../support/action-log.service');
+await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_refund', targetType: 'refund_request', targetId: 7, note: 'RF007: อนุมัติ' });
+```
 
