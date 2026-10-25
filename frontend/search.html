@@ -8,44 +8,115 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <!-- ใช้การ์ดสินค้าชุดเดียวกับหน้าแรก (product-card, product-grid) จะได้หน้าตาเหมือนกันทั้งเว็บ -->
+  <link rel="stylesheet" href="/css/pages/home.css">
+  <link rel="stylesheet" href="/css/pages/search.css">
 </head>
-<body>
+<!-- page-home = ใช้สี/ตัวแปรของหน้าแรก · page-search = สไตล์เฉพาะหน้านี้ (search.css) -->
+<body class="page-home page-search">
   <header id="site-header"></header>
 
   <main class="container">
     <!-- หน้าบังคับ: Search Page
          ต้องมี: ค้นหาแบบมีเงื่อนไขอย่างน้อย 3 แบบ + ค้นหาแบบไม่มีเงื่อนไข (แสดงทั้งหมด)
-         ผลลัพธ์กดลิงก์ไปหน้า Detail ได้
+         ผลลัพธ์อยู่ด้านล่างในหน้าเดียวกัน และกดไปหน้า Detail ได้
          ผู้รับผิดชอบ: R4 -->
-    <h1>ค้นหาสินค้า</h1>
-    <form id="search-form" class="card">
-      <div class="grid">
-        <div class="field">
-          <label for="q">ชื่อสินค้า</label>
-          <input id="q" name="q" placeholder="เช่น Gundam">
-        </div>
-        <div class="field">
-          <label for="category">หมวดหมู่</label>
-          <select id="category" name="category"><option value="">ทั้งหมด</option></select>
-        </div>
-        <div class="field">
-          <label for="condition">สภาพสินค้า</label>
-          <!-- value ต้องตรงกับค่าที่ API ของ R3 รับ (CONDITIONS ใน products.controller.js) -->
-          <select id="condition" name="condition">
-            <option value="">ทั้งหมด</option>
-            <option value="new">ของใหม่</option>
-            <option value="like_new">เหมือนใหม่</option>
-            <option value="excellent">สภาพดีมาก</option>
-            <option value="good">สภาพดี</option>
-            <option value="fair">พอใช้</option>
-            <option value="poor">มีตำหนิ</option>
-          </select>
-        </div>
+    <h1 data-i18n="search.title">ค้นหาสินค้า</h1>
+
+    <!-- novalidate = ไม่ให้เบราว์เซอร์ตรวจเอง ให้ API ตรวจแล้วเราแสดงข้อความเอง (ขั้นที่ 6) -->
+    <form id="search-form" class="search-panel" role="search" novalidate>
+      <!-- แถบค้นหา: หน้าตาเดียวกับช่องค้นหาในหน้าแรก (คลาส hero-search / btn-dark มาจาก home.css) -->
+      <div class="hero-search">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <!-- เงื่อนไขที่ 1: ชื่อสินค้า → ส่งเป็น ?q= · label ซ่อนไว้ให้โปรแกรมอ่านหน้าจอใช้ -->
+        <label class="visually-hidden" for="q" data-i18n="search.q">ชื่อสินค้า</label>
+        <input id="q" name="q" type="search" placeholder="เช่น Gundam, Charizard"
+               data-i18n-attr="placeholder:search.qPlaceholder" autocomplete="off">
+        <button class="btn-dark" type="submit" data-i18n="search.submit">ค้นหา</button>
       </div>
-      <button class="btn btn-primary" type="submit">ค้นหา</button>
-      <button class="btn btn-ghost" type="button" id="show-all">แสดงทั้งหมด</button>
+      <small class="field-error" data-error-for="q"></small>
+
+      <div class="search-tools">
+        <!-- ตัวกรอง: <details> กาง/หุบได้เองเมื่อกด <summary> ไม่ต้องเขียน JavaScript -->
+        <details class="search-filters" id="filters">
+          <summary>
+            <!-- ข้อความแยกเป็น span เพราะระบบแปลจะเขียนทับข้อความทั้งก้อน ป้ายตัวเลขจะได้ไม่หาย -->
+            <span data-i18n="search.filters">ตัวกรอง</span>
+            <!-- จำนวนตัวกรองที่ตั้งไว้ (JS อัปเดต) ไม่มีตัวกรอง = ซ่อน -->
+            <span class="filter-badge" id="filter-badge" hidden></span>
+          </summary>
+
+          <div class="filters-body">
+            <div class="search-fields">
+              <!-- เงื่อนไขที่ 2: หมวดหมู่ → ตัวเลือกเติมด้วย JS จาก GET /api/categories (ขั้นที่ 2) -->
+              <div class="field">
+                <label for="category" data-i18n="search.category">หมวดหมู่</label>
+                <select id="category" name="category">
+                  <option value="" data-i18n="search.all">ทั้งหมด</option>
+                </select>
+                <small class="field-error" data-error-for="category"></small>
+              </div>
+
+              <!-- เงื่อนไขที่ 3: สภาพสินค้า · value ต้องตรงกับที่ API ของ R3 รับ (CONDITIONS ใน products.controller.js) -->
+              <div class="field">
+                <label for="condition" data-i18n="search.condition">สภาพสินค้า</label>
+                <select id="condition" name="condition">
+                  <option value="" data-i18n="search.all">ทั้งหมด</option>
+                  <option value="new" data-i18n="cond.new">ของใหม่</option>
+                  <option value="like_new" data-i18n="cond.like_new">เหมือนใหม่</option>
+                  <option value="excellent" data-i18n="cond.excellent">สภาพดีมาก</option>
+                  <option value="good" data-i18n="cond.good">สภาพดี</option>
+                  <option value="fair" data-i18n="cond.fair">พอใช้</option>
+                  <option value="poor" data-i18n="cond.poor">มีตำหนิ</option>
+                </select>
+                <small class="field-error" data-error-for="condition"></small>
+              </div>
+
+              <!-- เงื่อนไขที่ 4: ช่วงราคา → ?minPrice= &maxPrice= -->
+              <div class="field">
+                <label for="minPrice" data-i18n="search.minPrice">ราคาต่ำสุด (บาท)</label>
+                <input id="minPrice" name="minPrice" type="number" min="0" step="1" inputmode="numeric">
+                <small class="field-error" data-error-for="minPrice"></small>
+              </div>
+              <div class="field">
+                <label for="maxPrice" data-i18n="search.maxPrice">ราคาสูงสุด (บาท)</label>
+                <input id="maxPrice" name="maxPrice" type="number" min="0" step="1" inputmode="numeric">
+                <small class="field-error" data-error-for="maxPrice"></small>
+              </div>
+
+              <!-- การเรียงลำดับ · value ต้องเป็นค่าที่ API รับ: newest, price_asc, price_desc -->
+              <div class="field">
+                <label for="sort" data-i18n="search.sort">เรียงตาม</label>
+                <select id="sort" name="sort">
+                  <option value="newest" data-i18n="search.sortNewest">มาใหม่ล่าสุด</option>
+                  <option value="price_asc" data-i18n="search.sortPriceAsc">ราคาต่ำ → สูง</option>
+                  <option value="price_desc" data-i18n="search.sortPriceDesc">ราคาสูง → ต่ำ</option>
+                </select>
+                <small class="field-error" data-error-for="sort"></small>
+              </div>
+            </div>
+
+            <div class="filters-foot">
+              <!-- เงื่อนไขที่ 5: เฉพาะที่มีของ · ติ๊กแล้วฟอร์มจะส่ง inStock=true ถ้าไม่ติ๊กจะไม่ส่งเลย -->
+              <label class="search-check">
+                <input type="checkbox" name="inStock" value="true">
+                <span data-i18n="search.inStock">เฉพาะที่มีของ</span>
+              </label>
+              <!-- ปุ่ม submit ปุ่มที่สองของฟอร์ม · JS จะเปลี่ยนข้อความเป็น "แสดง N ชิ้น" ตามตัวกรองที่เลือก -->
+              <button class="btn-dark" type="submit" id="apply-filters" data-i18n="search.applyFilters">ใช้ตัวกรอง</button>
+            </div>
+          </div>
+        </details>
+
+        <!-- ค้นหาแบบไม่มีเงื่อนไข (โจทย์บังคับ) -->
+        <button class="btn btn-ghost btn-pill" type="button" id="show-all" data-i18n="search.showAll">แสดงทั้งหมด</button>
+      </div>
     </form>
-    <div id="results" class="grid" style="margin-top:24px"></div>
+
+    <!-- aria-live = โปรแกรมอ่านหน้าจอจะอ่านข้อความนี้ให้ฟังทุกครั้งที่เปลี่ยน -->
+    <p id="result-count" class="result-count" aria-live="polite"></p>
+    <div id="results" class="product-grid"></div>
+    <nav id="pager" class="pager" aria-label="เปลี่ยนหน้าผลลัพธ์"></nav>
   </main>
 
   <footer id="site-footer"></footer>
