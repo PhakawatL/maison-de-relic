@@ -69,7 +69,9 @@ export function showErrors(form, err) {
   if (err instanceof ApiError && Array.isArray(err.details)) {
     for (const { field, issue } of err.details) {
       const box = form.querySelector(`[data-error-for="${field}"]`);
-      const input = form.elements[field];
+      let input = form.elements[field];
+      // ช่องแบบ radio หลายตัวชื่อเดียวกัน (เช่น ให้คะแนน 1–5 ดาว) ได้ RadioNodeList → ใช้ตัวแรกแทน
+      if (input instanceof RadioNodeList) input = input[0];
       if (!box || !input) continue;
       box.textContent = issueText(issue);
       input.setAttribute('aria-invalid', 'true');
