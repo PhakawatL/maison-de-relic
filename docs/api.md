@@ -129,6 +129,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/refund-requests` | แอดมิน | R1 | ทุกคำขอ ค้นหา/กรองสถานะ + จำนวนแต่ละสถานะ |
 | GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
 | PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
+| GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
 | | | | | |
 
 ---
@@ -804,6 +805,28 @@ setupHeartButtons(container);
 const { logAdminAction } = require('../support/action-log.service');
 await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_refund', targetType: 'refund_request', targetId: 7, note: 'RF007: อนุมัติ' });
 ```
+
+- `actionType` = กริยา_สิ่งที่ทำ ภาษาอังกฤษตัวเล็ก เช่น `create_product`, `restock_product` · `targetType` = ชื่อตาราง เช่น `product`
+- log ขึ้นในหน้า `/admin/activity` ของ owner ทันที (ชื่อการกระทำที่ยังไม่มีคำแปลแสดงเป็นรหัสภาษาอังกฤษ — เพิ่มคำแปลได้ที่ `log.action.<actionType>` ใน `frontend/js/locales/*.js`)
+- `targetType = 'product'` หน้า `/admin/activity` แสดงชื่อสินค้าและรหัส P012 ให้เอง
+
+### `GET /admin/action-logs?q=&admin=&action=&target=&page=&pageSize=` (owner)
+
+ประวัติการทำงานของผู้ดูแลทั้งร้าน ล่าสุดก่อน · staff ได้ 403 (staff ดูประวัติของคำขอ / เคสที่เปิดอยู่ได้จาก `history` ในหน้ารายละเอียดแทน)
+
+- `q` = ข้อความใน note / ชื่อผู้ดูแล / ชื่อสิ่งที่ถูกเปลี่ยน · หรือรหัส `RF012` / `TK005` / `P012` (ตรงกับสิ่งนั้นเท่านั้น)
+- `admin` = user_id ของผู้ดูแล · `action` = เช่น `approve_refund` · `target` = เช่น `refund_request` (ไม่ส่ง / `all` = ทั้งหมด)
+
+```json
+{ "data": [ { "log_id": 41, "action_type": "approve_refund", "target_type": "refund_request", "target_id": 12,
+              "target_code": "RF012", "target_name": "RX-78-2 Gundam Ver.Ka", "note": "RF012: อนุมัติ · คืนเข้าสต็อก 1 ชิ้น",
+              "created_at": "...", "admin": { "user_id": 2, "username": "Neptz", "display_name": "Neptz" } } ],
+  "meta": { "page": 1, "pageSize": 20, "total": 57, "admins": [ ... ], "actions": [ ... ], "target_types": [ ... ] } }
+```
+
+`meta.admins` / `actions` / `target_types` = ค่าที่มีใน log ทั้งหมด ไว้ทำตัวเลือกของตัวกรอง
+
+`GET /admin/support-tickets/:id` และ `GET /admin/refund-requests/:id` มี `history` = log ของเคส / คำขอนั้น (เก่าสุดก่อน รูปเดียวกับด้านบน)
 
 ---
 

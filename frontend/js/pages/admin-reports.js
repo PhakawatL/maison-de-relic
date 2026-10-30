@@ -1,6 +1,7 @@
 // รายงานที่แจ้งเข้ามา (แอดมิน) — ผู้รับผิดชอบ: R1 · S12 · wireframe 30-Admin-Reports
 // API: /admin/support-tickets (ดู docs/api.md หัวข้อ "แจ้งปัญหา · รายงานสินค้า")
 // ข้อความอยู่ใน js/locales/th.js และ en.js หมวด ar.* (หน้านี้) และ support.* (หมวด / สถานะ)
+import { historyHtml } from '../admin-history.js';
 import { api } from '../api.js';
 import { requireAdminPage } from '../auth-guard.js';
 import { errorText } from '../forms.js';
@@ -340,6 +341,7 @@ function renderDetail() {
         <h3>${escapeHtml(t('ar.customerMessage'))}</h3>
         <p>${tk.body ? escapeHtml(tk.body) : `<span class="muted">${escapeHtml(t('ar.noMessage'))}</span>`}</p>
       </section>
+      ${historyHtml(tk.history, t('ar.history'))}
       <form id="reply-form" class="tk-reply" novalidate>
         <p class="alert alert-error" data-form-alert role="alert" hidden></p>
         <div class="field">

@@ -11,7 +11,7 @@
 // และหน้าแอดมินแปลงรหัสนี้เป็นลิงก์ไปหน้าสินค้าให้
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
-const { logAdminAction } = require('./action-log.service');
+const { logAdminAction, historyOf } = require('./action-log.service');
 
 // หมวดของเคส (เก็บเป็นรหัสภาษาอังกฤษ ข้อความที่แสดงอยู่ใน frontend/js/locales หมวด support.cat.*)
 const ORDER_CATEGORIES = ['not_as_described', 'damaged', 'not_delivered', 'product_question', 'payment', 'account'];
@@ -202,6 +202,7 @@ async function list(actorId, { q, category, status, assigned, page, pageSize }) 
 /**
  * เคส 1 เคสพร้อมรายละเอียดสำหรับผู้ดูแล — ไม่พบได้ null
  * เพิ่ม order (ถ้าอ้างถึงคำสั่งซื้อ) เพื่อให้ตอบลูกค้าได้โดยไม่ต้องเปิดหลายหน้า
+ * และ history = ประวัติการจัดการเคสจาก admin_action_log (เก่าสุดก่อน)
  */
 async function getById(ticketId, db = { query }) {
   const { rows } = await db.query(`SELECT ${ADMIN_COLUMNS} ${ADMIN_FROM} WHERE t.ticket_id = $1`, [ticketId]);
@@ -227,6 +228,7 @@ async function getById(ticketId, db = { query }) {
       };
     }
   }
+  ticket.history = await historyOf('support_ticket', ticketId, db);
   return ticket;
 }
 

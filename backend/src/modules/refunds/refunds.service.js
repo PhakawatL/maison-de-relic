@@ -19,7 +19,7 @@
 //       → "order".current_status = refunded + order_status_log + payment.status = refunded
 const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
-const { logAdminAction } = require('../support/action-log.service');
+const { logAdminAction, historyOf } = require('../support/action-log.service');
 
 const REFUND_WINDOW_DAYS = 7;
 const ELIGIBLE_ORDER_STATUSES = ['delivered', 'completed'];
@@ -282,9 +282,11 @@ async function list({ q, status, page, pageSize }) {
   return { items: rows.map(toAdminRefund), total, counts };
 }
 
+/** คำขอ 1 รายการ + history = ประวัติการพิจารณาจาก admin_action_log (เก่าสุดก่อน) */
 async function getById(refundId, db = { query }) {
   const { rows } = await db.query(`SELECT ${REFUND_COLUMNS} ${REFUND_FROM} WHERE rr.refund_id = $1`, [refundId]);
-  return rows[0] ? toAdminRefund(rows[0]) : null;
+  if (!rows[0]) return null;
+  return { ...toAdminRefund(rows[0]), history: await historyOf('refund_request', refundId, db) };
 }
 
 const invalidStatus = (status) =>

@@ -68,6 +68,7 @@ app.use('/api/reviews', reviews.router);                                        
 app.use('/api/products/:productId/reviews', reviews.productReviewsRouter);               // R1
 app.use('/api/refund-requests', require('./modules/refunds/refunds.routes'));              // R1
 app.use('/api/admin/refund-requests', require('./modules/refunds/refunds.admin.routes')); // R1
+app.use('/api/admin/action-logs', require('./modules/support/action-log.routes'));      // R1 (owner)
 
 // ---------- Error handling (ต้องอยู่ท้ายสุดเสมอ) ----------
 app.use('/api', notFound);
