@@ -66,6 +66,8 @@ app.use('/api/admin/support-tickets', require('./modules/support/tickets.admin.r
 const reviews = require('./modules/reviews/reviews.routes');
 app.use('/api/reviews', reviews.router);                                                // R1
 app.use('/api/products/:productId/reviews', reviews.productReviewsRouter);               // R1
+app.use('/api/refund-requests', require('./modules/refunds/refunds.routes'));              // R1
+app.use('/api/admin/refund-requests', require('./modules/refunds/refunds.admin.routes')); // R1
 
 // ---------- Error handling (ต้องอยู่ท้ายสุดเสมอ) ----------
 app.use('/api', notFound);
