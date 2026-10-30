@@ -747,6 +747,7 @@ setupHeartButtons(container);
 | 400 `VALIDATION_ERROR` | หัวข้อสั้นกว่า 3 / ยาวเกิน 150 ตัวอักษร · ไม่มีรายละเอียด (เคสทั่วไป) · หมวดไม่อยู่ในรายการ |
 | 404 `ORDER_NOT_FOUND` | `order_id` ไม่ใช่คำสั่งซื้อของตัวเอง |
 | 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+| 429 `TOO_MANY_REQUESTS` | เปิดเคสเกิน 15 ครั้งต่อชั่วโมง (นับต่อผู้ใช้ · `details.retry_after` = วินาทีที่ต้องรอ) |
 
 ### `GET /support-tickets?status=&page=&pageSize=`
 
@@ -870,6 +871,7 @@ await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_r
 | 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
 | 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า หรือคำสั่งซื้อถูกยกเลิก / คืนเงินแล้ว |
 | 409 `ALREADY_REVIEWED` | รีวิวรายการนี้ไปแล้ว |
+| 429 `TOO_MANY_REQUESTS` | เขียนรีวิวเกิน 30 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
 
 ### `GET /reviews/reviewable`
 
@@ -930,6 +932,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 | 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า / ยกเลิก / คืนเงินไปแล้ว |
 | 409 `REFUND_WINDOW_CLOSED` | เกิน 7 วันหลังได้รับ (`details.deadline`) |
 | 409 `REFUND_QTY_EXCEEDED` | เกินจำนวนที่ยังขอได้ (`details.refundable_qty`) |
+| 429 `TOO_MANY_REQUESTS` | ขอคืนเงินเกิน 20 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
 
 คำขอที่ได้: `refund_id`, `code` (`RF012`), `order_item_id`, `order_id`, `product_id`, `title`, `refund_qty`, `amount`, `reason`, `evidence_url`, `status`, `restock_decision`, `requested_at`, `resolved_at`
 
