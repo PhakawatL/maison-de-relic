@@ -37,6 +37,7 @@
 .sp-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  align-items: start; /* ช่องข้าง ๆ ไม่ยืดตามเมื่อมีข้อความใต้ช่องหมวด */
   gap: var(--space-3);
 }
 .field-error {
@@ -53,6 +54,20 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+/* ลิงก์ไปหน้าคืนเงิน ใต้ช่องหมวด (แสดงเมื่อเลือกของเสียหาย / ไม่ตรงปก) */
+.sp-refund-hint {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+.sp-refund-hint a {
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 /* ---------- รายการเคส ---------- */

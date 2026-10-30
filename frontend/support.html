@@ -49,6 +49,11 @@
             <label for="t-category" data-i18n="support.category">หมวด</label>
             <select id="t-category" name="category" required></select>
             <small class="field-error" data-error-for="category"></small>
+            <!-- หมวดที่มักต้องการคืนเงิน (ของเสียหาย / ไม่ตรงปก) → ชี้ไปหน้าคืนเงิน (support.js แสดงให้) -->
+            <small class="sp-refund-hint" id="refund-hint" hidden>
+              <span data-i18n="support.refundHint">ต้องการคืนเงิน?</span>
+              <a href="/refunds" data-i18n="support.refundLink">ขอคืนเงินได้ที่หน้าคืนสินค้า (ภายใน 7 วันหลังได้รับสินค้า)</a>
+            </small>
           </div>
           <div class="field">
             <label for="t-order" data-i18n="support.orderOptional">เลขคำสั่งซื้อ (ถ้ามี)</label>
