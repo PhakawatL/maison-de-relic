@@ -36,6 +36,19 @@ export default {
   'cond.fair': 'พอใช้',
   'cond.poor': 'มีตำหนิ',
 
+  // หน้ารายละเอียดสินค้า (R4)
+  'detail.condition': 'สภาพ',
+  'detail.score': 'คะแนน {n}/10',
+  'detail.stock': 'สต็อก',
+  'detail.inStock': 'มีของ {n} ชิ้น',
+  'detail.outOfStock': 'สินค้าหมด',
+  'detail.description': 'รายละเอียด',
+  'detail.noDescription': 'ยังไม่มีคำอธิบาย',
+  'detail.noImage': 'ยังไม่มีรูป',
+  'detail.noId': 'ไม่ได้ระบุสินค้า',
+  'detail.notFound': 'ไม่พบสินค้านี้ อาจถูกนำออกจากร้านแล้ว',
+  'detail.backToSearch': 'กลับไปหน้าค้นหา',
+
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'อาร์ตทอย',
   'cat.trading-cards': 'การ์ด',

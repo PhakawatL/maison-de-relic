@@ -1,0 +1,127 @@
+/* =========================================================
+   detail.css — สไตล์เฉพาะหน้ารายละเอียดสินค้า · ผู้รับผิดชอบ: R4
+   สี (--card, --line, --ink-3 ...), .kicker, .card-enter, .skel มาจาก home.css
+   ========================================================= */
+/* home.css ตั้ง .page-home main { padding: ... 0 0 } ซึ่งลบระยะซ้ายขวาของ .container ทิ้ง ต้องใส่คืน (เหมือนหน้า Search) */
+.page-detail main {
+  display: grid;
+  align-content: start; /* main สูงเต็มจอ ไม่ใส่ grid จะยืดแถวให้เต็มที่ว่าง */
+  gap: var(--space-5);
+  padding-inline: var(--space-3);
+  padding-bottom: var(--space-5);
+}
+
+/* ---------- 2 คอลัมน์: รูปซ้าย ข้อมูลขวา ---------- */
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+/* ---------- รูป ---------- */
+.detail-media {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--tone-sand); /* สีพื้นเดียวกับการ์ดหน้าแรก */
+  border: 1px solid var(--line);
+}
+.detail-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.no-image {
+  color: var(--ink-3);
+}
+
+/* ---------- ข้อมูลสินค้า ---------- */
+.detail-info {
+  display: grid;
+  gap: var(--space-3);
+  align-content: start;
+}
+.detail-info .kicker {
+  margin: 0;
+}
+.detail-info h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.3rem);
+  line-height: 1.3;
+}
+.detail-price {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+/* สภาพ / สต็อก เป็นกล่องเล็ก 2 ช่องเคียงกัน */
+.detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.detail-facts > div {
+  padding: 12px 16px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.detail-facts dt {
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+.detail-facts dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+.detail-facts small {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.stock-out {
+  color: var(--accent);
+}
+.detail-desc h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.1rem;
+}
+.detail-desc p {
+  margin: 0;
+  line-height: 1.8;
+  white-space: pre-line; /* ถ้าแอดมินขึ้นบรรทัดใหม่ในคำอธิบาย ให้ขึ้นบรรทัดใหม่จริง */
+}
+
+/* ---------- ระหว่างโหลด (skeleton) ---------- */
+.skel-box {
+  background: linear-gradient(90deg, var(--skel-a) 25%, var(--skel-b) 50%, var(--skel-a) 75%) 0 0 / 200% 100%;
+  animation: shimmer 1.4s linear infinite; /* keyframes shimmer อยู่ใน home.css */
+  border: 0;
+}
+.skel-title {
+  width: 70%;
+  height: 2em;
+}
+
+/* ---------- error ---------- */
+/* error กินเต็มแถว (ไม่ต้องแบ่ง 2 คอลัมน์) */
+.detail-error {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+}
+.detail-error .alert {
+  margin: 0;
+}
+
+/* ---------- จอแคบ: เรียงลงเป็นคอลัมน์เดียว ---------- */
+@media (max-width: 768px) {
+  .detail {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+}
