@@ -5,12 +5,17 @@
 const { Router } = require('express');
 const controller = require('./reviews.controller');
 const { requireAuth, requireVerified } = require('../../middleware/auth');
+const { rateLimit } = require('../../middleware/rateLimit');
+
+const HOUR = 60 * 60 * 1000;
+// กันสแปม: เขียนรีวิวได้ไม่เกิน 30 ครั้งต่อชั่วโมงต่อผู้ใช้
+const createLimit = rateLimit({ name: 'review', max: 30, windowMs: HOUR, key: (req) => `u${req.user.user_id}` });
 
 const router = Router();
 router.use(requireAuth);
 router.get('/reviewable', controller.reviewable);          // GET  /api/reviews/reviewable  สินค้าที่รอรีวิว
 router.get('/mine', controller.mine);                      // GET  /api/reviews/mine        รีวิวที่เขียนไว้
-router.post('/', requireVerified, controller.create);      // POST /api/reviews             { order_item_id, rating, comment? }
+router.post('/', requireVerified, createLimit, controller.create); // POST /api/reviews             { order_item_id, rating, comment? }
 
 // mergeParams = ให้ router นี้อ่าน :productId ที่อยู่ใน path ตอน app.use ได้
 const productReviewsRouter = Router({ mergeParams: true });

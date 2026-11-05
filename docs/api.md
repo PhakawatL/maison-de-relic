@@ -129,6 +129,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/refund-requests` | แอดมิน | R1 | ทุกคำขอ ค้นหา/กรองสถานะ + จำนวนแต่ละสถานะ |
 | GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
 | PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
+| GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
 | | | | | |
 
 ---
@@ -746,6 +747,7 @@ setupHeartButtons(container);
 | 400 `VALIDATION_ERROR` | หัวข้อสั้นกว่า 3 / ยาวเกิน 150 ตัวอักษร · ไม่มีรายละเอียด (เคสทั่วไป) · หมวดไม่อยู่ในรายการ |
 | 404 `ORDER_NOT_FOUND` | `order_id` ไม่ใช่คำสั่งซื้อของตัวเอง |
 | 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+| 429 `TOO_MANY_REQUESTS` | เปิดเคสเกิน 15 ครั้งต่อชั่วโมง (นับต่อผู้ใช้ · `details.retry_after` = วินาทีที่ต้องรอ) |
 
 ### `GET /support-tickets?status=&page=&pageSize=`
 
@@ -805,6 +807,28 @@ const { logAdminAction } = require('../support/action-log.service');
 await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_refund', targetType: 'refund_request', targetId: 7, note: 'RF007: อนุมัติ' });
 ```
 
+- `actionType` = กริยา_สิ่งที่ทำ ภาษาอังกฤษตัวเล็ก เช่น `create_product`, `restock_product` · `targetType` = ชื่อตาราง เช่น `product`
+- log ขึ้นในหน้า `/admin/activity` ของ owner ทันที (ชื่อการกระทำที่ยังไม่มีคำแปลแสดงเป็นรหัสภาษาอังกฤษ — เพิ่มคำแปลได้ที่ `log.action.<actionType>` ใน `frontend/js/locales/*.js`)
+- `targetType = 'product'` หน้า `/admin/activity` แสดงชื่อสินค้าและรหัส P012 ให้เอง
+
+### `GET /admin/action-logs?q=&admin=&action=&target=&page=&pageSize=` (owner)
+
+ประวัติการทำงานของผู้ดูแลทั้งร้าน ล่าสุดก่อน · staff ได้ 403 (staff ดูประวัติของคำขอ / เคสที่เปิดอยู่ได้จาก `history` ในหน้ารายละเอียดแทน)
+
+- `q` = ข้อความใน note / ชื่อผู้ดูแล / ชื่อสิ่งที่ถูกเปลี่ยน · หรือรหัส `RF012` / `TK005` / `P012` (ตรงกับสิ่งนั้นเท่านั้น)
+- `admin` = user_id ของผู้ดูแล · `action` = เช่น `approve_refund` · `target` = เช่น `refund_request` (ไม่ส่ง / `all` = ทั้งหมด)
+
+```json
+{ "data": [ { "log_id": 41, "action_type": "approve_refund", "target_type": "refund_request", "target_id": 12,
+              "target_code": "RF012", "target_name": "RX-78-2 Gundam Ver.Ka", "note": "RF012: อนุมัติ · คืนเข้าสต็อก 1 ชิ้น",
+              "created_at": "...", "admin": { "user_id": 2, "username": "Neptz", "display_name": "Neptz" } } ],
+  "meta": { "page": 1, "pageSize": 20, "total": 57, "admins": [ ... ], "actions": [ ... ], "target_types": [ ... ] } }
+```
+
+`meta.admins` / `actions` / `target_types` = ค่าที่มีใน log ทั้งหมด ไว้ทำตัวเลือกของตัวกรอง
+
+`GET /admin/support-tickets/:id` และ `GET /admin/refund-requests/:id` มี `history` = log ของเคส / คำขอนั้น (เก่าสุดก่อน รูปเดียวกับด้านบน)
+
 ---
 
 ## รีวิวสินค้า (R1)
@@ -847,6 +871,7 @@ await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_r
 | 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
 | 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า หรือคำสั่งซื้อถูกยกเลิก / คืนเงินแล้ว |
 | 409 `ALREADY_REVIEWED` | รีวิวรายการนี้ไปแล้ว |
+| 429 `TOO_MANY_REQUESTS` | เขียนรีวิวเกิน 30 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
 
 ### `GET /reviews/reviewable`
 
@@ -907,6 +932,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 | 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า / ยกเลิก / คืนเงินไปแล้ว |
 | 409 `REFUND_WINDOW_CLOSED` | เกิน 7 วันหลังได้รับ (`details.deadline`) |
 | 409 `REFUND_QTY_EXCEEDED` | เกินจำนวนที่ยังขอได้ (`details.refundable_qty`) |
+| 429 `TOO_MANY_REQUESTS` | ขอคืนเงินเกิน 20 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
 
 คำขอที่ได้: `refund_id`, `code` (`RF012`), `order_item_id`, `order_id`, `product_id`, `title`, `refund_qty`, `amount`, `reason`, `evidence_url`, `status`, `restock_decision`, `requested_at`, `resolved_at`
 

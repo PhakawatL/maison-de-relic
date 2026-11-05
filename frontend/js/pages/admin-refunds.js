@@ -4,6 +4,7 @@
 //
 // ลำดับสถานะ:  requested ──อนุมัติ──▶ approved ──โอนเงินคืนแล้ว──▶ refunded
 //                 └──────ไม่อนุมัติ──▶ rejected
+import { historyHtml } from '../admin-history.js';
 import { api } from '../api.js';
 import { requireAdminPage } from '../auth-guard.js';
 import { clearErrors, errorText, fieldError, showErrors } from '../forms.js';
@@ -343,6 +344,7 @@ function renderDetail() {
         <h3>${escapeHtml(t('af.reason'))}</h3>
         <p>${escapeHtml(r.reason)}</p>
       </section>
+      ${historyHtml(r.history, t('af.history'))}
       ${actionHtml(r)}
     </div>`;
 }

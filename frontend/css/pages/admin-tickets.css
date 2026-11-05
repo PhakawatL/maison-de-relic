@@ -380,6 +380,91 @@
   font-size: 0.88rem;
 }
 
+/* ---------- ประวัติการทำงาน: เส้นเวลาใน popup (refunds / reports) ---------- */
+.tk-history {
+  margin: 0 0 18px;
+}
+.tk-history h3 {
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.tk-history ol {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 0 5px;
+  padding: 2px 0 2px 18px;
+  border-left: 2px solid var(--line-soft);
+  list-style: none;
+}
+.tk-history li {
+  position: relative;
+  font-size: 0.88rem;
+}
+.tk-history li::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: -25px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--ink-3);
+  border-radius: 50%;
+  background: var(--card);
+}
+.tk-history li:last-child::before {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+.tk-history time {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+.tk-history p {
+  margin: 2px 0 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+/* ---------- หน้าประวัติการทำงาน (/admin/activity) ---------- */
+.lg-table td.col-date {
+  font-variant-numeric: tabular-nums;
+}
+.lg-table td.col-customer {
+  white-space: nowrap;
+}
+.lg-action {
+  display: block;
+  font-weight: 500;
+}
+.lg-note {
+  overflow-wrap: anywhere;
+}
+.lg-target {
+  display: inline-block;
+  max-width: 260px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+a.lg-target:hover {
+  color: var(--accent);
+}
+.lg-target-code {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.lg-target-name {
+  color: var(--ink-3);
+}
+.lg-table td.lg-target-cell {
+  font-weight: 400;
+}
+
 @media (max-width: 640px) {
   /* ตารางกลายเป็นการ์ดตาม admin.css — ซ่อนคอลัมน์ที่ย้ายไปอยู่ในแถว meta แล้ว */
   .admin-table td.col-category,

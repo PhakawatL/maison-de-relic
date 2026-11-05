@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="lg.pageTitle">ประวัติการทำงาน · Maison de Relic</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin.css">
+  <link rel="stylesheet" href="/css/pages/admin-tickets.css">
+  <!-- ตั้งธีม/ภาษาก่อนหน้าแสดงผล กันหน้ากระพริบ (แบบเดียวกับ admin/products.html) -->
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+    })(document.documentElement);
+  </script>
+</head>
+<body class="page-admin">
+  <!-- ประวัติการทำงานของผู้ดูแล (BR-31 · ตาราง admin_action_log) — เฉพาะ owner · ผู้รับผิดชอบ: R1
+       ทุกการเปลี่ยนแปลงสำคัญของผู้ดูแล (บัญชีผู้ใช้ เคสแจ้งปัญหา คำขอคืนเงิน สินค้า ฯลฯ) บันทึกอัตโนมัติ อ่านอย่างเดียว
+       ลิงก์ตรง: /admin/activity?q=RF012 · ?admin=2 · ?action=approve_refund · ?target=refund_request
+       ข้อความทั้งหมดอยู่ใน js/locales/th.js และ en.js หมวด lg.* และ log.* -->
+  <div id="admin-topbar"></div>
+
+  <div class="container admin-shell">
+    <nav id="admin-sidenav"></nav>
+
+    <main class="admin-main view-enter">
+      <div id="page-message" class="alert" role="status" hidden></div>
+
+      <header class="page-head">
+        <div>
+          <p class="kicker" data-i18n="lg.kicker">แผงผู้ดูแล · เฉพาะ owner</p>
+          <h1 class="page-title" data-i18n="lg.title">ประวัติการทำงาน</h1>
+          <p class="page-lede" data-i18n="lg.lede">ทุกการเปลี่ยนแปลงสำคัญของผู้ดูแลถูกบันทึกอัตโนมัติ ตรวจย้อนหลังได้ว่าใครทำอะไรเมื่อไร (แก้ไขหรือลบประวัติไม่ได้)</p>
+        </div>
+      </header>
+
+      <div id="owner-area" hidden>
+        <form id="search-form" class="admin-toolbar tk-toolbar" role="search">
+          <label class="search-pill">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <span class="visually-hidden" data-i18n="lg.searchLabel">ค้นหาประวัติ</span>
+            <input type="search" name="q" maxlength="100" autocomplete="off"
+                   placeholder="ค้นหาข้อความ / ชื่อ / รหัส RF012, TK005" data-i18n-attr="placeholder:lg.searchPlaceholder">
+          </label>
+          <label class="select-pill">
+            <span class="visually-hidden" data-i18n="lg.adminLabel">ผู้ดูแล</span>
+            <select name="admin"></select>
+          </label>
+          <label class="select-pill">
+            <span class="visually-hidden" data-i18n="lg.actionLabel">การกระทำ</span>
+            <select name="action"></select>
+          </label>
+          <label class="select-pill">
+            <span class="visually-hidden" data-i18n="lg.targetLabel">เกี่ยวกับ</span>
+            <select name="target"></select>
+          </label>
+          <button type="submit" class="btn btn-ghost btn-pill" data-i18n="lg.searchBtn">ค้นหา</button>
+        </form>
+
+        <div class="table-card">
+          <div class="table-wrap">
+            <table class="admin-table tk-table lg-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="lg.col.time">เวลา</th>
+                  <th scope="col" data-i18n="lg.col.admin">ผู้ดูแล</th>
+                  <th scope="col" data-i18n="lg.col.action">การกระทำ</th>
+                  <th scope="col" data-i18n="lg.col.target">เกี่ยวกับ</th>
+                </tr>
+              </thead>
+              <tbody id="log-rows"></tbody>
+            </table>
+          </div>
+          <nav id="pager" class="pager"></nav>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/js/admin-layout.js"></script>
+  <script type="module" src="/js/pages/admin-activity.js"></script>
+</body>
+</html>
