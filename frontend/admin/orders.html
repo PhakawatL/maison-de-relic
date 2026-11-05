@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="adminOrders.pageTitle">จัดการออเดอร์ · Maison de Relic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/pages/admin.css"><link rel="stylesheet" href="/css/pages/cart.css"><link rel="stylesheet" href="/css/pages/checkout.css"><link rel="stylesheet" href="/css/pages/orders.css"><link rel="stylesheet" href="/css/pages/admin-orders.css">
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+    })(document.documentElement);
+  </script>
+</head><body class="page-admin">
+<div id="admin-topbar"></div>
+<div class="container admin-shell">
+<nav id="admin-sidenav"></nav>
+<main class="admin-main admin-orders-main">
+
+<h1 data-i18n="adminOrders.title">จัดการออเดอร์</h1>
+<aside id="admin-preview" class="cart-preview" hidden><strong data-i18n="cart.previewTitle">โหมดตัวอย่าง</strong><p data-i18n="adminOrders.previewText">ทดลองเปลี่ยนสถานะและเลขพัสดุเฉพาะข้อมูลตัวอย่างในแท็บนี้ ไม่มีการแก้ไขออเดอร์จริง</p><a href="/orders?preview=1" data-i18n="orders.viewHistory">ดูประวัติการซื้อ</a> · <button type="button" class="admin-text-button" id="reset-preview" data-i18n="adminOrders.resetPreview">เริ่มตัวอย่างใหม่</button></aside>
+<form id="admin-orders-search" class="admin-orders-toolbar" hidden>
+<label class="admin-search-field"><span data-i18n="adminOrders.col.id">รหัสออเดอร์</span><input id="order-search-id" name="order_id" type="search" maxlength="100" placeholder="ORD-0001"></label>
+<label class="admin-search-field"><span data-i18n="adminOrders.col.recipient">ชื่อผู้รับ</span><input id="order-search-recipient" name="recipient" type="search" maxlength="100" data-i18n-attr="placeholder:adminOrders.recipientHint" placeholder="ค้นหาชื่อผู้รับ"></label>
+<label class="admin-search-field"><span data-i18n="order.tracking">เลขพัสดุ</span><input id="order-search-tracking" name="tracking_no" type="search" maxlength="100" data-i18n-attr="placeholder:adminOrders.trackingHint" placeholder="เช่น TH123456789"></label>
+<button class="btn btn-primary admin-order-search-button" type="submit" data-i18n-attr="aria-label:adminOrders.search;title:adminOrders.search" aria-label="ค้นหาออเดอร์" title="ค้นหาออเดอร์"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg></button>
+<label><span data-i18n="adminOrders.status">สถานะ</span><select id="order-status" name="status"></select></label>
+<label><span data-i18n="adminOrders.perPage">ออเดอร์ต่อหน้า</span><select id="order-page-size" name="pageSize"></select></label>
+
+</form>
+<div id="admin-order-message" role="status" aria-live="polite" tabindex="-1"></div>
+<div id="admin-orders-content" aria-busy="true"></div>
+<noscript>กรุณาเปิด JavaScript เพื่อจัดการออเดอร์</noscript>
+</main></div><script type="module" src="/js/admin-layout.js"></script><script type="module" src="/js/pages/admin-orders.js"></script></body></html>

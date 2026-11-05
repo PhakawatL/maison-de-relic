@@ -1,0 +1,11 @@
+const { Router } = require('express');
+const controller = require('./cart.controller');
+const { requireAuth, requireVerified } = require('./cart.auth');
+const router = Router();
+router.use(requireAuth);
+router.get('/', controller.list);
+router.post('/items', requireVerified, controller.add);
+router.patch('/items/:productId', requireVerified, controller.update);
+router.delete('/items/:productId', requireVerified, controller.remove);
+router.post('/item-removals', requireVerified, controller.removeMany);
+module.exports = router;

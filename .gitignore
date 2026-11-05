@@ -20,3 +20,6 @@ backend/uploads/
 
 # Vercel
 .vercel
+
+# Local R5 PR draft and verification notes (not part of the team source).
+/.local/r5/

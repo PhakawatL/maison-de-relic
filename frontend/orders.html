@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="orders.pageTitle">ประวัติการซื้อ · Maison de Relic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/pages/cart.css"><link rel="stylesheet" href="/css/pages/orders.css">
+</head><body><header id="site-header"></header>
+<main class="container cart-page orders-page"><h1 data-i18n="orders.title">ประวัติการซื้อ</h1>
+<aside id="orders-preview" class="cart-preview" hidden><strong data-i18n="cart.previewTitle">โหมดตัวอย่าง</strong><p data-i18n="orders.previewText">ประวัติและเลขพัสดุทั้งหมดเป็นข้อมูลตัวอย่าง ไม่มีการเปลี่ยนสถานะออเดอร์จริง</p><a href="/orders?preview=1" data-i18n="orders.previewFilled">ตัวอย่างประวัติ</a> · <a href="/orders?preview=empty" data-i18n="orders.previewEmpty">ตัวอย่างประวัติว่าง</a> · <a href="/cart?preview=1" data-i18n="checkout.previewBack">กลับไปตะกร้าตัวอย่าง</a></aside>
+<nav id="orders-filters" class="orders-filters" data-i18n-attr="aria-label:orders.filters" aria-label="กรองคำสั่งซื้อ" hidden></nav>
+<div id="orders-message" role="status" aria-live="polite" tabindex="-1"></div>
+<div id="orders-content" aria-busy="true"></div>
+<noscript>กรุณาเปิด JavaScript เพื่อดูประวัติการซื้อ</noscript>
+</main><footer id="site-footer"></footer><script type="module" src="/js/layout.js"></script><script type="module" src="/js/pages/orders.js"></script></body></html>

@@ -212,6 +212,13 @@ a {
   }
 }
 
+/* Signed-in menus include Orders and optional Admin. Give the whole menu its own row
+   so a single final link does not wrap below the other links. Guest layout is unchanged. */
+.header-inner:has(.nav a[href='/orders']) .nav {
+  order: 3;
+  flex-basis: 100%;
+}
+
 /* ปุ่มสลับภาษา TH | EN */
 .lang-switch {
   display: inline-flex;

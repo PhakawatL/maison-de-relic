@@ -26,6 +26,10 @@ export function targetHtml(log) {
   let href = null;
   let code = log.target_code;
   switch (log.target_type) {
+    case 'order':
+      href = `/admin/orders?id=${id}`;
+      code = `ORD-${String(id).padStart(4,'0')}`;
+      break;
     case 'refund_request':
       href = `/admin/refunds?refund=${id}`;
       break;

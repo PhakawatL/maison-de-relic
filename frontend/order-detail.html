@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="order.pageTitle">รายละเอียดคำสั่งซื้อ · Maison de Relic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/pages/cart.css"><link rel="stylesheet" href="/css/pages/checkout.css">
+<link rel="stylesheet" href="/css/pages/orders.css">
+<link rel="stylesheet" href="/css/pages/admin-orders.css">
+</head><body><header id="site-header"></header>
+<main class="container cart-page checkout-page">
+<a id="order-back" class="checkout-back" href="/orders" data-i18n="orders.back">← กลับไปประวัติการซื้อ</a>
+<aside id="order-preview" class="cart-preview" hidden><strong data-i18n="cart.previewTitle">โหมดตัวอย่าง</strong><p data-i18n="order.previewText">ใบสรุปตัวอย่างนี้ไม่ได้บันทึกในฐานข้อมูล</p></aside>
+<div id="order-message" role="status" aria-live="polite"></div>
+<div id="order-content" aria-busy="true"></div>
+</main><footer id="site-footer"></footer><script type="module" src="/js/layout.js"></script><script type="module" src="/js/pages/order-detail.js"></script></body></html>

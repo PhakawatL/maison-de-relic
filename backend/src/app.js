@@ -28,7 +28,10 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '1mb', verify(req, res, buffer) {
+  if (req.originalUrl.split('?')[0] === '/api/payments/omise/webhook') req.rawBody = buffer;
+} }));
+app.post('/api/payments/omise/webhook', require('./modules/orders/payments.controller').webhook);
 
 // ---------- Health check ----------
 // docker compose ใช้ตรวจว่ากล่อง api พร้อม และใช้ทดสอบว่า frontend ต่อ backend ได้
@@ -58,6 +61,10 @@ const { categoriesRouter, seriesRouter } = require('./modules/products/catalog.r
 app.use('/api/categories', categoriesRouter);                             // R3
 app.use('/api/series', seriesRouter);                                     // R3
 // app.use('/api/search', require('./modules/search/search.routes'));      // R4
+app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5
+app.use('/api/orders', require('./modules/orders/orders.routes'));      // R5
+app.use('/api/admin/orders', require('./modules/orders/admin-orders.routes')); // R5
+// app.use('/api/wishlist', require('./modules/wishlist/wishlist.routes'));// R1
 // app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5
 // app.use('/api/orders', require('./modules/orders/orders.routes'));      // R5
 app.use('/api/wishlist', require('./modules/wishlist/wishlist.routes'));   // R1
