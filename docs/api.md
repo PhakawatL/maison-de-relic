@@ -118,6 +118,10 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/support-tickets/:id` | แอดมิน | R1 | เคส 1 เคสพร้อมผู้แจ้งและคำสั่งซื้อที่อ้างถึง |
 | PATCH | `/admin/support-tickets/:id` | แอดมิน | R1 | ตอบกลับ / เปลี่ยนสถานะ / มอบหมายผู้รับผิดชอบ |
 | DELETE | `/admin/support-tickets/:id` | owner | R1 | ลบเคส |
+| GET | `/products/:productId/reviews` | - | R1 | รีวิวของสินค้า + สรุปคะแนน (กรองตามดาวได้) |
+| GET | `/reviews/reviewable` | ✓ | R1 | สินค้าที่ได้รับแล้วและยังไม่ได้รีวิว |
+| GET | `/reviews/mine` | ✓ | R1 | รีวิวที่ตัวเองเขียนไว้ |
+| POST | `/reviews` | ✓ ยืนยันอีเมลแล้ว | R1 | เขียนรีวิวสินค้า 1 รายการในคำสั่งซื้อ |
 | | | | | |
 
 ---
@@ -567,6 +571,8 @@ await withTransaction(async (client) => {
       "cover_image_url": "https://...",
       "category": { "category_id": 3, "name": "โมเดลพลาสติก", "slug": "model-kits" },
       "series": { "series_id": 3, "name": "Gundam", "slug": "gundam" },
+      "avg_rating": 4.5,
+      "review_count": 2,
       "created_at": "2026-10-14T01:00:00.000Z"
     }
   ],
@@ -575,6 +581,7 @@ await withTransaction(async (client) => {
 ```
 
 - `series` เป็น `null` ได้ถ้าสินค้าไม่อยู่ในซีรีส์ไหน
+- `avg_rating` (คะแนนรีวิวเฉลี่ย 1.0–5.0) เป็น `null` ถ้ายังไม่มีรีวิว · `review_count` = จำนวนรีวิว (มาจากตาราง `review` ของ R1 ดูหัวข้อรีวิวด้านล่าง)
 - `price` และ `condition_score` เป็นตัวเลข (ไม่ใช่ string)
 - query ผิดจะตอบ 400 `VALIDATION_ERROR` และบอกช่องที่ผิดใน `details`
 
@@ -790,4 +797,60 @@ setupHeartButtons(container);
 const { logAdminAction } = require('../support/action-log.service');
 await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_refund', targetType: 'refund_request', targetId: 7, note: 'RF007: อนุมัติ' });
 ```
+
+---
+
+## รีวิวสินค้า (R1)
+
+รีวิว 1 รายการ = สินค้า 1 รายการในคำสั่งซื้อ (`order_item`) · BR-25, BR-26
+
+- รีวิวได้เฉพาะคำสั่งซื้อของตัวเองที่ **ได้รับสินค้าแล้ว** (`current_status` = `delivered` หรือ `completed`)
+- รีวิวซ้ำรายการเดิมไม่ได้ (409) · ยังไม่มีการแก้ไข/ลบรีวิว
+- หน้าร้านแสดงชื่อผู้รีวิวแบบย่อ เช่น `สมชาย ก.` ไม่แสดงชื่อผู้ใช้ อีเมล หรือเลขคำสั่งซื้อ
+- คะแนนเฉลี่ยของแต่ละสินค้าอยู่ในการ์ดสินค้าแล้ว (`avg_rating`, `review_count` ใน `GET /products`, `GET /products/:id`, `GET /wishlist`)
+
+### `GET /products/:productId/reviews?rating=&page=&pageSize=`
+
+`rating` = `all` (ค่าเริ่มต้น) หรือ `1`–`5` · `pageSize` ค่าเริ่มต้น 10 (สูงสุด 50)
+
+```json
+{
+  "data": [
+    { "review_id": 8, "product_id": 12, "rating": 5, "comment": "ตรงปก แพ็กมาดีมาก", "created_at": "2026-10-24T03:00:00.000Z", "reviewer": "สมชาย ก." }
+  ],
+  "meta": {
+    "page": 1, "pageSize": 10, "total": 2,
+    "summary": { "average": 4.5, "count": 2, "distribution": { "5": 1, "4": 1, "3": 0, "2": 0, "1": 0 } }
+  }
+}
+```
+
+สินค้าที่ไม่มี / ยังไม่วางขาย → 404 `PRODUCT_NOT_FOUND`
+
+### `POST /reviews`
+
+```json
+{ "order_item_id": 31, "rating": 5, "comment": "ตรงปก แพ็กมาดีมาก" }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + รีวิว | สำเร็จ |
+| 400 `VALIDATION_ERROR` | `rating` ไม่ใช่ 1–5 · `comment` ยาวเกิน 1000 ตัวอักษร |
+| 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
+| 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า หรือคำสั่งซื้อถูกยกเลิก / คืนเงินแล้ว |
+| 409 `ALREADY_REVIEWED` | รีวิวรายการนี้ไปแล้ว |
+
+### `GET /reviews/reviewable`
+
+ใช้ทำรายการ "รอรีวิว" — `title` คือชื่อสินค้า ณ วันที่ซื้อ (`order_item.title_snapshot`)
+
+```json
+{ "data": [ { "order_item_id": 31, "order_id": 15, "product_id": 12, "title": "RX-78-2 Gundam Ver.Ka", "quantity": 1, "cover_image_url": "https://...", "order_status": "delivered", "placed_at": "..." } ] }
+```
+
+### หน้าเว็บ
+
+- เขียนรีวิว: ลิงก์ไป `/write-review?item=<order_item_id>` (หน้าคำสั่งซื้อของ R5 ใส่ปุ่มนี้ได้เลย) · เปิด `/write-review` เฉย ๆ จะเห็นรายการรอรีวิวทั้งหมด
+- รีวิวในหน้า Detail (R4): `import { mountProductReviews } from '../product-reviews.js'` แล้วเรียก `mountProductReviews(document.getElementById('reviews'), product)` — มีสรุปคะแนน รายการรีวิว กรองตามดาว และลิงก์ "รายงานสินค้านี้"
 

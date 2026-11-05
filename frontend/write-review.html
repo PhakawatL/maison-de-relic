@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="wr.pageTitle">เขียนรีวิว · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/write-review.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- รีวิวสินค้า (S11 · BR-25, BR-26) · ต้องล็อกอิน · ผู้รับผิดชอบ: R1 · Figma 28-Write-Review
+         /write-review              รายการสินค้าที่รอรีวิว + รีวิวที่เขียนไว้
+         /write-review?item=31      ฟอร์มเขียนรีวิวของสินค้ารายการที่ 31 ในคำสั่งซื้อ (order_item_id)
+         หน้าคำสั่งซื้อของ R5 ลิงก์มาที่ ?item= ได้เลย -->
+    <div id="page-alert" class="alert" role="status" hidden></div>
+    <div id="unverified" class="alert alert-error" role="alert" hidden>
+      <span data-i18n="wr.unverified">ยืนยันอีเมลก่อนจึงจะเขียนรีวิวได้</span>
+      <a href="/verify-email?next=/write-review" data-i18n="wr.verifyNow">ยืนยันอีเมลตอนนี้</a>
+    </div>
+
+    <!-- ฟอร์มเขียนรีวิว (มี ?item=) -->
+    <section id="form-view" class="wr-card card" aria-labelledby="wr-title" hidden>
+      <h1 id="wr-title" data-i18n="wr.title">เขียนรีวิว</h1>
+      <div id="wr-product" class="wr-product"></div>
+      <form id="review-form" novalidate>
+        <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+        <fieldset class="wr-stars-field">
+          <legend data-i18n="wr.rating">ให้คะแนน</legend>
+          <div class="wr-stars">
+            <input type="radio" id="star5" name="rating" value="5"><label for="star5"><span class="visually-hidden" data-i18n="wr.star5">5 ดาว</span><span aria-hidden="true">★</span></label>
+            <input type="radio" id="star4" name="rating" value="4"><label for="star4"><span class="visually-hidden" data-i18n="wr.star4">4 ดาว</span><span aria-hidden="true">★</span></label>
+            <input type="radio" id="star3" name="rating" value="3"><label for="star3"><span class="visually-hidden" data-i18n="wr.star3">3 ดาว</span><span aria-hidden="true">★</span></label>
+            <input type="radio" id="star2" name="rating" value="2"><label for="star2"><span class="visually-hidden" data-i18n="wr.star2">2 ดาว</span><span aria-hidden="true">★</span></label>
+            <input type="radio" id="star1" name="rating" value="1"><label for="star1"><span class="visually-hidden" data-i18n="wr.star1">1 ดาว</span><span aria-hidden="true">★</span></label>
+          </div>
+          <span class="wr-rating-text" id="rating-text" aria-live="polite"></span>
+          <small class="field-error" data-error-for="rating"></small>
+        </fieldset>
+        <div class="field">
+          <label for="wr-comment" data-i18n="wr.comment">เขียนรีวิว</label>
+          <textarea id="wr-comment" name="comment" rows="4" maxlength="1000"
+                    placeholder="สินค้าตรงปก แพ็กมาดีมาก..." data-i18n-attr="placeholder:wr.commentPh"></textarea>
+          <small class="wr-counter muted" id="comment-count">0 / 1000</small>
+          <small class="field-error" data-error-for="comment"></small>
+        </div>
+        <div class="wr-actions">
+          <a class="btn btn-ghost btn-pill" href="/write-review" data-i18n="wr.skip">ข้าม</a>
+          <button type="submit" class="btn btn-solid btn-pill" data-i18n="wr.submit">ส่งรีวิว</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ส่งรีวิวแล้ว -->
+    <section id="done-view" class="wr-card card wr-done" hidden>
+      <span class="wr-done-icon" aria-hidden="true">★</span>
+      <h1 data-i18n="wr.thanks">ขอบคุณสำหรับรีวิว</h1>
+      <p class="muted" data-i18n="wr.thanksText">รีวิวของคุณช่วยให้นักสะสมคนอื่นตัดสินใจได้ง่ายขึ้น</p>
+      <div class="wr-actions wr-actions-center">
+        <a class="btn btn-ghost btn-pill" id="done-product" data-i18n="wr.viewProduct">ดูหน้าสินค้า</a>
+        <a class="btn btn-solid btn-pill" href="/write-review" data-i18n="wr.reviewMore">รีวิวรายการอื่น</a>
+      </div>
+    </section>
+
+    <!-- รายการ (ไม่มี ?item=) -->
+    <section id="list-view" hidden>
+      <div class="wr-head">
+        <h1 data-i18n="wr.listTitle">รีวิวสินค้า</h1>
+        <p class="muted" data-i18n="wr.listLede">รีวิวได้หลังจากได้รับสินค้าแล้ว รายการละหนึ่งครั้ง</p>
+      </div>
+      <h2 class="wr-sub" data-i18n="wr.pending">รอรีวิว</h2>
+      <ul id="pending-list" class="wr-list" aria-busy="true"></ul>
+      <p id="pending-empty" class="wr-empty card" data-i18n="wr.pendingEmpty" hidden>ไม่มีสินค้าที่รอรีวิว</p>
+      <h2 class="wr-sub" data-i18n="wr.mine">รีวิวของฉัน</h2>
+      <ul id="mine-list" class="wr-list"></ul>
+      <p id="mine-empty" class="wr-empty card" data-i18n="wr.mineEmpty" hidden>ยังไม่ได้เขียนรีวิว</p>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/write-review.js"></script>
+</body>
+</html>

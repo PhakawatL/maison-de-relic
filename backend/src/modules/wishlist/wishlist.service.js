@@ -16,10 +16,8 @@ const { SUMMARY_COLUMNS, FROM_JOINS, toSummary } = require('../products/products
 async function listForUser(userId) {
   const { rows } = await query(
     `SELECT ${SUMMARY_COLUMNS}, w.added_at
-       FROM wishlist w
-       JOIN product p     ON p.product_id  = w.product_id
-       JOIN category c    ON c.category_id = p.category_id
-       LEFT JOIN series s ON s.series_id   = p.series_id
+       ${FROM_JOINS}
+       JOIN wishlist w ON w.product_id = p.product_id
       WHERE w.user_id = $1 AND p.status = 'available'
       ORDER BY w.added_at DESC, p.product_id DESC`,
     [userId]
