@@ -12,8 +12,10 @@
 //   * ใส่ไว้ใน <a> ของการ์ดได้ กดหัวใจแล้วไม่เปิดลิงก์ของการ์ด
 //   * แจ้ง event "wishlistchange" ที่ window ทุกครั้งที่เพิ่ม/เอาออกสำเร็จ
 //       window.addEventListener('wishlistchange', (e) => e.detail) // { productId, liked }
+//   * เพิ่มสำเร็จ → บันทึก event "wishlist" ให้ระบบแนะนำสินค้า (events.js · #8)
 import { api, ApiError } from './api.js';
 import { getMe, goToLogin } from './auth-guard.js';
+import { trackEvent } from './events.js';
 import { errorText } from './forms.js';
 import { onLangChange, t } from './i18n.js';
 
@@ -117,8 +119,12 @@ async function onClick(event) {
   try {
     if (willLike) await api.post('/wishlist', { product_id: productId });
     else await api.delete(`/wishlist/${productId}`);
-    if (willLike) liked.add(productId);
-    else liked.delete(productId);
+    if (willLike) {
+      liked.add(productId);
+      trackEvent('wishlist', productId); // ไม่ต้องรอ
+    } else {
+      liked.delete(productId);
+    }
     window.dispatchEvent(new CustomEvent('wishlistchange', { detail: { productId, liked: willLike } }));
   } catch (err) {
     paintAll(productId, !willLike); // ไม่สำเร็จ → กลับเป็นเหมือนเดิม
