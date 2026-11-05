@@ -11,6 +11,7 @@ export default {
   'nav.adminUsers': 'Admins',
   'nav.admin': 'Admin',
   'nav.profile': 'My profile',
+  'nav.wishlist': 'Wishlist',
   'auth.signIn': 'Sign in',
   'auth.signUp': 'Sign up',
   'auth.logout': 'Log out',
@@ -260,6 +261,7 @@ export default {
   'err.ADDRESS_NOT_FOUND': 'Address not found.',
   'err.ADMIN_NOT_FOUND': 'Admin not found.',
   'err.CUSTOMER_NOT_FOUND': 'Customer not found.',
+  'err.PRODUCT_NOT_FOUND': 'This item doesn’t exist or isn’t for sale yet.',
 
   // ---------------------------------------------------------------- หน้าเข้าสู่ระบบ (R2)
   'login.pageTitle': 'Sign in · Maison de Relic',
@@ -414,4 +416,18 @@ export default {
   'customers.passwordNote': 'You can’t set a customer’s password. Customers can use “Forgot password” on the sign-in page.',
   'customers.confirmTitle': 'Deactivate this customer?',
   'customers.confirmNote': 'The account stays in the system (orders and addresses are kept) and can be reactivated later.',
+
+  // ---------------------------------------------------------------- Wishlist: page + heart button (R1)
+  'wishlist.pageTitle': 'Wishlist · Maison de Relic',
+  'wishlist.title': 'Wishlist',
+  'wishlist.count': '{n} saved items',
+  'wishlist.viewDetail': 'View details',
+  'wishlist.soldOut': 'Sold out',
+  'wishlist.emptyTitle': 'Nothing saved yet',
+  'wishlist.emptyHint': 'Tap the heart on any item to save it for later.',
+  'wishlist.startShopping': 'Start browsing',
+  'wishlist.add': 'Add to wishlist',
+  'wishlist.remove': 'Remove from wishlist',
+  'wishlist.needVerify': 'Verify your email to save items to your wishlist.',
+  'wishlist.verifyNow': 'Verify email',
 };

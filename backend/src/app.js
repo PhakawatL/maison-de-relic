@@ -60,7 +60,7 @@ app.use('/api/series', seriesRouter);                                     // R3
 // app.use('/api/search', require('./modules/search/search.routes'));      // R4
 // app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5
 // app.use('/api/orders', require('./modules/orders/orders.routes'));      // R5
-// app.use('/api/wishlist', require('./modules/wishlist/wishlist.routes'));// R1
+app.use('/api/wishlist', require('./modules/wishlist/wishlist.routes'));   // R1
 
 // ---------- Error handling (ต้องอยู่ท้ายสุดเสมอ) ----------
 app.use('/api', notFound);

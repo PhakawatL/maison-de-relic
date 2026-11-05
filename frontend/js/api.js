@@ -3,7 +3,7 @@
 //   import { api, ApiError } from './api.js';
 //
 //   const { data } = await api.get('/products', { q: 'gundam', category: 3 });
-//   const { data } = await api.post('/wishlist', { productId: 12 });
+//   const { data } = await api.post('/wishlist', { product_id: 12 });
 //
 //   try { ... } catch (err) {
 //     if (err instanceof ApiError && err.code === 'PRODUCT_NOT_FOUND') { ... }
