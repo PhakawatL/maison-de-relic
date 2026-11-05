@@ -137,6 +137,7 @@ function renderFooter() {
       <nav class="footer-links" aria-label="${t('nav.label')}">
         <a href="/team">${t('footer.team')}</a>
         <a href="/support">${t('footer.help')}</a>
+        <a href="/refunds">${t('footer.refunds')}</a>
       </nav>
     </div>`;
 }

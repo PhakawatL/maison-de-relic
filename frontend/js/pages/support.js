@@ -53,6 +53,13 @@ function fillCategories() {
   select.value = current;
 }
 
+// หมวดที่ลูกค้ามักอยากได้เงินคืน → แสดงลิงก์ไปหน้าคืนเงิน /refunds ใต้ช่องหมวด
+const REFUND_CATEGORIES = ['damaged', 'not_as_described'];
+function paintRefundHint() {
+  $('refund-hint').hidden = !REFUND_CATEGORIES.includes(els.form.elements.category.value);
+}
+els.form.elements.category.addEventListener('change', paintRefundHint);
+
 function toggleForm(open) {
   els.section.hidden = !open;
   els.newBtn.setAttribute('aria-expanded', String(open));
@@ -71,6 +78,7 @@ els.newBtn.addEventListener('click', () => toggleForm(els.section.hidden));
 els.cancel.addEventListener('click', () => {
   els.form.reset();
   clearErrors(els.form);
+  paintRefundHint();
   toggleForm(false);
 });
 
@@ -90,6 +98,7 @@ els.form.addEventListener('submit', (event) => {
     try {
       const { data } = await api.post('/support-tickets', body);
       els.form.reset();
+      paintRefundHint();
       toggleForm(false);
       showAlert(() => t('support.sent', { code: data.code }));
       state.status = 'all';
@@ -107,6 +116,7 @@ fillCategories();
 if (params.get('category') && CATEGORIES.includes(params.get('category'))) {
   els.form.elements.category.value = params.get('category');
 }
+paintRefundHint();
 if (/^\d{1,12}$/.test(params.get('order') || '')) els.form.elements.order_id.value = params.get('order');
 if (me.is_email_verified && (params.has('new') || params.has('order'))) toggleForm(true);
 

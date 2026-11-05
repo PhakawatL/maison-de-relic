@@ -122,6 +122,13 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/reviews/reviewable` | ✓ | R1 | สินค้าที่ได้รับแล้วและยังไม่ได้รีวิว |
 | GET | `/reviews/mine` | ✓ | R1 | รีวิวที่ตัวเองเขียนไว้ |
 | POST | `/reviews` | ✓ ยืนยันอีเมลแล้ว | R1 | เขียนรีวิวสินค้า 1 รายการในคำสั่งซื้อ |
+| GET | `/refund-requests/refundable` | ✓ | R1 | สินค้าที่ยังขอคืนเงินได้ (ได้รับแล้วไม่เกิน 7 วัน) |
+| GET | `/refund-requests` | ✓ | R1 | คำขอคืนเงินของตัวเอง |
+| GET | `/refund-requests/:id` | ✓ | R1 | คำขอของตัวเอง 1 รายการ |
+| POST | `/refund-requests` | ✓ ยืนยันอีเมลแล้ว | R1 | ขอคืนเงินสินค้า 1 รายการในคำสั่งซื้อ |
+| GET | `/admin/refund-requests` | แอดมิน | R1 | ทุกคำขอ ค้นหา/กรองสถานะ + จำนวนแต่ละสถานะ |
+| GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
+| PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
 | | | | | |
 
 ---
@@ -853,4 +860,75 @@ await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_r
 
 - เขียนรีวิว: ลิงก์ไป `/write-review?item=<order_item_id>` (หน้าคำสั่งซื้อของ R5 ใส่ปุ่มนี้ได้เลย) · เปิด `/write-review` เฉย ๆ จะเห็นรายการรอรีวิวทั้งหมด
 - รีวิวในหน้า Detail (R4): `import { mountProductReviews } from '../product-reviews.js'` แล้วเรียก `mountProductReviews(document.getElementById('reviews'), product)` — มีสรุปคะแนน รายการรีวิว กรองตามดาว และลิงก์ "รายงานสินค้านี้"
+
+---
+
+## คืนเงิน (R1)
+
+คำขอ 1 รายการ = ขอคืนสินค้า 1 รายการในคำสั่งซื้อ (`order_item`) บางชิ้นหรือทั้งหมด · ตาราง `refund_request` · BR-22, BR-23
+
+```
+requested ──อนุมัติ──▶ approved ──โอนเงินคืนแล้ว──▶ refunded
+    └──────ไม่อนุมัติ──▶ rejected
+```
+
+กติกาฝั่งลูกค้า
+
+- ขอได้เฉพาะคำสั่งซื้อของตัวเองที่ **ได้รับสินค้าแล้ว** (`delivered` / `completed`) และ **ไม่เกิน 7 วัน** หลังได้รับ
+  - เวลาที่ได้รับ = แถว `to_status = 'delivered'` ล่าสุดใน `order_status_log` · **R5 ช่วยบันทึกแถวนี้ตอนเปลี่ยนสถานะเป็น delivered** ถ้าไม่มี ระบบใช้เวลาสั่งซื้อแทน (เข้มกว่า)
+- ขอหลายครั้งต่อรายการได้ แต่รวมกันต้องไม่เกินจำนวนที่ซื้อ (คำขอที่ไม่อนุมัติไม่นับ)
+- ยอดคืน `amount` = ราคาต่อชิ้น ณ วันที่ซื้อ × จำนวน (ระบบคำนวณเอง)
+
+กติกาฝั่งผู้ดูแล (บันทึก `admin_action_log` ทุกครั้ง: `approve_refund`, `reject_refund`, `complete_refund`)
+
+- **อนุมัติ** ต้องเลือก `restock_decision`
+  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (R3 เปลี่ยนไปเรียกฟังก์ชันสต็อกกลางได้เมื่อทำ #20 เสร็จ)
+  - `write_off` ตัดจำหน่าย (ของเสียหายขายต่อไม่ได้) → สต็อกไม่เปลี่ยน
+- **โอนเงินคืนแล้ว** (จำลอง ไม่มี payment gateway) ถ้าคืนครบทุกชิ้นของคำสั่งซื้อ → `"order".current_status = 'refunded'` + แถวใหม่ใน `order_status_log` + `payment.status = 'refunded'` · คืนไม่ครบ สถานะคำสั่งซื้อเหมือนเดิม
+
+### `GET /refund-requests/refundable`
+
+```json
+{ "data": [ { "order_item_id": 31, "order_id": 15, "product_id": 12, "title": "RX-78-2 Gundam Ver.Ka", "cover_image_url": "https://...",
+              "quantity": 2, "refundable_qty": 1, "unit_price": 1500, "delivered_at": "...", "deadline": "..." } ] }
+```
+
+### `POST /refund-requests`
+
+```json
+{ "order_item_id": 31, "refund_qty": 1, "reason": "ชำรุด/เสียหาย: แขนหักตั้งแต่เปิดกล่อง", "evidence_url": "https://..." }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + คำขอ (`status: requested`) | สำเร็จ |
+| 400 `VALIDATION_ERROR` | `refund_qty` ไม่ใช่จำนวนเต็มบวก · `reason` สั้นกว่า 5 / ยาวเกิน 1000 ตัวอักษร · `evidence_url` ไม่ใช่ลิงก์ http(s) |
+| 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
+| 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า / ยกเลิก / คืนเงินไปแล้ว |
+| 409 `REFUND_WINDOW_CLOSED` | เกิน 7 วันหลังได้รับ (`details.deadline`) |
+| 409 `REFUND_QTY_EXCEEDED` | เกินจำนวนที่ยังขอได้ (`details.refundable_qty`) |
+
+คำขอที่ได้: `refund_id`, `code` (`RF012`), `order_item_id`, `order_id`, `product_id`, `title`, `refund_qty`, `amount`, `reason`, `evidence_url`, `status`, `restock_decision`, `requested_at`, `resolved_at`
+
+### `GET /admin/refund-requests?q=&status=&page=&pageSize=` (แอดมิน)
+
+`q` = รหัสคำขอ (`RF012`) · ตัวเลข (รหัสคำขอหรือเลขคำสั่งซื้อ) · ชื่อสินค้า / ชื่อผู้ใช้ / อีเมลของลูกค้า · `status` = `all` / `requested` / `approved` / `rejected` / `refunded`
+
+ได้คำขอเหมือนฝั่งลูกค้า และเพิ่ม `customer`, `order` (สถานะ ยอดรวม `delivered_at` และ `payment` = `{ method, status }` ช่องทางที่ลูกค้าชำระ ไว้โอนคืน), `item` (`purchased_qty`, `unit_price`), `product` (`stock_quantity` ปัจจุบัน), `reviewer` · `meta.counts` = จำนวนแต่ละสถานะ
+
+### `PATCH /admin/refund-requests/:id` (แอดมิน)
+
+```json
+{ "action": "approve", "restock_decision": "return", "note": "ตรวจของที่ส่งคืนแล้ว สภาพดี" }
+{ "action": "reject", "note": "รอยเกิดจากการใช้งาน" }
+{ "action": "refund" }
+```
+
+- `approve` ต้องมี `restock_decision` · `reject` ต้องมี `note` (เหตุผล) · `note` ยาวไม่เกิน 300 ตัวอักษร เก็บใน `admin_action_log` (ลูกค้าไม่เห็น)
+- ทำผิดลำดับ (เช่น อนุมัติซ้ำ, โอนเงินคืนคำขอที่ไม่อนุมัติ) → 409 `INVALID_REFUND_STATUS`
+
+### หน้าเว็บ
+
+- ลูกค้า: `/refunds` (เลือกสินค้าที่ขอคืนได้ + คำขอของฉัน) · ลิงก์ตรงไปฟอร์มของสินค้ารายการเดียว `/refunds?item=<order_item_id>` (หน้าคำสั่งซื้อของ R5 ใส่ปุ่ม "ขอคืนเงิน" ได้เลย)
+- ผู้ดูแล: `/admin/refunds`
 

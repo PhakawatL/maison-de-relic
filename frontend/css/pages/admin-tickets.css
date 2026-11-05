@@ -273,13 +273,124 @@
   flex: 1;
 }
 
+/* ---------- คำขอคืนเงิน (/admin/refunds) ---------- */
+.tk-table td.col-customer {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+.rf-money {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--line-soft);
+}
+.rf-money div {
+  display: grid;
+}
+.rf-money span,
+.rf-money p {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+}
+.rf-money strong {
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.rf-restock {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.rf-restock legend {
+  margin: 0 0 6px;
+  padding: 0;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.rf-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+/* ตัวเลือกแบบการ์ด — ทั้งการ์ดกดได้ ขอบเข้มเมื่อเลือก (ทับสไตล์ .tk-reply label ที่ใช้กับหัวช่อง) */
+.tk-reply .rf-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 400;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+/* ช่องข้อความ error ที่ forms.js เติมให้ — ซ่อนตอนยังว่าง (admin.css แสดงไอคอน ! เสมอ)
+   และให้ไอคอนอยู่บรรทัดเดียวกับข้อความ (ทับ .tk-reply .field small ที่เป็น block) */
+.tk-reply .field-error:empty {
+  display: none;
+}
+.tk-reply .field-error:not(:empty) {
+  display: flex;
+  margin-top: 6px;
+}
+.tk-reply .rf-choice:hover {
+  border-color: var(--ink-3);
+}
+.tk-reply .rf-choice:has(input:checked) {
+  border-color: var(--ink);
+  background: color-mix(in srgb, var(--paper) 70%, var(--card));
+}
+.rf-choice input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--ink);
+}
+.rf-choice strong {
+  display: block;
+  font-weight: 600;
+}
+.rf-choice small {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+.rf-refund-hint {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
+  font-size: 0.88rem;
+}
+.rf-closed {
+  margin: 0 0 6px;
+  font-size: 0.88rem;
+}
+
 @media (max-width: 640px) {
   /* ตารางกลายเป็นการ์ดตาม admin.css — ซ่อนคอลัมน์ที่ย้ายไปอยู่ในแถว meta แล้ว */
   .admin-table td.col-category,
   .admin-table td.col-date,
   .admin-table td.col-amount,
-  .admin-table td.col-item {
+  .admin-table td.col-item,
+  .admin-table td.col-customer {
     display: none;
+  }
+  .rf-choices {
+    grid-template-columns: 1fr;
   }
   .tk-subject-btn {
     max-width: none;
