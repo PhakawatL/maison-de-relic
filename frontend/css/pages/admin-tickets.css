@@ -1,0 +1,311 @@
+/* หน้าแอดมินของ R1: รายงานที่แจ้งเข้ามา (/admin/reports) และคำขอคืนเงิน (/admin/refunds)
+   ใช้คู่กับ admin.css (ตัวแปรสี ตาราง ปุ่ม แบ่งหน้า) — ไฟล์นี้เพิ่มเฉพาะส่วนที่หน้าของ R1 ใช้ */
+
+/* ---------- ตัวเลขแต่ละสถานะ (กดเพื่อกรอง) ---------- */
+.tk-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-3);
+}
+.tk-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, transform 0.2s;
+}
+.tk-count strong {
+  min-width: 26px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--line-soft);
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.tk-count:hover {
+  border-color: var(--ink);
+}
+.tk-count[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
+}
+.tk-count[aria-pressed='true'] strong {
+  background: color-mix(in srgb, var(--on-ink) 18%, transparent);
+  color: var(--on-ink);
+}
+
+/* ---------- สถานะ ---------- */
+.tk-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--line-soft);
+  color: var(--ink-2);
+}
+.tk-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.tk-pill[data-status='open'],
+.tk-pill[data-status='requested'] {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.tk-pill[data-status='pending'],
+.tk-pill[data-status='approved'] {
+  background: color-mix(in srgb, #3a6b8f 14%, transparent);
+  color: #2f5f8f;
+}
+[data-theme='dark'] .tk-pill[data-status='pending'],
+[data-theme='dark'] .tk-pill[data-status='approved'] {
+  color: #8ab8e6;
+}
+.tk-pill[data-status='closed'],
+.tk-pill[data-status='refunded'] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.tk-pill[data-status='rejected'] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* ---------- ตาราง ---------- */
+.tk-toolbar .search-pill {
+  flex: 1 1 210px;
+}
+.tk-toolbar .select-pill {
+  flex: 0 1 160px;
+}
+.tk-table th,
+.tk-table td {
+  padding-inline: 12px;
+}
+.tk-table th:first-child,
+.tk-table td:first-child {
+  padding-left: 18px;
+}
+.tk-table td.col-name {
+  min-width: 170px;
+}
+.tk-subject-btn {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.tk-subject-btn:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.tk-assignee,
+.tk-sub {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+.tk-reporter {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+.tk-table td.col-category,
+.tk-table td.col-date {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+.tk-table td.col-date {
+  white-space: nowrap;
+}
+
+/* ---------- popup รายละเอียด ---------- */
+.tk-dialog {
+  width: min(640px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.45);
+  overflow: auto;
+}
+.tk-dialog::backdrop {
+  background: rgba(28, 24, 20, 0.45);
+  backdrop-filter: blur(3px);
+}
+.tk-dialog[open] {
+  animation: pop-in 0.3s var(--ease) both;
+}
+.tk-dialog.closing {
+  animation: pop-out 0.16s ease both;
+}
+.tk-dhead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 10px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line-soft);
+}
+.tk-dtags {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tk-code {
+  color: var(--ink-3);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.tk-dbody {
+  padding: 18px 24px 22px;
+}
+.tk-dtitle {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.tk-product-link {
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+}
+.tk-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 0 0 16px;
+}
+.tk-facts div {
+  min-width: 0;
+}
+.tk-facts dt {
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+.tk-facts dd {
+  margin: 2px 0 0;
+  font-size: 0.92rem;
+  overflow-wrap: anywhere;
+}
+.tk-facts a {
+  color: var(--ink-2);
+}
+.tk-message {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--paper) 70%, var(--card));
+}
+.tk-message h3,
+.tk-reply label {
+  margin: 0 0 6px;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.tk-message p {
+  margin: 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.tk-reply textarea,
+.tk-reply select {
+  width: 100%;
+}
+.tk-reply textarea {
+  resize: vertical;
+  min-height: 96px;
+}
+.tk-reply .field small {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+}
+.tk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.tk-dactions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.tk-spacer {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  /* ตารางกลายเป็นการ์ดตาม admin.css — ซ่อนคอลัมน์ที่ย้ายไปอยู่ในแถว meta แล้ว */
+  .admin-table td.col-category,
+  .admin-table td.col-date,
+  .admin-table td.col-amount,
+  .admin-table td.col-item {
+    display: none;
+  }
+  .tk-subject-btn {
+    max-width: none;
+  }
+  .tk-toolbar .select-pill {
+    flex: 1 1 auto;
+  }
+  .tk-table td.col-name {
+    min-width: 0;
+  }
+  .tk-facts,
+  .tk-grid {
+    grid-template-columns: 1fr;
+  }
+  .tk-dbody {
+    padding: 16px;
+  }
+  .tk-dhead {
+    padding-left: 16px;
+  }
+  .tk-dactions .btn,
+  .tk-dactions .btn-ink {
+    flex: 1;
+    justify-content: center;
+  }
+  .tk-spacer {
+    display: none;
+  }
+}

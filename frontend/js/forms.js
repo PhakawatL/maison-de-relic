@@ -34,6 +34,10 @@ export function issueText(issue) {
   if (m) return t('form.maxLength', { n: m[1] });
   m = issue.match(/^ต้องยาว (\d+)–(\d+) ตัวอักษร$/);
   if (m) return t('form.passwordLength', { min: m[1], max: m[2] });
+  // ข้อความจากตัวช่วยตรวจข้อมูลของ R1 (backend/src/utils/validate.js)
+  m = issue.match(/^ต้องยาวอย่างน้อย (\d+) ตัวอักษร$/);
+  if (m) return t('form.minLength', { n: m[1] });
+  if (issue === 'ต้องเป็นจำนวนเต็มบวก') return t('form.positiveInt');
   return issue;
 }
 

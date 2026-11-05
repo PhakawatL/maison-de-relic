@@ -132,8 +132,12 @@ function renderFooter() {
   if (!el) return;
   el.classList.add('site-footer');
   el.innerHTML = `
-    <div class="container">
+    <div class="container footer-inner">
       <p>© ${new Date().getFullYear()} Maison de Relic · ${t('footer.text')}</p>
+      <nav class="footer-links" aria-label="${t('nav.label')}">
+        <a href="/team">${t('footer.team')}</a>
+        <a href="/support">${t('footer.help')}</a>
+      </nav>
     </div>`;
 }
 

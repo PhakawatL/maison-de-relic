@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="support.pageTitle">ศูนย์ช่วยเหลือ · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/support.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- ศูนย์ช่วยเหลือของลูกค้า (S12 · BR-27–29) · ต้องล็อกอิน · ผู้รับผิดชอบ: R1
+         แจ้งปัญหาใหม่ + ดูเคสของตัวเองและคำตอบจากร้าน
+         ลิงก์มาที่หน้านี้พร้อมค่าตั้งต้นได้ เช่น /support?new=1&order=15&category=damaged (หน้าคำสั่งซื้อของ R5) -->
+    <div class="sp-head">
+      <div>
+        <h1 data-i18n="support.title">ศูนย์ช่วยเหลือ</h1>
+        <p class="muted" data-i18n="support.lede">แจ้งปัญหาเกี่ยวกับคำสั่งซื้อหรือสินค้า แล้วติดตามคำตอบจากร้านได้ที่นี่</p>
+      </div>
+      <button type="button" class="btn btn-solid btn-pill" id="new-btn" aria-expanded="false" aria-controls="new-ticket">
+        <span data-i18n="support.newBtn">แจ้งปัญหาใหม่</span>
+      </button>
+    </div>
+
+    <div id="unverified" class="alert alert-error" role="alert" hidden>
+      <span data-i18n="support.unverified">ยืนยันอีเมลก่อนจึงจะแจ้งปัญหาได้</span>
+      <a href="/verify-email?next=/support" data-i18n="support.verifyNow">ยืนยันอีเมลตอนนี้</a>
+    </div>
+    <div id="page-alert" class="alert" role="status" hidden></div>
+
+    <!-- ฟอร์มแจ้งปัญหาใหม่ -->
+    <section id="new-ticket" class="card sp-form" aria-labelledby="new-title" hidden>
+      <h2 id="new-title" data-i18n="support.newTitle">แจ้งปัญหาใหม่</h2>
+      <form id="ticket-form" novalidate>
+        <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+        <div class="field">
+          <label for="t-subject" data-i18n="support.subject">หัวข้อ</label>
+          <input id="t-subject" name="subject" maxlength="150" required
+                 placeholder="เช่น กล่องบุบระหว่างขนส่ง" data-i18n-attr="placeholder:support.subjectPh">
+          <small class="field-error" data-error-for="subject"></small>
+        </div>
+        <div class="sp-row">
+          <div class="field">
+            <label for="t-category" data-i18n="support.category">หมวด</label>
+            <select id="t-category" name="category" required></select>
+            <small class="field-error" data-error-for="category"></small>
+          </div>
+          <div class="field">
+            <label for="t-order" data-i18n="support.orderOptional">เลขคำสั่งซื้อ (ถ้ามี)</label>
+            <input id="t-order" name="order_id" inputmode="numeric" maxlength="12" autocomplete="off"
+                   placeholder="เช่น 15" data-i18n-attr="placeholder:support.orderPh">
+            <small class="field-error" data-error-for="order_id"></small>
+          </div>
+        </div>
+        <div class="field">
+          <label for="t-body" data-i18n="support.body">รายละเอียด</label>
+          <textarea id="t-body" name="body" rows="5" maxlength="2000" required
+                    placeholder="เล่าปัญหาที่พบ เช่น ได้รับของวันไหน เกิดอะไรขึ้น" data-i18n-attr="placeholder:support.bodyPh"></textarea>
+          <small class="field-error" data-error-for="body"></small>
+        </div>
+        <div class="sp-actions">
+          <button type="button" class="btn btn-ghost btn-pill" id="cancel-btn" data-i18n="support.cancel">ยกเลิก</button>
+          <button type="submit" class="btn btn-solid btn-pill" data-i18n="support.submit">ส่งเรื่อง</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- เคสของฉัน -->
+    <section class="sp-section" aria-labelledby="mine-title">
+      <div class="sp-section-head">
+        <h2 id="mine-title" data-i18n="support.mine">เรื่องที่แจ้งไว้</h2>
+        <div class="sp-tabs" id="status-tabs" role="group" aria-label="กรองตามสถานะ" data-i18n-attr="aria-label:support.filterLabel">
+          <button type="button" data-status="all" aria-pressed="true" data-i18n="support.status.all">ทั้งหมด</button>
+          <button type="button" data-status="open" aria-pressed="false" data-i18n="support.status.open">รอดำเนินการ</button>
+          <button type="button" data-status="pending" aria-pressed="false" data-i18n="support.status.pending">กำลังดำเนินการ</button>
+          <button type="button" data-status="closed" aria-pressed="false" data-i18n="support.status.closed">ปิดเคสแล้ว</button>
+        </div>
+      </div>
+      <ul id="ticket-list" class="sp-list" aria-busy="true"></ul>
+      <div id="ticket-empty" class="sp-empty card" hidden>
+        <p data-i18n="support.empty">ยังไม่มีเรื่องที่แจ้งไว้</p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-pill sp-more" id="more-btn" hidden data-i18n="support.more">ดูเพิ่มเติม</button>
+    </section>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/support.js"></script>
+</body>
+</html>
