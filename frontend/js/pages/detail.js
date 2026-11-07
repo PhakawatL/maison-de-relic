@@ -192,6 +192,59 @@ function renderError(message) {
 }
 
 /* ---------- โหลดข้อมูล ---------- */
+/* ---------- สินค้าที่เกี่ยวข้อง ---------- */
+// GET /api/recommend/related/:id → 8 ชิ้นที่ "ความหมายใกล้" ที่สุด (เทียบ embedding ด้วย pgvector)
+// โหลดครั้งเดียวต่อสินค้า เก็บไว้ในตัวแปร · สลับภาษาแค่วาดใหม่ ไม่ยิง API ซ้ำ
+// การ์ดใช้ CSS ของหน้าแรก (home.css โหลดไว้ใน detail.html แล้ว) หน้าตาจึงเหมือนการ์ดทุกที่ในร้าน
+const relatedBox = document.getElementById('related');
+let related = [];
+
+function relatedCard(p, i) {
+  // ทุกข้อมูลจาก API ต้องผ่าน escapeHtml ก่อนใส่ใน innerHTML (กัน XSS)
+  const cover = p.cover_image_url ? `<img src="${escapeHtml(p.cover_image_url)}" alt="" loading="lazy">` : '';
+  const rating = p.avg_rating ? `<span class="product-rating">★ ${Number(p.avg_rating).toFixed(1)}</span>` : '';
+  // data-product-id ไว้ให้ตัวดักคลิกด้านล่างรู้ว่ากดชิ้นไหน
+  return `<a class="product-card card-enter" style="--i:${i}" href="/detail?id=${encodeURIComponent(p.product_id)}" data-product-id="${p.product_id}">
+      <div class="product-media">${cover}<span class="cond-badge">${escapeHtml(conditionText(p.condition))}</span></div>
+      <div class="product-body">
+        <span class="product-tag">${escapeHtml(categoryText(p.category))}</span>
+        <h3 class="product-title">${escapeHtml(p.title)}</h3>
+        <div class="product-foot"><span class="product-price">${priceFormat.format(p.price)}</span>${rating}</div>
+      </div>
+    </a>`;
+}
+
+function renderRelated() {
+  relatedBox.hidden = related.length === 0; // ไม่มีผล (เช่นสินค้ายังไม่มีเวกเตอร์) → ซ่อนทั้งส่วน ไม่ใช่ error
+  if (!related.length) return;
+  relatedBox.innerHTML = `
+    <div class="shelf-head">
+      <div>
+        <p class="kicker">${t('detail.relatedKicker')}</p>
+        <h2 id="related-title">${t('detail.relatedTitle')}</h2>
+      </div>
+    </div>
+    <div class="product-grid">${related.map(relatedCard).join('')}</div>`;
+}
+
+async function loadRelated(productId) {
+  try {
+    const { data } = await api.get(`/recommend/related/${encodeURIComponent(productId)}`);
+    related = data;
+  } catch {
+    related = []; // เป็นแถวเสริม พังก็แค่ไม่โชว์ ไม่ต้องบอกผู้ใช้
+  }
+  renderRelated();
+}
+
+// กดการ์ดสินค้าที่เกี่ยวข้อง = event "click" (น้ำหนัก 2 ใน "แนะนำสำหรับคุณ")
+// ผูกที่กล่องครั้งเดียว (event delegation) เพราะการ์ดถูกวาดใหม่ตอนสลับภาษา
+// trackEvent ส่งแบบ keepalive จึงส่งถึงแม้เบราว์เซอร์จะเปลี่ยนไปหน้าใหม่ทันที
+relatedBox.addEventListener('click', (e) => {
+  const card = e.target.closest('[data-product-id]');
+  if (card) trackEvent('click', Number(card.dataset.productId));
+});
+
 async function load() {
   // ไม่มี ?id= ใน URL → ไม่ต้องถาม API เลย
   if (!id) {
@@ -211,6 +264,8 @@ async function load() {
     // เปิดดูสินค้าสำเร็จ = event "view" (น้ำหนัก 1 ในระบบแนะนำสำหรับคุณ + เพิ่ม view_count)
     // ไม่ต้อง await: ส่งไม่สำเร็จก็ไม่กระทบหน้า · ส่งจริงเมื่อ EVENTS_ENABLED = true ใน config.js
     trackEvent('view', data.product_id);
+    // แถวสินค้าที่เกี่ยวข้อง — ไม่ต้อง await ให้หน้าหลักขึ้นก่อน แถวนี้ตามมาทีหลัง
+    loadRelated(data.product_id);
   } catch (err) {
     // INVALID_ID = id ไม่ใช่ตัวเลข · PRODUCT_NOT_FOUND = ไม่มีสินค้านี้ หรือซ่อน/ยังเป็น draft
     // ทั้งสองแบบผู้ใช้ไม่ต้องรู้ความต่าง บอกแค่ว่า "ไม่พบสินค้านี้"
@@ -226,6 +281,9 @@ async function load() {
 }
 
 // สลับภาษา TH/EN → วาดสิ่งที่โชว์อยู่ใหม่
-onLangChange(() => view && view());
+onLangChange(() => {
+  if (view) view();
+  renderRelated(); // แถวสินค้าที่เกี่ยวข้องวาดใหม่ด้วย (ใช้ข้อมูลเดิม)
+});
 
 load();

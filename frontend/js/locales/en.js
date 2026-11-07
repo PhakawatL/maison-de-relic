@@ -49,6 +49,8 @@ export default {
   'detail.noId': 'No product specified',
   'detail.notFound': 'Product not found. It may have been removed from the shop.',
   'detail.backToSearch': 'Back to search',
+  'detail.relatedKicker': 'Similar pieces',
+  'detail.relatedTitle': 'You may also like',
 
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'Art toys',
