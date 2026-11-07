@@ -5,6 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
 import { heartButton, setupHeartButtons } from '../wishlist-button.js'; // ปุ่มหัวใจ wishlist (R1)
 import { mountProductReviews } from '../product-reviews.js'; // ส่วนรีวิว + ลิงก์รายงานสินค้า (R1)
+import { trackEvent } from '../events.js'; // บันทึกพฤติกรรมไว้ทำระบบแนะนำ (ส่งไป POST /api/events ของ R4)
 
 applyI18n(); // แปลข้อความที่มี data-i18n ในหน้า (คำแปลอยู่ที่ js/locales/th.js และ en.js)
 
@@ -207,6 +208,9 @@ async function load() {
     // ส่วนรีวิวของ R1 เรียกครั้งเดียวพอ (ไม่อยู่ใน renderProduct) เพราะมันดูแลการสลับภาษาของมันเอง
     // เรียกเฉพาะตอนโหลดสินค้าสำเร็จ ถ้า error จะไม่มีส่วนรีวิว
     mountProductReviews(document.getElementById('reviews'), data);
+    // เปิดดูสินค้าสำเร็จ = event "view" (น้ำหนัก 1 ในระบบแนะนำสำหรับคุณ + เพิ่ม view_count)
+    // ไม่ต้อง await: ส่งไม่สำเร็จก็ไม่กระทบหน้า · ส่งจริงเมื่อ EVENTS_ENABLED = true ใน config.js
+    trackEvent('view', data.product_id);
   } catch (err) {
     // INVALID_ID = id ไม่ใช่ตัวเลข · PRODUCT_NOT_FOUND = ไม่มีสินค้านี้ หรือซ่อน/ยังเป็น draft
     // ทั้งสองแบบผู้ใช้ไม่ต้องรู้ความต่าง บอกแค่ว่า "ไม่พบสินค้านี้"
