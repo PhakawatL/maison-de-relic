@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="af.pageTitle">คำขอคืนเงิน · Maison de Relic</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin.css">
+  <link rel="stylesheet" href="/css/pages/admin-tickets.css">
+  <!-- ตั้งธีม/ภาษาก่อนหน้าแสดงผล กันหน้ากระพริบ (แบบเดียวกับ admin/products.html) -->
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+    })(document.documentElement);
+  </script>
+</head>
+<body class="page-admin">
+  <!-- คำขอคืนเงิน (S9 · BR-22, BR-23) — ตรวจคำขอคืนสินค้าจากลูกค้า
+       ต้องล็อกอินเป็นแอดมิน (owner และ staff ทำได้ทุกอย่างในหน้านี้) · ผู้รับผิดชอบ: R1
+       อนุมัติ (เลือกคืนเข้าสต็อก / ตัดจำหน่าย) · ไม่อนุมัติ (ต้องใส่เหตุผล) · ยืนยันว่าโอนเงินคืนแล้ว
+       ลิงก์ตรง: /admin/refunds?status=requested · /admin/refunds?refund=12 (เปิดคำขอ RF012)
+       ข้อความทั้งหมดอยู่ใน js/locales/th.js และ en.js หมวด af.* และ refund.status.* -->
+  <div id="admin-topbar"></div>
+
+  <div class="container admin-shell">
+    <nav id="admin-sidenav"></nav>
+
+    <main class="admin-main view-enter">
+      <div id="page-message" class="alert" role="status" hidden></div>
+
+      <header class="page-head">
+        <div>
+          <p class="kicker" data-i18n="af.kicker">แผงผู้ดูแล · บริการลูกค้า</p>
+          <h1 class="page-title" data-i18n="af.title">คำขอคืนเงิน</h1>
+          <p class="page-lede" data-i18n="af.lede">ตรวจคำขอคืนสินค้าจากลูกค้า อนุมัติพร้อมเลือกว่าของที่ส่งคืนเข้าสต็อกหรือตัดจำหน่าย แล้วยืนยันเมื่อโอนเงินคืนแล้ว</p>
+        </div>
+      </header>
+
+      <!-- ตัวเลขแต่ละสถานะ (กดเพื่อกรอง) -->
+      <div class="tk-counts" id="status-counts" role="group" aria-label="กรองตามสถานะ" data-i18n-attr="aria-label:af.statusFilter"></div>
+
+      <form id="search-form" class="admin-toolbar tk-toolbar" role="search">
+        <label class="search-pill">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <span class="visually-hidden" data-i18n="af.searchLabel">ค้นหาคำขอ</span>
+          <input type="search" name="q" maxlength="100" autocomplete="off"
+                 placeholder="ค้นหารหัสคำขอ / เลขคำสั่งซื้อ / สินค้า / ลูกค้า" data-i18n-attr="placeholder:af.searchPlaceholder">
+        </label>
+        <button type="submit" class="btn btn-ghost btn-pill" data-i18n="af.searchBtn">ค้นหา</button>
+      </form>
+
+      <div class="table-card">
+        <div class="table-wrap">
+          <table class="admin-table tk-table">
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="af.col.code">รหัส</th>
+                <th scope="col" data-i18n="af.col.item">สินค้า</th>
+                <th scope="col" data-i18n="af.col.customer">ลูกค้า</th>
+                <th scope="col" class="num" data-i18n="af.col.amount">ยอดคืน</th>
+                <th scope="col" data-i18n="af.col.date">วันที่ขอ</th>
+                <th scope="col" data-i18n="af.col.status">สถานะ</th>
+                <th scope="col" class="actions" data-i18n="af.col.actions">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="refund-rows"></tbody>
+          </table>
+        </div>
+        <nav id="pager" class="pager"></nav>
+      </div>
+    </main>
+  </div>
+
+  <!-- รายละเอียดคำขอ + อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว -->
+  <dialog id="refund-dialog" class="tk-dialog" aria-labelledby="rf-title">
+    <div id="refund-detail"></div>
+  </dialog>
+
+  <script type="module" src="/js/admin-layout.js"></script>
+  <script type="module" src="/js/pages/admin-refunds.js"></script>
+</body>
+</html>

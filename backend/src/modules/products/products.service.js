@@ -8,12 +8,20 @@ const SUMMARY_COLUMNS = `
   p.product_id, p.title, p.price, p.condition, p.condition_score, p.status,
   p.stock_quantity, p.cover_image_url, p.created_at,
   c.category_id, c.name AS category_name, c.slug AS category_slug,
-  s.series_id,   s.name AS series_name,   s.slug AS series_slug`;
+  s.series_id,   s.name AS series_name,   s.slug AS series_slug,
+  rv.avg_rating, rv.review_count`;
 
+// rv = คะแนนรีวิวเฉลี่ยและจำนวนรีวิวของสินค้าแต่ละชิ้น (ตาราง review ของ R1 · ยังไม่มีรีวิวได้ null / 0)
+// LATERAL = คำนวณแยกทีละแถวของ product ได้ผลแถวเดียวเสมอ จำนวนแถวของสินค้าจึงไม่เปลี่ยน (COUNT ของการแบ่งหน้ายังถูก)
 const FROM_JOINS = `
   FROM product p
   JOIN category c    ON c.category_id = p.category_id
-  LEFT JOIN series s ON s.series_id   = p.series_id`;
+  LEFT JOIN series s ON s.series_id   = p.series_id
+  LEFT JOIN LATERAL (
+    SELECT ROUND(AVG(r.rating), 1) AS avg_rating, COUNT(*)::int AS review_count
+      FROM review r
+     WHERE r.product_id = p.product_id
+  ) rv ON TRUE`;
 
 // ค่า sort ที่อนุญาต → ORDER BY จริง (ห้ามเอาค่าจากผู้ใช้ไปต่อ SQL ตรง ๆ)
 const SORTS = {
@@ -42,6 +50,8 @@ function toSummary(row) {
     series: row.series_id
       ? { series_id: Number(row.series_id), name: row.series_name, slug: row.series_slug }
       : null,
+    avg_rating: row.avg_rating === null || row.avg_rating === undefined ? null : Number(row.avg_rating), // 1.0–5.0 หรือ null ถ้ายังไม่มีรีวิว
+    review_count: Number(row.review_count ?? 0),
     created_at: row.created_at,
   };
 }
@@ -132,4 +142,5 @@ async function getById(id) {
   };
 }
 
-module.exports = { list, getById, SORTS };
+// SUMMARY_COLUMNS / FROM_JOINS / toSummary ใช้ร่วมกับ module อื่นที่ต้องแสดงการ์ดสินค้าแบบเดียวกัน (เช่น wishlist ของ R1)
+module.exports = { list, getById, SORTS, SUMMARY_COLUMNS, FROM_JOINS, toSummary };

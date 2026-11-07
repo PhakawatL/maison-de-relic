@@ -13,6 +13,7 @@
 
 - ใช้คำนามพหูพจน์ ตัวพิมพ์เล็ก ถ้ามีหลายคำให้คั่นด้วย `-` เช่น `/products`, `/refund-requests`
 - ใช้ HTTP method บอกการกระทำ ไม่ใส่คำกริยาใน URL
+- ข้อมูลเดียวกันที่ลูกค้าเห็นแค่ของตัวเอง แต่ผู้ดูแลเห็นทั้งหมด ให้แยก URL ฝั่งผู้ดูแลไว้ใต้ `/admin/` เช่น ลูกค้า `GET /support-tickets` (เคสของตัวเอง) · ผู้ดูแล `GET /admin/support-tickets` (ทุกเคส) จะได้ใส่ตัวกันสิทธิ์ทีเดียวทั้ง router
 
 | ทำอะไร | Method + URL | สำเร็จได้ status |
 |---|---|---|
@@ -105,6 +106,30 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | GET | `/categories` | - | R3 | หมวดหมู่ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
 | GET | `/series` | - | R3 | ซีรีส์ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
+| GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
+| GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
+| POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
+| DELETE | `/wishlist/:productId` | ✓ ยืนยันอีเมลแล้ว | R1 | เอาสินค้าออกจาก wishlist |
+| GET | `/support-tickets` | ✓ | R1 | เคสแจ้งปัญหาของตัวเอง (ล่าสุดขึ้นก่อน) |
+| GET | `/support-tickets/:id` | ✓ | R1 | เคสของตัวเอง 1 เคส พร้อมคำตอบจากร้าน |
+| POST | `/support-tickets` | ✓ ยืนยันอีเมลแล้ว | R1 | แจ้งปัญหา หรือรายงานสินค้า |
+| GET | `/admin/support-tickets` | แอดมิน | R1 | ทุกเคส ค้นหา/กรองหมวด สถานะ ผู้รับผิดชอบ + จำนวนแต่ละสถานะ |
+| GET | `/admin/support-tickets/assignees` | แอดมิน | R1 | ผู้ดูแลที่เลือกเป็นผู้รับผิดชอบเคสได้ |
+| GET | `/admin/support-tickets/:id` | แอดมิน | R1 | เคส 1 เคสพร้อมผู้แจ้งและคำสั่งซื้อที่อ้างถึง |
+| PATCH | `/admin/support-tickets/:id` | แอดมิน | R1 | ตอบกลับ / เปลี่ยนสถานะ / มอบหมายผู้รับผิดชอบ |
+| DELETE | `/admin/support-tickets/:id` | owner | R1 | ลบเคส |
+| GET | `/products/:productId/reviews` | - | R1 | รีวิวของสินค้า + สรุปคะแนน (กรองตามดาวได้) |
+| GET | `/reviews/reviewable` | ✓ | R1 | สินค้าที่ได้รับแล้วและยังไม่ได้รีวิว |
+| GET | `/reviews/mine` | ✓ | R1 | รีวิวที่ตัวเองเขียนไว้ |
+| POST | `/reviews` | ✓ ยืนยันอีเมลแล้ว | R1 | เขียนรีวิวสินค้า 1 รายการในคำสั่งซื้อ |
+| GET | `/refund-requests/refundable` | ✓ | R1 | สินค้าที่ยังขอคืนเงินได้ (ได้รับแล้วไม่เกิน 7 วัน) |
+| GET | `/refund-requests` | ✓ | R1 | คำขอคืนเงินของตัวเอง |
+| GET | `/refund-requests/:id` | ✓ | R1 | คำขอของตัวเอง 1 รายการ |
+| POST | `/refund-requests` | ✓ ยืนยันอีเมลแล้ว | R1 | ขอคืนเงินสินค้า 1 รายการในคำสั่งซื้อ |
+| GET | `/admin/refund-requests` | แอดมิน | R1 | ทุกคำขอ ค้นหา/กรองสถานะ + จำนวนแต่ละสถานะ |
+| GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
+| PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
+| GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
 | | | | | |
 
 ---
@@ -554,6 +579,8 @@ await withTransaction(async (client) => {
       "cover_image_url": "https://...",
       "category": { "category_id": 3, "name": "โมเดลพลาสติก", "slug": "model-kits" },
       "series": { "series_id": 3, "name": "Gundam", "slug": "gundam" },
+      "avg_rating": 4.5,
+      "review_count": 2,
       "created_at": "2026-10-14T01:00:00.000Z"
     }
   ],
@@ -562,6 +589,7 @@ await withTransaction(async (client) => {
 ```
 
 - `series` เป็น `null` ได้ถ้าสินค้าไม่อยู่ในซีรีส์ไหน
+- `avg_rating` (คะแนนรีวิวเฉลี่ย 1.0–5.0) เป็น `null` ถ้ายังไม่มีรีวิว · `review_count` = จำนวนรีวิว (มาจากตาราง `review` ของ R1 ดูหัวข้อรีวิวด้านล่าง)
 - `price` และ `condition_score` เป็นตัวเลข (ไม่ใช่ string)
 - query ผิดจะตอบ 400 `VALIDATION_ERROR` และบอกช่องที่ผิดใน `details`
 
@@ -603,3 +631,364 @@ await withTransaction(async (client) => {
 ```
 
 `/series` ได้รูปเดียวกัน แต่ใช้ `series_id` แทน `category_id`
+
+---
+
+## Wishlist (R1)
+
+ทุก route ต้องล็อกอิน และทำกับ wishlist ของตัวเองเท่านั้น (ผู้ใช้มาจาก token ไม่ต้องส่ง `user_id`)
+ดูได้ทันทีหลังล็อกอิน ส่วนเพิ่ม / เอาออกต้องยืนยันอีเมลแล้ว (ยังไม่ยืนยันได้ 403 `EMAIL_NOT_VERIFIED`)
+
+- แสดงเฉพาะสินค้าที่วางขายอยู่ (`available`) ถ้าแอดมินซ่อนสินค้า สินค้าจะหายจากรายการ แต่ยังจำไว้ เปิดขายอีกครั้งก็กลับมาเอง
+- สินค้าที่ของหมดยังแสดงอยู่ ดูได้จาก `in_stock: false`
+
+### `GET /wishlist`
+
+ได้สินค้ารูปเดียวกับ `GET /products` และเพิ่ม `added_at` (เวลาที่กดถูกใจ)
+
+```json
+{
+  "data": [
+    {
+      "product_id": 12,
+      "title": "RX-78-2 Gundam Ver.Ka",
+      "price": 1500,
+      "in_stock": true,
+      "cover_image_url": "https://...",
+      "category": { "category_id": 3, "name": "โมเดลพลาสติก", "slug": "model-kits" },
+      "added_at": "2026-10-21T07:00:00.000Z"
+    }
+  ],
+  "meta": { "total": 1 }
+}
+```
+
+### `GET /wishlist/ids`
+
+ได้แค่รหัสสินค้า ใช้ตอนวาดการ์ดสินค้าหลายใบ (หน้าแรก ค้นหา) ว่าใบไหนต้องเป็นหัวใจทึบ
+
+```json
+{ "data": [12, 7, 3] }
+```
+
+### `POST /wishlist`
+
+```json
+{ "product_id": 12 }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + สินค้า | เพิ่มใหม่ |
+| 200 + สินค้า | มีอยู่แล้ว (กดซ้ำไม่ error และ `added_at` ไม่เปลี่ยน) |
+| 400 `VALIDATION_ERROR` | ไม่ส่ง `product_id` หรือไม่ใช่จำนวนเต็มบวก |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+
+### `DELETE /wishlist/:productId`
+
+ตอบ 204 เสมอ แม้สินค้านี้ไม่ได้อยู่ใน wishlist อยู่แล้ว (กดซ้ำหรือกดพร้อมกันสองแท็บก็ไม่ error)
+รหัสใน URL ผิดรูปแบบได้ 400 `INVALID_ID`
+
+### ปุ่มหัวใจในหน้าของตัวเอง (R3, R4)
+
+ใช้ `frontend/js/wishlist-button.js` ได้เลย ไม่ต้องเรียก API เอง
+
+```js
+import { heartButton, setupHeartButtons } from '../wishlist-button.js';
+
+// 1. ใส่ปุ่มในการ์ด/หน้าสินค้า
+card.innerHTML = `... ${heartButton(product.product_id)} ...`;
+
+// 2. เรียกครั้งเดียวหลังวาดการ์ดเสร็จ (เรียกซ้ำได้ตอนวาดใหม่)
+setupHeartButtons(container);
+```
+
+- ยังไม่ล็อกอิน → กดแล้วพาไปหน้าเข้าสู่ระบบ แล้วกลับมาหน้าเดิม
+- ยังไม่ยืนยันอีเมล → แสดงข้อความให้ไปยืนยันก่อน
+- ปุ่มอยู่ใน `<a>` ของการ์ดได้ (กดหัวใจแล้วไม่เปิดหน้ารายละเอียด)
+
+---
+
+## แจ้งปัญหา · รายงานสินค้า (R1)
+
+เคส 1 เคส = ลูกค้าแจ้งเรื่อง 1 เรื่อง (ตาราง `support_ticket` · BR-27–29) ผู้ดูแลตอบกลับได้ 1 ข้อความ และเปลี่ยนสถานะได้
+
+| สถานะ | ความหมาย |
+|---|---|
+| `open` | รอดำเนินการ (ยังไม่มีใครทำ) |
+| `pending` | กำลังดำเนินการ |
+| `closed` | ปิดเคสแล้ว (`closed_at` = เวลาที่ปิด) |
+
+| หมวด (`category`) | ใช้กับ |
+|---|---|
+| `not_as_described` ของไม่ตรงปก · `damaged` ของเสียหาย · `not_delivered` พัสดุไม่ถึง · `product_question` สอบถามสินค้า · `payment` การชำระเงิน · `account` บัญชีผู้ใช้ | แจ้งปัญหาทั่วไป |
+| `counterfeit` สินค้าปลอม · `wrong_images` รูปไม่ตรงกับสินค้า · `misleading_price` ราคาหลอกลวง · `inappropriate` เนื้อหาไม่เหมาะสม | รายงานสินค้า |
+| `other` อื่น ๆ | ทั้งสองแบบ |
+
+หน้าเว็บแสดงชื่อหมวดจากคำแปล `support.cat.<category>` ใน `js/locales/*.js` (เก็บในฐานข้อมูลเป็นรหัสภาษาอังกฤษ)
+
+### `POST /support-tickets`
+
+แจ้งปัญหาทั่วไป (อ้างถึงคำสั่งซื้อของตัวเองได้ ไม่บังคับ)
+
+```json
+{ "subject": "กล่องบุบระหว่างขนส่ง", "category": "damaged", "body": "ได้รับของแล้วกล่องบุบ...", "order_id": 15 }
+```
+
+รายงานสินค้า (ปุ่ม "รายงานสินค้านี้" ในหน้า Detail) — ไม่ต้องส่ง `subject` ระบบตั้งเป็น `[P012] ชื่อสินค้า` ให้ · `body` ไม่บังคับ
+
+```json
+{ "product_id": 12, "category": "counterfeit", "body": "โลโก้บนกล่องไม่เหมือนของแท้" }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + เคส | สำเร็จ |
+| 400 `VALIDATION_ERROR` | หัวข้อสั้นกว่า 3 / ยาวเกิน 150 ตัวอักษร · ไม่มีรายละเอียด (เคสทั่วไป) · หมวดไม่อยู่ในรายการ |
+| 404 `ORDER_NOT_FOUND` | `order_id` ไม่ใช่คำสั่งซื้อของตัวเอง |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+| 429 `TOO_MANY_REQUESTS` | เปิดเคสเกิน 15 ครั้งต่อชั่วโมง (นับต่อผู้ใช้ · `details.retry_after` = วินาทีที่ต้องรอ) |
+
+### `GET /support-tickets?status=&page=&pageSize=`
+
+`status` = `all` (ค่าเริ่มต้น) / `open` / `pending` / `closed`
+
+```json
+{
+  "data": [
+    {
+      "ticket_id": 12, "code": "TK012", "subject": "กล่องบุบระหว่างขนส่ง", "category": "damaged",
+      "body": "...", "status": "pending", "admin_reply": "ขออภัยครับ ...", "order_id": 15,
+      "created_at": "2026-10-24T03:00:00.000Z", "closed_at": null
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+### `GET /admin/support-tickets` (แอดมิน)
+
+| query | ค่า |
+|---|---|
+| `q` | รหัสเคส (`TK012`) · ตัวเลข (รหัสเคสหรือเลขคำสั่งซื้อ) · คำในหัวข้อ / ชื่อผู้ใช้ / อีเมลของผู้แจ้ง |
+| `category` | `all` หรือหมวดด้านบน |
+| `status` | `all` / `open` / `pending` / `closed` |
+| `assigned` | `all` / `me` (เคสที่ฉันรับผิดชอบ) / `unassigned` (ยังไม่มีคนรับ) |
+| `page`, `pageSize` | ค่าเริ่มต้น 1 และ 20 (สูงสุด 50) |
+
+ได้เคสเหมือนฝั่งลูกค้า และเพิ่ม `reporter` (ผู้แจ้ง) กับ `assignee` (ผู้รับผิดชอบ หรือ `null`) ส่วน `meta.counts` คือจำนวนเคสแต่ละสถานะตามเงื่อนไขอื่นที่เลือก (ใช้ทำตัวเลขบนแท็บ)
+
+```json
+{ "meta": { "page": 1, "pageSize": 20, "total": 7, "counts": { "open": 3, "pending": 2, "closed": 2 } } }
+```
+
+`GET /admin/support-tickets/:id` เพิ่ม `order` (สถานะ ยอดรวม เลขพัสดุของคำสั่งซื้อที่อ้างถึง หรือ `null`)
+
+### `PATCH /admin/support-tickets/:id` (แอดมิน)
+
+ส่งเฉพาะช่องที่จะแก้ อย่างน้อย 1 ช่อง
+
+```json
+{ "admin_reply": "ขออภัยครับ ส่งรูปกล่องมาที่อีเมลได้เลย", "status": "pending", "assigned_to": 3 }
+```
+
+- ตอบกลับเคสที่ยัง `open` โดยไม่ส่ง `status` → เปลี่ยนเป็น `pending` ให้เอง
+- เคสที่ยังไม่มีผู้รับผิดชอบ แล้วผู้ดูแลตอบหรือเปลี่ยนสถานะ → ผู้ดูแลคนนั้นเป็นผู้รับผิดชอบให้เอง
+- `assigned_to: null` = ยกเลิกผู้รับผิดชอบ · ต้องเป็นผู้ดูแลที่ใช้งานอยู่ (ดูรายชื่อจาก `GET /admin/support-tickets/assignees`)
+- `admin_reply: ""` หรือ `null` = ลบคำตอบ
+- บันทึก `admin_action_log` (`target_type = 'support_ticket'`) แยกตามเรื่อง: `reply_ticket`, `update_ticket_status`, `assign_ticket` · ลบเคส = `delete_ticket`
+
+### บันทึกการกระทำของแอดมินใน module ของตัวเอง (BR-31)
+
+ใช้ `logAdminAction` จาก `backend/src/modules/support/action-log.service.js` ใน transaction เดียวกับการเปลี่ยนข้อมูล
+
+```js
+const { logAdminAction } = require('../support/action-log.service');
+await logAdminAction(client, { adminId: req.user.user_id, actionType: 'approve_refund', targetType: 'refund_request', targetId: 7, note: 'RF007: อนุมัติ' });
+```
+
+- `actionType` = กริยา_สิ่งที่ทำ ภาษาอังกฤษตัวเล็ก เช่น `create_product`, `restock_product` · `targetType` = ชื่อตาราง เช่น `product`
+- log ขึ้นในหน้า `/admin/activity` ของ owner ทันที (ชื่อการกระทำที่ยังไม่มีคำแปลแสดงเป็นรหัสภาษาอังกฤษ — เพิ่มคำแปลได้ที่ `log.action.<actionType>` ใน `frontend/js/locales/*.js`)
+- `targetType = 'product'` หน้า `/admin/activity` แสดงชื่อสินค้าและรหัส P012 ให้เอง
+
+### `GET /admin/action-logs?q=&admin=&action=&target=&page=&pageSize=` (owner)
+
+ประวัติการทำงานของผู้ดูแลทั้งร้าน ล่าสุดก่อน · staff ได้ 403 (staff ดูประวัติของคำขอ / เคสที่เปิดอยู่ได้จาก `history` ในหน้ารายละเอียดแทน)
+
+- `q` = ข้อความใน note / ชื่อผู้ดูแล / ชื่อสิ่งที่ถูกเปลี่ยน · หรือรหัส `RF012` / `TK005` / `P012` (ตรงกับสิ่งนั้นเท่านั้น)
+- `admin` = user_id ของผู้ดูแล · `action` = เช่น `approve_refund` · `target` = เช่น `refund_request` (ไม่ส่ง / `all` = ทั้งหมด)
+
+```json
+{ "data": [ { "log_id": 41, "action_type": "approve_refund", "target_type": "refund_request", "target_id": 12,
+              "target_code": "RF012", "target_name": "RX-78-2 Gundam Ver.Ka", "note": "RF012: อนุมัติ · คืนเข้าสต็อก 1 ชิ้น",
+              "created_at": "...", "admin": { "user_id": 2, "username": "Neptz", "display_name": "Neptz" } } ],
+  "meta": { "page": 1, "pageSize": 20, "total": 57, "admins": [ ... ], "actions": [ ... ], "target_types": [ ... ] } }
+```
+
+`meta.admins` / `actions` / `target_types` = ค่าที่มีใน log ทั้งหมด ไว้ทำตัวเลือกของตัวกรอง
+
+`GET /admin/support-tickets/:id` และ `GET /admin/refund-requests/:id` มี `history` = log ของเคส / คำขอนั้น (เก่าสุดก่อน รูปเดียวกับด้านบน)
+
+---
+
+## รีวิวสินค้า (R1)
+
+รีวิว 1 รายการ = สินค้า 1 รายการในคำสั่งซื้อ (`order_item`) · BR-25, BR-26
+
+- รีวิวได้เฉพาะคำสั่งซื้อของตัวเองที่ **ได้รับสินค้าแล้ว** (`current_status` = `delivered` หรือ `completed`)
+- รีวิวซ้ำรายการเดิมไม่ได้ (409) · ยังไม่มีการแก้ไข/ลบรีวิว
+- หน้าร้านแสดงชื่อผู้รีวิวแบบย่อ เช่น `สมชาย ก.` ไม่แสดงชื่อผู้ใช้ อีเมล หรือเลขคำสั่งซื้อ
+- คะแนนเฉลี่ยของแต่ละสินค้าอยู่ในการ์ดสินค้าแล้ว (`avg_rating`, `review_count` ใน `GET /products`, `GET /products/:id`, `GET /wishlist`)
+
+### `GET /products/:productId/reviews?rating=&page=&pageSize=`
+
+`rating` = `all` (ค่าเริ่มต้น) หรือ `1`–`5` · `pageSize` ค่าเริ่มต้น 10 (สูงสุด 50)
+
+```json
+{
+  "data": [
+    { "review_id": 8, "product_id": 12, "rating": 5, "comment": "ตรงปก แพ็กมาดีมาก", "created_at": "2026-10-24T03:00:00.000Z", "reviewer": "สมชาย ก." }
+  ],
+  "meta": {
+    "page": 1, "pageSize": 10, "total": 2,
+    "summary": { "average": 4.5, "count": 2, "distribution": { "5": 1, "4": 1, "3": 0, "2": 0, "1": 0 } }
+  }
+}
+```
+
+สินค้าที่ไม่มี / ยังไม่วางขาย → 404 `PRODUCT_NOT_FOUND`
+
+### `POST /reviews`
+
+```json
+{ "order_item_id": 31, "rating": 5, "comment": "ตรงปก แพ็กมาดีมาก" }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + รีวิว | สำเร็จ |
+| 400 `VALIDATION_ERROR` | `rating` ไม่ใช่ 1–5 · `comment` ยาวเกิน 1000 ตัวอักษร |
+| 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
+| 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า หรือคำสั่งซื้อถูกยกเลิก / คืนเงินแล้ว |
+| 409 `ALREADY_REVIEWED` | รีวิวรายการนี้ไปแล้ว |
+| 429 `TOO_MANY_REQUESTS` | เขียนรีวิวเกิน 30 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
+
+### `GET /reviews/reviewable`
+
+ใช้ทำรายการ "รอรีวิว" — `title` คือชื่อสินค้า ณ วันที่ซื้อ (`order_item.title_snapshot`)
+
+```json
+{ "data": [ { "order_item_id": 31, "order_id": 15, "product_id": 12, "title": "RX-78-2 Gundam Ver.Ka", "quantity": 1, "cover_image_url": "https://...", "order_status": "delivered", "placed_at": "..." } ] }
+```
+
+### หน้าเว็บ
+
+- เขียนรีวิว: ลิงก์ไป `/write-review?item=<order_item_id>` (หน้าคำสั่งซื้อของ R5 ใส่ปุ่มนี้ได้เลย) · เปิด `/write-review` เฉย ๆ จะเห็นรายการรอรีวิวทั้งหมด
+- รีวิวในหน้า Detail (R4): `import { mountProductReviews } from '../product-reviews.js'` แล้วเรียก `mountProductReviews(document.getElementById('reviews'), product)` — มีสรุปคะแนน รายการรีวิว กรองตามดาว และลิงก์ "รายงานสินค้านี้"
+
+---
+
+## คืนเงิน (R1)
+
+คำขอ 1 รายการ = ขอคืนสินค้า 1 รายการในคำสั่งซื้อ (`order_item`) บางชิ้นหรือทั้งหมด · ตาราง `refund_request` · BR-22, BR-23
+
+```
+requested ──อนุมัติ──▶ approved ──โอนเงินคืนแล้ว──▶ refunded
+    └──────ไม่อนุมัติ──▶ rejected
+```
+
+กติกาฝั่งลูกค้า
+
+- ขอได้เฉพาะคำสั่งซื้อของตัวเองที่ **ได้รับสินค้าแล้ว** (`delivered` / `completed`) และ **ไม่เกิน 7 วัน** หลังได้รับ
+  - เวลาที่ได้รับ = แถว `to_status = 'delivered'` ล่าสุดใน `order_status_log` · **R5 ช่วยบันทึกแถวนี้ตอนเปลี่ยนสถานะเป็น delivered** ถ้าไม่มี ระบบใช้เวลาสั่งซื้อแทน (เข้มกว่า)
+- ขอหลายครั้งต่อรายการได้ แต่รวมกันต้องไม่เกินจำนวนที่ซื้อ (คำขอที่ไม่อนุมัติไม่นับ)
+- ยอดคืน `amount` = ราคาต่อชิ้น ณ วันที่ซื้อ × จำนวน (ระบบคำนวณเอง)
+
+กติกาฝั่งผู้ดูแล (บันทึก `admin_action_log` ทุกครั้ง: `approve_refund`, `reject_refund`, `complete_refund`)
+
+- **อนุมัติ** ต้องเลือก `restock_decision`
+  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (R3 เปลี่ยนไปเรียกฟังก์ชันสต็อกกลางได้เมื่อทำ #20 เสร็จ)
+  - `write_off` ตัดจำหน่าย (ของเสียหายขายต่อไม่ได้) → สต็อกไม่เปลี่ยน
+- **โอนเงินคืนแล้ว** (จำลอง ไม่มี payment gateway) ถ้าคืนครบทุกชิ้นของคำสั่งซื้อ → `"order".current_status = 'refunded'` + แถวใหม่ใน `order_status_log` + `payment.status = 'refunded'` · คืนไม่ครบ สถานะคำสั่งซื้อเหมือนเดิม
+
+### `GET /refund-requests/refundable`
+
+```json
+{ "data": [ { "order_item_id": 31, "order_id": 15, "product_id": 12, "title": "RX-78-2 Gundam Ver.Ka", "cover_image_url": "https://...",
+              "quantity": 2, "refundable_qty": 1, "unit_price": 1500, "delivered_at": "...", "deadline": "..." } ] }
+```
+
+### `POST /refund-requests`
+
+```json
+{ "order_item_id": 31, "refund_qty": 1, "reason": "ชำรุด/เสียหาย: แขนหักตั้งแต่เปิดกล่อง", "evidence_url": "https://..." }
+```
+
+| ผล | เมื่อ |
+|---|---|
+| 201 + คำขอ (`status: requested`) | สำเร็จ |
+| 400 `VALIDATION_ERROR` | `refund_qty` ไม่ใช่จำนวนเต็มบวก · `reason` สั้นกว่า 5 / ยาวเกิน 1000 ตัวอักษร · `evidence_url` ไม่ใช่ลิงก์ http(s) |
+| 404 `ORDER_ITEM_NOT_FOUND` | ไม่ใช่สินค้าในคำสั่งซื้อของตัวเอง |
+| 409 `ORDER_NOT_DELIVERED` | ยังไม่ได้รับสินค้า / ยกเลิก / คืนเงินไปแล้ว |
+| 409 `REFUND_WINDOW_CLOSED` | เกิน 7 วันหลังได้รับ (`details.deadline`) |
+| 409 `REFUND_QTY_EXCEEDED` | เกินจำนวนที่ยังขอได้ (`details.refundable_qty`) |
+| 429 `TOO_MANY_REQUESTS` | ขอคืนเงินเกิน 20 ครั้งต่อชั่วโมง (นับต่อผู้ใช้) |
+
+คำขอที่ได้: `refund_id`, `code` (`RF012`), `order_item_id`, `order_id`, `product_id`, `title`, `refund_qty`, `amount`, `reason`, `evidence_url`, `status`, `restock_decision`, `requested_at`, `resolved_at`
+
+### `GET /admin/refund-requests?q=&status=&page=&pageSize=` (แอดมิน)
+
+`q` = รหัสคำขอ (`RF012`) · ตัวเลข (รหัสคำขอหรือเลขคำสั่งซื้อ) · ชื่อสินค้า / ชื่อผู้ใช้ / อีเมลของลูกค้า · `status` = `all` / `requested` / `approved` / `rejected` / `refunded`
+
+ได้คำขอเหมือนฝั่งลูกค้า และเพิ่ม `customer`, `order` (สถานะ ยอดรวม `delivered_at` และ `payment` = `{ method, status }` ช่องทางที่ลูกค้าชำระ ไว้โอนคืน), `item` (`purchased_qty`, `unit_price`), `product` (`stock_quantity` ปัจจุบัน), `reviewer` · `meta.counts` = จำนวนแต่ละสถานะ
+
+### `PATCH /admin/refund-requests/:id` (แอดมิน)
+
+```json
+{ "action": "approve", "restock_decision": "return", "note": "ตรวจของที่ส่งคืนแล้ว สภาพดี" }
+{ "action": "reject", "note": "รอยเกิดจากการใช้งาน" }
+{ "action": "refund" }
+```
+
+- `approve` ต้องมี `restock_decision` · `reject` ต้องมี `note` (เหตุผล) · `note` ยาวไม่เกิน 300 ตัวอักษร เก็บใน `admin_action_log` (ลูกค้าไม่เห็น)
+- ทำผิดลำดับ (เช่น อนุมัติซ้ำ, โอนเงินคืนคำขอที่ไม่อนุมัติ) → 409 `INVALID_REFUND_STATUS`
+
+### หน้าเว็บ
+
+- ลูกค้า: `/refunds` (เลือกสินค้าที่ขอคืนได้ + คำขอของฉัน) · ลิงก์ตรงไปฟอร์มของสินค้ารายการเดียว `/refunds?item=<order_item_id>` (หน้าคำสั่งซื้อของ R5 ใส่ปุ่ม "ขอคืนเงิน" ได้เลย)
+- ผู้ดูแล: `/admin/refunds`
+
+
+## บันทึก event พฤติกรรมผู้ใช้ (หน้าเว็บ R1 · API R4)
+
+> **ร่างข้อตกลง** — R1 เขียนฝั่งหน้าเว็บ (#8) ตามร่างนี้ไว้แล้ว R4 ทำ API (#26) ตามนี้ หรือแก้ร่างแล้วบอก R1 ได้เลย
+
+ตาราง `user_event` (BR-10, BR-11) เก็บว่าใครดู / กด / ถูกใจ / ใส่ตะกร้า / ซื้อสินค้าอะไร ไว้ทำสินค้าแนะนำ
+
+### `POST /events` (ไม่ต้องล็อกอิน)
+
+```json
+{ "product_id": 12, "event_type": "add_to_cart", "session_id": "0f6c1d9e-5b7a-4c1e-9a53-2f0d8b7c4e11" }
+```
+
+- `event_type` = `view` · `click` · `wishlist` · `add_to_cart` · `purchase` (ตาม CHECK ของตาราง)
+- `session_id` = รหัสสุ่มจากหน้าเว็บ (ไม่ว่างเกิน 30 นาทีใช้รหัสเดิม) — แยกการใช้งานแต่ละช่วงได้แม้ยังไม่ล็อกอิน
+- ถ้ามี token มาด้วย → API ใส่ `user_id` จาก token เอง (ไม่รับ `user_id` จาก body) · token ใช้ไม่ได้ / ไม่มี token → บันทึกแบบไม่ระบุผู้ใช้ (`user_id` = null)
+- ตอบ `201` (หรือ `204`) · `400 VALIDATION_ERROR` ข้อมูลผิดรูปแบบ · `404 PRODUCT_NOT_FOUND` ไม่มีสินค้านี้
+- ควรมี rate limit กันยิงรัว (หน้าเว็บส่งแบบไม่รอผล ผู้ใช้ไม่เห็น error นี้)
+
+### หน้าเว็บเรียกที่ไหน (`frontend/js/events.js`)
+
+```js
+import { trackEvent } from '../events.js';
+trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await — ส่งไม่สำเร็จก็ไม่แสดงอะไร
+```
+
+| event | ใครเรียก | เมื่อไร |
+|---|---|---|
+| `wishlist` | R1 (`wishlist-button.js`) | กดหัวใจแล้วเพิ่มเข้า wishlist สำเร็จ ✅ ใส่แล้ว |
+| `add_to_cart` | R5 | ใส่ตะกร้าสำเร็จ (API ตะกร้าตอบ 2xx แล้ว) |
+| `purchase` | R5 | จ่ายเงินสำเร็จ — เรียกทีละสินค้าในคำสั่งซื้อ |
+| `view` / `click` | R4 (ถ้าระบบแนะนำต้องใช้) | เปิดหน้า Detail / กดการ์ดจากผลค้นหาหรือสินค้าแนะนำ |
+
+ตอนนี้ `EVENTS_ENABLED = false` ใน `frontend/js/config.js` (หน้าเว็บยังไม่ส่ง) — **R4 เปลี่ยนเป็น `true` ใน PR เดียวกับ API**

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="rf.pageTitle">คืนสินค้า · คืนเงิน · Maison de Relic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/support.css">
+  <link rel="stylesheet" href="/css/pages/refunds.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <!-- คืนเงิน / คืนสินค้าของลูกค้า (S9 · BR-22, BR-23) · ต้องล็อกอิน · ผู้รับผิดชอบ: R1
+         /refunds            สินค้าที่ยังขอคืนได้ + คำขอของฉัน
+         /refunds?item=31    เปิดฟอร์มขอคืนเงินของ order_item 31 ทันที (หน้าคำสั่งซื้อของ R5 ลิงก์มาได้) -->
+    <div class="sp-head">
+      <div>
+        <h1 data-i18n="rf.title">คืนสินค้า · คืนเงิน</h1>
+        <p class="muted" data-i18n="rf.lede">ขอคืนเงินได้ภายใน 7 วันหลังได้รับสินค้า เลือกได้ว่าจะคืนกี่ชิ้น</p>
+      </div>
+      <a class="btn btn-ghost btn-pill" href="/support" data-i18n="rf.toSupport">มีปัญหาอื่น? ไปศูนย์ช่วยเหลือ</a>
+    </div>
+
+    <div id="unverified" class="alert alert-error" role="alert" hidden>
+      <span data-i18n="rf.unverified">ยืนยันอีเมลก่อนจึงจะขอคืนเงินได้</span>
+      <a href="/verify-email?next=/refunds" data-i18n="rf.verifyNow">ยืนยันอีเมลตอนนี้</a>
+    </div>
+    <div id="page-alert" class="alert" role="status" hidden></div>
+
+    <section class="sp-section" aria-labelledby="eligible-title">
+      <h2 id="eligible-title" class="rf-sub" data-i18n="rf.eligible">สินค้าที่ขอคืนได้</h2>
+      <ul id="eligible-list" class="rf-list" aria-busy="true"></ul>
+      <p id="eligible-empty" class="sp-empty card" hidden data-i18n="rf.eligibleEmpty">ยังไม่มีสินค้าที่ขอคืนได้ (ต้องได้รับสินค้าแล้วไม่เกิน 7 วัน)</p>
+    </section>
+
+    <section class="sp-section" aria-labelledby="mine-title">
+      <div class="sp-section-head">
+        <h2 id="mine-title" data-i18n="rf.mine">คำขอของฉัน</h2>
+      </div>
+      <ul id="refund-list" class="sp-list"></ul>
+      <p id="refund-empty" class="sp-empty card" hidden data-i18n="rf.mineEmpty">ยังไม่มีคำขอคืนเงิน</p>
+      <button type="button" class="btn btn-ghost btn-pill sp-more" id="more-btn" hidden data-i18n="rf.more">ดูเพิ่มเติม</button>
+    </section>
+  </main>
+
+  <!-- ฟอร์มขอคืนเงิน -->
+  <dialog id="refund-dialog" class="rf-dialog" aria-labelledby="rf-dialog-title">
+    <form id="refund-form" novalidate>
+      <header class="rf-dialog-head">
+        <h2 id="rf-dialog-title" data-i18n="rf.formTitle">ขอคืนเงิน</h2>
+        <button type="button" class="rf-x" data-close aria-label="ปิด" data-i18n-attr="aria-label:rf.close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div id="rf-product" class="rf-product"></div>
+      <div class="alert alert-error" data-form-alert role="alert" hidden></div>
+
+      <div class="rf-qty-row">
+        <div class="field">
+          <label for="rf-qty" data-i18n="rf.qty">จำนวนที่ขอคืน</label>
+          <div class="rf-stepper">
+            <button type="button" data-step="-1" aria-label="ลดจำนวน" data-i18n-attr="aria-label:rf.qtyLess">−</button>
+            <input id="rf-qty" name="refund_qty" type="number" inputmode="numeric" min="1" value="1" required>
+            <button type="button" data-step="1" aria-label="เพิ่มจำนวน" data-i18n-attr="aria-label:rf.qtyMore">+</button>
+          </div>
+          <small class="field-error" data-error-for="refund_qty"></small>
+        </div>
+        <div class="rf-amount">
+          <span data-i18n="rf.amount">ยอดเงินคืน</span>
+          <strong id="rf-amount">฿0</strong>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="rf-reason-type" data-i18n="rf.reasonType">สาเหตุ</label>
+        <select id="rf-reason-type" name="reason_type" required></select>
+      </div>
+      <div class="field">
+        <label for="rf-reason" data-i18n="rf.reason">รายละเอียด</label>
+        <textarea id="rf-reason" name="reason" rows="3" maxlength="900" required
+                  placeholder="เล่าสิ่งที่พบ เช่น ชำรุดตรงไหน ได้รับไม่ครบกี่ชิ้น" data-i18n-attr="placeholder:rf.reasonPh"></textarea>
+        <small class="field-error" data-error-for="reason"></small>
+      </div>
+      <div class="field">
+        <label for="rf-evidence" data-i18n="rf.evidence">ลิงก์รูปหลักฐาน (ไม่บังคับ)</label>
+        <input id="rf-evidence" name="evidence_url" type="url" maxlength="500" placeholder="https://..." autocomplete="off">
+        <small class="muted" data-i18n="rf.evidenceHint">อัปโหลดรูปไว้ที่ Google Drive / Google Photos แล้ววางลิงก์ที่เปิดดูได้</small>
+        <small class="field-error" data-error-for="evidence_url"></small>
+      </div>
+      <p class="rf-note muted" data-i18n="rf.policy">ร้านจะตรวจสอบคำขอแล้วแจ้งผลในหน้านี้ ถ้าอนุมัติจะโอนเงินคืนตามช่องทางที่ชำระ</p>
+      <div class="sp-actions">
+        <button type="button" class="btn btn-ghost btn-pill" data-close data-i18n="rf.cancel">ยกเลิก</button>
+        <button type="submit" class="btn btn-solid btn-pill" data-i18n="rf.submit">ส่งคำขอ</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer id="site-footer"></footer>
+
+  <script type="module" src="/js/layout.js"></script>
+  <script type="module" src="/js/pages/refunds.js"></script>
+</body>
+</html>
