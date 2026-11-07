@@ -90,10 +90,42 @@ box.addEventListener('click', (e) => {
   if (btn) selectImage(Number(btn.dataset.index));
 });
 
+/* ---------- ข้อมูลเพิ่มเติม (product.attributes) ---------- */
+// ช่องใน attributes มาจากฟอร์มเพิ่มสินค้าของแอดมิน (R3: admin-products.js ATTRIBUTE_FIELDS)
+// [ชื่อช่อง, คีย์คำแปลของหัวข้อ, ฟังก์ชันแปลงค่าเป็นข้อความ] — ใช้คำแปล ap.* ของ R3 ซ้ำ จะได้เรียกชื่อตรงกับฟอร์มแอดมิน
+const SPEC_FIELDS = [
+  ['year', 'ap.f.year', (v) => v],
+  ['size', 'ap.f.size', (v) => v],
+  ['material', 'ap.f.material', (v) => v],
+  ['original_box', 'ap.f.box', (v) => (has(`ap.box.${camel(v)}`) ? t(`ap.box.${camel(v)}`) : v)], // with_cert → ap.box.withCert
+  ['grading_company', 'ap.f.grader', (v) => (has(`ap.grader.${v}`) ? t(`ap.grader.${v}`) : v)], // PSA/BGS/CGC แสดงตรง ๆ
+  ['grade', 'ap.f.grade', (v) => v],
+];
+// 'with_cert' → 'withCert' (คีย์คำแปลของ R3 เขียนแบบ camelCase)
+const camel = (s) => String(s).replace(/_(\w)/g, (_, c) => c.toUpperCase());
+
+// คืน HTML ตารางข้อมูลเพิ่มเติม · ไม่มีช่องไหนกรอกเลย → คืน '' (ไม่โชว์หัวข้อว่าง ๆ)
+function specsHtml(attrs) {
+  const rows = SPEC_FIELDS.filter(([key]) => attrs?.[key] !== undefined && attrs[key] !== '' && attrs[key] !== null)
+    .map(([key, label, format]) => `<div><dt>${t(label)}</dt><dd>${escapeHtml(format(attrs[key]))}</dd></div>`);
+  if (rows.length === 0) return '';
+  return `
+    <section class="detail-specs">
+      <h2>${t('detail.specs')}</h2>
+      <dl>${rows.join('')}</dl>
+    </section>`;
+}
+
+// ชื่อหมวดตามภาษาที่เลือก (คีย์ cat.* ใช้ร่วมกับหน้าแรกและหน้า Search) ไม่มีคำแปล → ใช้ชื่อจาก API
+const categoryText = (cat) => (has(`cat.${cat.slug}`) ? t(`cat.${cat.slug}`) : cat.name);
+
 /* ---------- วาดสินค้า ---------- */
 function renderProduct(p) {
   // ทุกค่าจาก API ผ่าน escapeHtml() กันโค้ดแปลกปลอมในชื่อ/คำอธิบาย (XSS) เหมือนหน้า Search
   const title = escapeHtml(p.title);
+  const category = escapeHtml(categoryText(p.category));
+  // ลิงก์ไปหน้า Search ที่เลือกหมวดนี้ไว้ให้แล้ว (หน้า Search อ่าน ?category=<slug> ได้อยู่แล้ว)
+  const categoryUrl = `/search?category=${encodeURIComponent(p.category.slug)}`;
   // series เป็น null ได้ (เช่นเหรียญ แสตมป์) มีค่อยต่อท้ายหมวด
   const series = p.series ? ` · ${escapeHtml(p.series.name)}` : '';
   const stock = p.in_stock
@@ -101,9 +133,16 @@ function renderProduct(p) {
     : `<dd class="stock-out">${t('detail.outOfStock')}</dd>`;
 
   box.innerHTML = `
+    <nav class="detail-crumbs card-enter" style="--i:0" aria-label="${t('detail.breadcrumb')}">
+      <ol>
+        <li><a href="/">${t('nav.home')}</a></li>
+        <li><a href="${categoryUrl}">${category}</a></li>
+        <li aria-current="page">${title}</li>
+      </ol>
+    </nav>
     <div class="detail-gallery card-enter" style="--i:0">${galleryHtml()}</div>
     <div class="detail-info card-enter" style="--i:1">
-      <p class="kicker">${escapeHtml(p.category.name)}${series}</p>
+      <p class="kicker"><a href="${categoryUrl}">${category}</a>${series}</p>
       <div class="detail-title-row">
         <h1>${title}</h1>
         ${heartButton(p.product_id)}
@@ -119,10 +158,20 @@ function renderProduct(p) {
           ${stock}
         </div>
       </dl>
+      <div class="detail-actions">
+        <!-- ปุ่มตะกร้า: R5 เป็นเจ้าของระบบตะกร้า ตอนนี้ยังไม่มี API จึงปิดปุ่มไว้ก่อน
+             R5 มาต่อได้โดยหา .detail-cart-btn แล้วอ่าน data-product-id (หลังใส่ตะกร้าสำเร็จให้เรียก trackEvent('add_to_cart', id)) -->
+        <button type="button" class="btn-dark detail-cart-btn" data-product-id="${Number(p.product_id)}" disabled
+                title="${p.in_stock ? t('detail.cartSoon') : t('detail.outOfStock')}">
+          ${p.in_stock ? t('detail.addToCart') : t('detail.outOfStock')}
+        </button>
+        ${p.in_stock ? `<small>${t('detail.cartSoon')}</small>` : ''}
+      </div>
       <section class="detail-desc">
         <h2>${t('detail.description')}</h2>
         <p>${p.description ? escapeHtml(p.description) : t('detail.noDescription')}</p>
       </section>
+      ${specsHtml(p.attributes)}
     </div>`;
   // ชื่อแท็บเบราว์เซอร์เป็นชื่อสินค้า (ตอนแชร์ลิงก์หรือเปิดหลายแท็บจะได้รู้ว่าแท็บไหนของอะไร)
   document.title = `${p.title} · Maison de Relic`;

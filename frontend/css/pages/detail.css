@@ -19,6 +19,43 @@
   align-items: start;
 }
 
+/* ---------- breadcrumb: หน้าแรก › หมวด › ชื่อสินค้า ---------- */
+.detail-crumbs {
+  grid-column: 1 / -1; /* กินเต็มแถวบนสุด ไม่แบ่ง 2 คอลัมน์ */
+  min-width: 0;
+}
+.detail-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--ink-3);
+}
+/* ใส่ › คั่นระหว่างแต่ละขั้นด้วย CSS (ไม่ต้องเขียนลง HTML โปรแกรมอ่านหน้าจอจะไม่อ่านเครื่องหมายนี้) */
+.detail-crumbs li + li::before {
+  content: '›';
+  margin-right: 6px;
+}
+.detail-crumbs a {
+  color: inherit;
+  text-decoration: none;
+}
+.detail-crumbs a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+/* ชื่อสินค้าตัวสุดท้ายยาวได้ ตัดด้วย ... แทนการล้นจอ */
+.detail-crumbs [aria-current='page'] {
+  overflow: hidden;
+  max-width: 40ch;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-2);
+}
+
 /* ---------- รูป ---------- */
 .detail-media {
   display: grid;
@@ -95,6 +132,13 @@
 .detail-info .kicker {
   margin: 0;
 }
+.detail-info .kicker a {
+  color: inherit;
+  text-decoration: none;
+}
+.detail-info .kicker a:hover {
+  text-decoration: underline;
+}
 .detail-info h1 {
   margin: 0;
   font-size: clamp(1.6rem, 3vw, 2.3rem);
@@ -143,9 +187,42 @@
 .stock-out {
   color: var(--accent);
 }
-.detail-desc h2 {
+/* ปุ่มตะกร้า (R5 มาต่อ) + ข้อความเล็กข้างปุ่ม */
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.detail-actions .btn-dark:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.detail-actions small {
+  color: var(--ink-3);
+}
+.detail-desc h2,
+.detail-specs h2 {
   margin: 0 0 var(--space-2);
   font-size: 1.1rem;
+}
+/* ข้อมูลเพิ่มเติม: หัวข้อซ้าย ค่าขวา แถวละช่อง มีเส้นคั่นบาง ๆ */
+.detail-specs dl {
+  margin: 0;
+}
+.detail-specs dl > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: var(--space-3);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.detail-specs dt {
+  color: var(--ink-3);
+}
+.detail-specs dd {
+  margin: 0;
+  font-weight: 600;
 }
 .detail-desc p {
   margin: 0;
