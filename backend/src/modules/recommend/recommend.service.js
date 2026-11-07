@@ -2,6 +2,7 @@
 // ตอนนี้มี "ยอดนิยม" ที่คิดจากตัวเลขในฐานข้อมูลล้วน ๆ (ยังไม่ใช้เวกเตอร์ / embedding)
 // ภายหลังจะเพิ่ม: สินค้าที่เกี่ยวข้อง (related) และแนะนำสำหรับคุณ (for-you) ที่ใช้ product.embedding
 const { query } = require('../../db/pool');
+const AppError = require('../../utils/AppError');
 // ใช้คอลัมน์และรูปข้อมูลชุดเดียวกับรายการสินค้าของ R3 → หน้าเว็บวาดการ์ดสินค้าด้วยโค้ดเดิมได้เลย
 const { SUMMARY_COLUMNS, FROM_JOINS, toSummary } = require('../products/products.service');
 
@@ -123,4 +124,41 @@ async function popular({ limit }) {
   }));
 }
 
-module.exports = { popular, WEIGHTS, PRIOR_REVIEWS, HALF_LIFE_DAYS };
+/**
+ * สินค้าที่เกี่ยวข้อง — 8 ชิ้นที่ "ความหมายใกล้" สินค้านี้ที่สุด (ใช้ product.embedding)
+ *   - ระยะห่างใช้ <=> ของ pgvector = cosine distance (ยิ่งน้อยยิ่งใกล้ · similarity = 1 − distance)
+ *   - ตัดตัวเอง และตัดของที่ขายไม่ได้ (ไม่ available หรือของหมด) เหมือนทุกที่ในร้าน
+ *   - สินค้าตั้งต้นไม่มี / ไม่ได้วางขาย → 404 (เหมือน GET /products/:id)
+ *   - สินค้าตั้งต้นยังไม่มีเวกเตอร์ → [] (หน้าเว็บแค่ไม่โชว์แถวนี้ ไม่ใช่ error)
+ */
+async function related({ productId, limit }) {
+  const source = await query(
+    `SELECT embedding IS NOT NULL AS has_embedding
+       FROM product
+      WHERE product_id = $1 AND status = 'available'`,
+    [productId]
+  );
+  if (!source.rows[0]) throw AppError.notFound('PRODUCT_NOT_FOUND', 'ไม่พบสินค้านี้');
+  if (!source.rows[0].has_embedding) return [];
+
+  const { rows } = await query(
+    `SELECT ${SUMMARY_COLUMNS},
+            p.embedding <=> src.embedding AS distance
+       ${FROM_JOINS}
+       -- src = เวกเตอร์ของสินค้าตั้งต้น (แถวเดียว) เอามาต่อท้ายทุกแถวเพื่อวัดระยะ
+       CROSS JOIN (SELECT embedding FROM product WHERE product_id = $1) src
+      WHERE p.product_id <> $1
+        AND p.status = 'available' AND p.stock_quantity > 0
+        AND p.embedding IS NOT NULL
+      ORDER BY distance, p.product_id
+      LIMIT $2`,
+    [productId, limit]
+  );
+  // similarity ไว้ debug / อธิบายว่าทำไมขึ้นมา (1 = เหมือนกันเป๊ะ)
+  return rows.map((row) => ({
+    ...toSummary(row),
+    similarity: Number((1 - Number(row.distance)).toFixed(3)),
+  }));
+}
+
+module.exports = { popular, related, WEIGHTS, PRIOR_REVIEWS, HALF_LIFE_DAYS };
