@@ -163,8 +163,9 @@ a {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* ชื่อยาวตัดเป็น … (ชื่อเต็มอยู่ใน title / aria-label) เผื่อที่ให้เมนูไม่ตกบรรทัดเมื่อฟอนต์ในเครื่องกว้างกว่าที่เราทดสอบ */
 .header-user {
-  max-width: 200px;
+  max-width: 140px;
 }
 .header-user svg {
   flex: none;
@@ -202,6 +203,29 @@ a {
 }
 .header-user[aria-current='page'] {
   border-color: var(--color-text);
+}
+
+/* จอกว้าง: โลโก้ เมนู และปุ่มอยู่แถวเดียว — ที่ไม่พอให้ปุ่มชื่อผู้ใช้หดแล้วตัดเป็น … แทนการดันเมนูตกบรรทัด
+   (เมนูแอดมินภาษาไทย + ปุ่มหัวใจ + ชื่อยาว เคยทำให้ "แอดมิน" ตกไปบรรทัดที่สอง) */
+@media (min-width: 1101px) {
+  .nav {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+  .header-actions {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+  }
+  .header-actions > * {
+    flex-shrink: 0;
+  }
+  .header-actions > .header-user {
+    flex-shrink: 1;
+    min-width: 44px;
+    white-space: nowrap;
+  }
 }
 
 /* จอกลาง (แท็บเล็ต โน้ตบุ๊กจอเล็ก): โลโก้กับปุ่มอยู่แถวบน เมนูลงไปเต็มแถวล่าง ไม่ให้ชื่อเมนูตกบรรทัดกระจัดกระจาย */

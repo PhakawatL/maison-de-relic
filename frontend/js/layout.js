@@ -72,7 +72,7 @@ function accountActions() {
   // ชื่อผู้ใช้ = ลิงก์ไปหน้าโปรไฟล์ (แทนเมนู "โปรไฟล์ของฉัน" + คำทักทาย เมนูจะได้ไม่ล้นบรรทัด)
   const name = me
     ? `<a class="btn btn-ghost btn-pill header-user" href="/profile"${isActive('/profile') ? ' aria-current="page"' : ''}
-          aria-label="${t('nav.profile')}: ${escapeHtml(me.display_name)}" title="${t('nav.profile')}">${ICON_USER}<span>${escapeHtml(me.display_name)}</span></a>`
+          aria-label="${t('nav.profile')}: ${escapeHtml(me.display_name)}" title="${t('nav.profile')}: ${escapeHtml(me.display_name)}">${ICON_USER}<span>${escapeHtml(me.display_name)}</span></a>`
     : '';
   // ปุ่มหัวใจไปหน้ารายการที่ถูกใจ (R1 · Figma ใช้ไอคอน ♡ ใน header) — เป็นไอคอนแทนเมนูข้อความ เมนูจะได้ไม่ล้นบรรทัด
   const wishlist = me
