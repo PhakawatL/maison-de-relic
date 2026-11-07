@@ -1,8 +1,12 @@
 // อัปโหลดรูปสินค้าตัวอย่าง (seed 004_products.sql) เข้า Supabase Storage — R4
 //
 // รันบนเครื่องตัวเอง (ไม่ต้องรันในกล่อง Docker) จาก root ของ repo:
-//   node backend/scripts/upload-seed-images.js            ← อัปโหลดทั้ง 60 รูป (รันซ้ำได้ จะเขียนทับรูปเดิม)
+//   node backend/scripts/upload-seed-images.js            ← อัปโหลดทุกรูปใน seed-images.json (รันซ้ำได้ จะเขียนทับรูปเดิม)
+//   node backend/scripts/upload-seed-images.js --new      ← อัปโหลดเฉพาะรูปที่ยังเปิดจาก URL สาธารณะไม่ได้ (รูปใหม่)
 //   node backend/scripts/upload-seed-images.js --check    ← เช็กอย่างเดียวว่าเปิดรูปจาก URL สาธารณะได้ครบไหม
+//
+// seed-images.json มีทั้งรูปปก (ไม่มีช่อง seq = รูปที่ 1 ของ 004_products.sql)
+// และรูปเพิ่มเติม (seq >= 2 ของ 005_product_images.sql)
 //
 // ต้องมีใน .env ที่ root ของ repo (ห้าม commit ไฟล์นี้ — ดู docs/deploy.md ข้อ 3):
 //   SUPABASE_URL=https://<project>.supabase.co
@@ -32,6 +36,7 @@ function readEnv(file) {
 
 async function main() {
   const checkOnly = process.argv.includes('--check');
+  const onlyNew = process.argv.includes('--new');
   const env = { ...readEnv(path.join(ROOT, '.env')), ...process.env };
   const url = (env.SUPABASE_URL || '').replace(/\/+$/, '');
   const key = env.SUPABASE_SERVICE_ROLE_KEY;
@@ -43,9 +48,16 @@ async function main() {
   const items = JSON.parse(fs.readFileSync(path.join(__dirname, 'seed-images.json'), 'utf8'));
   const publicUrl = (file) => `${url}/storage/v1/object/public/${BUCKET}/${FOLDER}/${file}`;
   let failed = 0;
+  let skipped = 0;
 
   for (const item of items) {
+    const label = `${item.code}${item.seq ? `#${item.seq}` : ''}`; // c06#2 = รูปที่ 2 ของสินค้า c06
     try {
+      // --new: ถ้ารูปนี้เปิดจาก URL สาธารณะได้อยู่แล้ว (อัปโหลดไปแล้ว) ข้ามไปเลย ไม่ต้องโหลด/อัปโหลดซ้ำ
+      if (onlyNew && !checkOnly && (await fetch(publicUrl(item.file), { method: 'HEAD' })).ok) {
+        skipped++;
+        continue;
+      }
       if (!checkOnly) {
         // 1) โหลดรูปจาก Pexels (ให้ Pexels ย่อและแปลงเป็น webp ให้เลย)
         const src = `https://images.pexels.com/photos/${item.pexelsId}/pexels-photo-${item.pexelsId}.jpeg?auto=compress&cs=tinysrgb&w=1000&fm=webp`;
@@ -73,14 +85,14 @@ async function main() {
       // 3) เช็กว่าเปิดจาก URL สาธารณะได้ (bucket ต้องตั้งเป็น public)
       const check = await fetch(publicUrl(item.file), { method: 'HEAD' });
       if (!check.ok) throw new Error(`เปิดจาก URL สาธารณะไม่ได้ (${check.status}) — bucket เป็น public หรือยัง?`);
-      console.log(`✔ ${item.code} ${item.file}`);
+      console.log(`✔ ${label} ${item.file}`);
     } catch (err) {
       failed++;
-      console.error(`✘ ${item.code} ${item.file}: ${err.message}`);
+      console.error(`✘ ${label} ${item.file}: ${err.message}`);
     }
   }
 
-  console.log(`\nเสร็จ ${items.length - failed}/${items.length} รูป`);
+  console.log(`\nเสร็จ ${items.length - failed}/${items.length} รูป${skipped ? ` (ข้ามรูปที่มีอยู่แล้ว ${skipped} รูป)` : ''}`);
   console.log(`ตัวอย่าง URL: ${publicUrl(items[0].file)}`);
   if (failed) process.exitCode = 1;
 }

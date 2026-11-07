@@ -23,3 +23,5 @@ backend/uploads/
 
 # Local R5 PR draft and verification notes (not part of the team source).
 /.local/r5/
+# ไฟล์โมเดล AI ที่ดาวน์โหลดมา (R4 · embedding) — ใหญ่หลายร้อย MB ห้าม commit
+backend/.model-cache/

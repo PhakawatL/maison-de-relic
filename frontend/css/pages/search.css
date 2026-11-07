@@ -1,0 +1,261 @@
+/* =========================================================
+   search.css — สไตล์เฉพาะหน้าค้นหา · ผู้รับผิดชอบ: R4
+   การ์ดสินค้า (product-card, product-grid) และสี (--card, --line, --ink-3 ...) มาจาก home.css
+   ไฟล์นี้จัดแค่ฟอร์ม ข้อความแจ้ง และปุ่มเปลี่ยนหน้า
+   ========================================================= */
+/* แถบเลื่อนด้านขวาโผล่/หายตอนผลลัพธ์ยาวขึ้นจะทำให้ทั้งหน้าขยับ → จองที่ให้แถบเลื่อนไว้ตลอด */
+html {
+  scrollbar-gutter: stable;
+}
+/* home.css ตั้ง .page-home main { padding: ... 0 0 } ซึ่งลบระยะซ้ายขวาของ .container ทิ้ง ต้องใส่คืน */
+.page-search main {
+  display: grid;
+  /* main สูงเต็มจอ (base.css: main { flex: 1 }) ถ้าไม่ใส่ start grid จะยืดทุกแถวให้เต็มที่ว่าง
+     แถบค้นหาเลยสูงเกินจริง และขยับทุกครั้งที่เนื้อหาเปลี่ยน */
+  align-content: start;
+  gap: var(--space-4);
+  padding-inline: var(--space-3);
+  padding-bottom: var(--space-5);
+}
+.page-search h1 {
+  margin: 0;
+}
+
+/* ---------- ฟอร์มค้นหา ---------- */
+.search-panel {
+  display: grid;
+  gap: var(--space-2);
+}
+/* แถบค้นหาใช้สไตล์ .hero-search ของหน้าแรก แต่กว้างเต็มแถวและเตี้ยกว่า */
+.page-search .hero-search {
+  max-width: none;
+  padding: 4px 4px 4px 14px;
+}
+.page-search .hero-search input {
+  padding: 6px 0;
+  font-size: 0.95rem;
+}
+.page-search .btn-dark {
+  padding: 8px 18px;
+  font-size: 0.9rem;
+}
+.search-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+/* ---------- ตัวกรอง (dropdown ลอยทับ ไม่ดันเนื้อหาด้านล่าง) ---------- */
+.search-tools {
+  position: relative; /* จุดอ้างอิงของ dropdown และปุ่ม "แสดงทั้งหมด" */
+  min-height: 36px;
+}
+.search-filters > summary,
+#show-all {
+  height: 36px;
+  padding: 0 16px;
+  font-size: 0.88rem;
+}
+.search-filters > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none; /* ซ่อนสามเหลี่ยมเดิมของเบราว์เซอร์ */
+}
+.search-filters > summary::-webkit-details-marker {
+  display: none;
+}
+/* ลูกศรชี้ลง พอกางแล้วหมุนชี้ขึ้น */
+.search-filters > summary::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.25s;
+}
+.search-filters[open] > summary::after {
+  transform: translateY(2px) rotate(-135deg);
+}
+/* ตัวเลขบนปุ่ม "ตัวกรอง" = จำนวนตัวกรองที่ตั้งไว้ */
+.filter-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--on-ink);
+  font-size: 0.72rem;
+  line-height: 20px;
+  text-align: center;
+}
+/* กล่องตัวกรองลอยใต้ปุ่ม กว้างเท่าแถบค้นหา (left/right: 0 อ้างกับ .search-tools) */
+.filters-body {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  /* กระจกฝ้า: พื้นโปร่งแสง + เบลอสิ่งที่อยู่ข้างหลัง (สีกระจกมาจาก home.css ใช้ชุดเดียวกับการ์ดลอยหน้าแรก มีทั้งโหมดสว่าง/มืด) */
+  background: var(--glass-weak);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4); /* Safari */
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+}
+/* animation ตอนกาง: ค่อย ๆ เลื่อนลงมาพร้อมจางเข้า */
+.search-filters[open] .filters-body {
+  animation: filters-drop 0.22s ease-out;
+}
+@keyframes filters-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .search-filters[open] .filters-body {
+    animation: none;
+  }
+}
+#show-all {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+/* 5 ช่องเท่ากันในแถวเดียว · จอแคบเหลือแถวละ 2 */
+.search-fields {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  .search-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.search-fields .field {
+  margin: 0;
+  min-width: 0; /* ให้ช่องหดตามคอลัมน์ได้ ไม่ดันจนล้นจอ */
+}
+.search-fields input,
+.search-fields select {
+  width: 100%;
+  min-width: 0;
+}
+.filters-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.search-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+/* ---------- ข้อความ error ใต้ช่อง (ขั้นที่ 6) ---------- */
+.field-error {
+  color: var(--color-danger);
+  font-size: 0.8rem;
+}
+.field-error:empty {
+  display: none; /* ไม่มี error ก็ไม่กินที่ */
+}
+.is-invalid {
+  border-color: var(--color-danger);
+}
+
+/* ---------- ผลลัพธ์ ---------- */
+.result-count {
+  margin: 0;
+  color: var(--ink-3);
+}
+.result-count:empty {
+  display: none;
+}
+#results[aria-busy='true'] {
+  opacity: 0.5; /* จางลงระหว่างรอ API */
+}
+/* ป้าย "สินค้าหมด" มุมขวาบนของรูป */
+.out-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* ---------- ปุ่มเปลี่ยนหน้า (ขั้นที่ 5) ---------- */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.pager:empty {
+  display: none;
+}
+
+/* จอมือถือ: home.css ทำ product-grid เป็นแถวปัดข้าง แต่หน้าค้นหาอยากให้เรียง 2 คอลัมน์ลงล่าง */
+@media (max-width: 640px) {
+  .page-search .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* ---------- animation เล็ก ๆ (home.css ปิดให้เองถ้าผู้ใช้ตั้งค่า "ลดการเคลื่อนไหว") ---------- */
+/* การ์ดผลลัพธ์ใช้ .card-enter ของหน้าแรก แต่หน่วงสั้นลง 12 ใบจะได้ไม่รอนาน */
+.page-search .card-enter {
+  animation-delay: calc(var(--i) * 40ms);
+}
+/* แว่นขยาย "ส่อง" ตอนกดค้นหา */
+.search-icon.is-nudging {
+  animation: search-nudge 0.5s ease-out;
+}
+@keyframes search-nudge {
+  35% {
+    transform: translate(2px, -2px) rotate(-14deg) scale(1.15);
+  }
+  70% {
+    transform: translate(-1px, 1px) rotate(6deg);
+  }
+}
+/* ตัวเลขบนปุ่ม "แสดง N ชิ้น" เปลี่ยน → เด้งเบา ๆ */
+#apply-filters.is-popping {
+  animation: count-pop 0.3s ease-out;
+}
+@keyframes count-pop {
+  40% {
+    transform: scale(1.06);
+  }
+}

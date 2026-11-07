@@ -4,3 +4,5 @@ npm-debug.log*
 .env.*
 !.env.example
 uploads
+# ไฟล์โมเดล AI ที่ดาวน์โหลดไว้บนเครื่อง (~120 MB) ไม่ต้องก๊อปเข้า image — กล่องโหลดเองตอนใช้ครั้งแรก
+.model-cache

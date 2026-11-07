@@ -4,13 +4,13 @@ import { api, auth } from '../api.js';
 import { escapeHtml as esc } from '../utils.js';
 import { t, onLangChange } from '../i18n.js';
 
-export function mountProductCart(root, product) {
+export function mountProductCart(root, product, {showSummary=true} = {}) {
   let busy=false, quantity=1, notice='', noticeKey='', uncertain=false;
   const available=()=>product.status==='available' && product.stock_quantity>0;
   function render(){
     root.innerHTML=`<section class="product-cart-panel">
-      <p class="product-cart-price">${new Intl.NumberFormat(document.documentElement.lang==='en'?'en-US':'th-TH',{style:'currency',currency:'THB'}).format(product.price)}</p>
-      <p>${t('productCart.stock',{n:product.stock_quantity})}</p>
+      ${showSummary?`<p class="product-cart-price">${new Intl.NumberFormat(document.documentElement.lang==='en'?'en-US':'th-TH',{style:'currency',currency:'THB'}).format(product.price)}</p>
+      <p>${t('productCart.stock',{n:product.stock_quantity})}</p>`:''}
       <form class="product-cart-form"><label>${t('productCart.quantity')}<input name="quantity" type="number" min="1" max="${product.stock_quantity}" step="1" value="${quantity}" required ${busy||!available()||uncertain?'disabled':''}></label>
       <button class="btn btn-primary" type="submit" ${busy||!available()||uncertain?'disabled':''}>${t(busy?'productCart.adding':available()?'productCart.add':'productCart.soldOut')}</button>
       <a class="btn" href="/cart">${t('productCart.view')}</a></form>

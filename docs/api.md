@@ -2,6 +2,29 @@
 
 ทุกคนต้องเขียน API ตามข้อตกลงนี้ หน้าเว็บจะได้เรียกผ่าน `frontend/js/api.js` ตัวเดียวได้ทั้งหมด
 
+## R5 — สถานะปัจจุบัน 5 พฤศจิกายน 2026
+
+ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `1ad3a21` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
+
+| ส่วน | สถานะที่ใช้จริงในโค้ด |
+|---|---|
+| Checkout | Omise **Test** PromptPay / TrueMoney ผ่าน `/orders/payment-attempts`; ไม่รองรับบัตรหรือ Live keys |
+| สั่งซื้อแบบจำลองเดิม | HTTP `POST /orders` ตอบ 409 `PAYMENT_PROVIDER_REQUIRED`; service เดิมเก็บไว้ทดสอบ ไม่ใช่เส้นทางซื้อในเว็บ |
+| Order / จัดส่ง | มีประวัติ รายละเอียด Admin Orders เลขพัสดุ และยืนยันรับสินค้า พร้อม status log / admin audit |
+| รีวิว / คืนเงิน | รวม R1 แล้ว; Order Detail ใช้ eligibility API และลิงก์ด้วย `order_item_id` ไป `/write-review` / `/refunds` |
+| R3 Inventory | ยังไม่มี `inventory.service.js`; R5 มี adapter รองรับ `deductStock(client, line)` แต่ต้องเชื่อมของ R3 ก่อนซื้อจริงครบเส้นทาง ตอบ 503 `INVENTORY_NOT_READY` ก่อนสร้าง payable charge เมื่อ service ไม่พร้อม |
+| R4 Events | มี outbox, session และ per-product adapter; ยังไม่มี Events API / transport / worker ที่เปิดใช้จริง ต้องยืนยัน trusted identity และ receiver deduplication ก่อนเชื่อม |
+
+### ตรวจ flow คืนเงินฝั่งแอดมิน
+
+R1 ใช้ `POST /refund-requests` และ `PATCH /admin/refund-requests/:id` ไม่ใช่ Omise Refund API:
+
+- `approve` ต้องระบุ `restock_decision`: `return` เพิ่มสต็อกและบันทึก return movement ทันทีที่อนุมัติ; `write_off` ไม่เพิ่มสต็อก การอนุมัติจึงควรเกิดหลังตรวจรับสินค้าคืนแล้ว
+- `reject` ปิดคำขอและคืนจำนวนที่ขอได้; `refund` ใช้ได้เฉพาะ approved เป็นการบันทึกว่าโอนคืนแล้วตามระบบ R1 **ไม่เรียก Omise และไม่โอนเงินจริง**
+- คืนบางส่วนยังคงสถานะ order/payment เดิม; คืนครบจำนวนของทุกรายการจึงเปลี่ยนทั้ง order และ payment เป็น `refunded` พร้อม `order_status_log` ทุกการพิจารณามี admin audit
+- ยอดคำขอ = ราคาต่อชิ้น ณ วันที่ซื้อ × จำนวนที่ขอคืน ไม่รวมค่าจัดส่ง การยืนยันรับสินค้าไม่เลื่อนช่วงคืนเงิน 7 วันซึ่งนับจาก delivered log
+- ตรวจ API วันที่ 5 พ.ย. 2026: `refunds.test.js` และ `omise-payments.test.js` รวม **39 ผ่าน / 0 ข้าม / 0 ล้มเหลว** รวม R5 paid order → delivered/completed → คืนบางส่วน/ครบจำนวน, return/write_off, สิทธิ์ลูกค้า, ทำซ้ำได้ 409, สต็อก/ledger/audit และสถานะที่ลูกค้าอ่านกลับ Gateway และ Inventory ใช้ constructor-injected test doubles; ฐานข้อมูลและ Refund API ใช้จริง สร้าง/ล้างเฉพาะ fixtures ไม่เรียก provider ภายนอก และไม่ใช่ผลตรวจหน้าจอแอดมินรอบใหม่
+
 ## ที่อยู่
 
 | ที่ไหน | Base URL |
@@ -136,13 +159,15 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | DELETE | `/cart/items/:productId` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบรายการสินค้า |
 | POST | `/cart/item-removals` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบหลายรายการ |
 | POST | `/orders/quotes` | ✓ ยืนยันอีเมลแล้ว | R5 | ตรวจราคา สต็อก ที่อยู่ และยอดก่อนซื้อ |
-| POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | สั่งซื้อและจ่ายจำลอง; รอเชื่อม R3 inventory |
+| POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | ปิดเส้นทางจำลอง: 409 PAYMENT_PROVIDER_REQUIRED; ใช้ `/orders/payment-attempts` |
 | GET | `/orders/:id` | ✓ | R5 | รายละเอียดออเดอร์ของตัวเอง |
 | GET | `/orders` | ✓ | R5 | ประวัติออเดอร์ของตัวเอง กรองสถานะและแบ่งหน้า |
 | GET | `/admin/orders` | ✓ แอดมิน | R5 | รายการออเดอร์ของร้าน ค้นหา กรองและแบ่งหน้า |
 | GET | `/admin/orders/:id` | ✓ แอดมิน | R5 | รายละเอียดออเดอร์เพื่อจัดส่ง |
 | PATCH | `/admin/orders/:id/fulfillment` | ✓ แอดมิน | R5 | บันทึกสถานะจัดส่งและเลขพัสดุ |
 | POST | `/orders/:id/receipt` | ✓ เจ้าของ ยืนยันอีเมลแล้ว | R5 | ยืนยันรับสินค้า delivered → completed |
+| POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
+| GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
 | | | | | |
 
 ---
@@ -974,7 +999,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 
 ## บันทึก event พฤติกรรมผู้ใช้ (หน้าเว็บ R1 · API R4)
 
-> **ร่างข้อตกลง** — R1 เขียนฝั่งหน้าเว็บ (#8) ตามร่างนี้ไว้แล้ว R4 ทำ API (#26) ตามนี้ หรือแก้ร่างแล้วบอก R1 ได้เลย
+> R1 เขียนฝั่งหน้าเว็บ (#8) · R4 ทำ API (#26) ตามข้อตกลงนี้แล้ว (`backend/src/modules/events/`) และเปิด `EVENTS_ENABLED` แล้ว
 
 ตาราง `user_event` (BR-10, BR-11) เก็บว่าใครดู / กด / ถูกใจ / ใส่ตะกร้า / ซื้อสินค้าอะไร ไว้ทำสินค้าแนะนำ
 
@@ -987,8 +1012,9 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 - `event_type` = `view` · `click` · `wishlist` · `add_to_cart` · `purchase` (ตาม CHECK ของตาราง)
 - `session_id` = รหัสสุ่มจากหน้าเว็บ (ไม่ว่างเกิน 30 นาทีใช้รหัสเดิม) — แยกการใช้งานแต่ละช่วงได้แม้ยังไม่ล็อกอิน
 - ถ้ามี token มาด้วย → API ใส่ `user_id` จาก token เอง (ไม่รับ `user_id` จาก body) · token ใช้ไม่ได้ / ไม่มี token → บันทึกแบบไม่ระบุผู้ใช้ (`user_id` = null)
-- ตอบ `201` (หรือ `204`) · `400 VALIDATION_ERROR` ข้อมูลผิดรูปแบบ · `404 PRODUCT_NOT_FOUND` ไม่มีสินค้านี้
-- ควรมี rate limit กันยิงรัว (หน้าเว็บส่งแบบไม่รอผล ผู้ใช้ไม่เห็น error นี้)
+- ตอบ `201` พร้อม `{ "data": { "event_id", "product_id", "event_type", "created_at" } }` · `400 VALIDATION_ERROR` ข้อมูลผิดรูปแบบ (`session_id` ยาวไม่เกิน 100 ตัว) · `404 PRODUCT_NOT_FOUND` ไม่มีสินค้านี้
+- `view` เพิ่ม `product.view_count` ของสินค้านั้น +1 ด้วย (ใน transaction เดียวกัน)
+- rate limit 120 ครั้งต่อนาทีต่อ IP → `429 TOO_MANY_REQUESTS` (หน้าเว็บส่งแบบไม่รอผล ผู้ใช้ไม่เห็น error นี้)
 
 ### หน้าเว็บเรียกที่ไหน (`frontend/js/events.js`)
 
@@ -1057,10 +1083,10 @@ Order Waiting/ยกเลิกออเดอร์ยังไม่สรุ
 
 | ผู้ใช้ข้อมูล | Interface ที่มีแล้ว | ขอบเขต/สิ่งที่ต้องตกลง |
 |---|---|---|
-| R1 Refund/Review | `GET /orders/:id` | เจ้าของออเดอร์เท่านั้น; คืน Order พร้อม `items`, `payment`, `status_history`; ยังไม่มี API OrderItem แยกหรือ endpoint ส่งคำขอ Refund/Review |
+| R1 Refund/Review | `GET /orders/:id` และ API R1 `/reviews`, `/refund-requests` | เจ้าของออเดอร์เท่านั้น; คืน Order พร้อม `items`, `payment`, `status_history`; R1 ใช้ `order_item_id` ตรวจสิทธิ์/eligibility และรับคำขอแล้ว ไม่มี API OrderItem แยก |
 | R3 รายงานยอดขาย | `GET /admin/orders`, `GET /admin/orders/:id` | ต้องเป็น admin; เป็นรายการ/รายละเอียด ยังไม่มี aggregate sales API; ตกลงวิธีคิดยอดคืนเงิน/ค่าจัดส่งก่อนสร้างรายงาน |
 | R3 Inventory | adapter ใน `orders.integrations.js` | signature ด้านล่างเป็นข้อเสนอของ R5 ยังรอ R3 ยืนยัน |
-| R4 Events | ยังไม่มีการเรียก Events API | รอ endpoint/schema; payload ด้านล่างเป็นข้อเสนอ ไม่ใช่ API ที่เปิดแล้ว |
+| R4 Events | server outbox และ per-product adapter | มี draft body `{product_id,event_type,session_id}` จาก R1 แล้ว; รอ API จริง, trusted identity, deduplication และ worker ดู Events readiness ท้ายเอกสาร |
 
 **Order/OrderItem read contract:** รายละเอียดคืน `{data: order}` โดยมี
 `order_id`, `current_status`, `placed_at`, `subtotal`, `shipping_fee`, `grand_total`,
@@ -1136,7 +1162,7 @@ value จะรวม shipping หรือไม่ยังต้องตก�
 - ทดสอบด้วย mock receiver และ PostgreSQL จริงเท่านั้น ยังไม่ได้เรียก API R4.
 
 **ข้อจำกัดปัจจุบัน:** ไม่มี automatic refund/void PromptPay, ไม่มี API ยกเลิกออเดอร์,
-ไม่มี sales aggregate และไม่มีการส่ง Events จริง. ปุ่ม Refund เป็น disabled placeholder.
+ไม่มี sales aggregate และไม่มีการส่ง Events จริง. ปุ่ม Refund ในหน้าจริงเชื่อม R1 eligibility แล้ว; ปุ่มใน Preview ปิดไว้ไม่ส่ง ID จำลอง.
 สถานะ Order ใช้ paid → packing → shipped → delivered → completed;
 cancelled/refunded อ่านได้แต่ไม่มี mutation flow. Waiting ใช้ payment attempt แยกจาก Order.
 
@@ -1225,7 +1251,7 @@ Webhook/localhost และกู้รายการไม่ทราบผ�
 ส่วน flow จำลอง Step 3 ด้านล่างเก็บเป็นประวัติและ service tests; HTTP `POST /orders` ปิดแล้ว
 หน้า `?preview=1` ยังคงจำลองในเบราว์เซอร์ ไม่เรียก Omise. ยังไม่รองรับ Live payment หรือบัตร.
 Auth ใช้ R2; Quotes/Create ต้องยืนยันอีเมลแล้ว; อ่าน Order ต้องล็อกอินและเป็นเจ้าของ.
-ประวัติรายการออเดอร์เพิ่มใน Step 4 ด้านล่าง; ยังไม่รวมยืนยันรับของ, Admin Orders, Waiting/ยกเลิก หรือ Events.
+ขอบเขต Step 3 เดิมยังไม่รวมยืนยันรับของ/Admin Orders; โค้ดปัจจุบันมีทั้งสองส่วนแล้ว ส่วน Waiting/ยกเลิกและ Events transport ยังไม่เปิดใช้.
 
 | Method | URL | สำเร็จ |
 |---|---|---|
@@ -1618,7 +1644,7 @@ Reference: https://docs.omise.co/truemoney-wallet . Live activation requires req
 - Buttons are attached to each purchased item, using order_item_id: /write-review?item=<id> and /refunds?item=<id>. Only IDs returned as eligible by R1 are enabled; refund requires refundable_qty > 0. The R1 APIs remain authoritative for ownership, duplicate reviews, quantities and the seven-day window at submission time.
 - Missing/failed eligibility API does not enable buttons. Healthy review/refund responses can still be used independently; the page offers a reload for unavailable eligibility. Preview buttons are disabled examples and never send fake IDs to R1.
 - R5 fulfillment writes the delivered transition to order_status_log in the same transaction. Receipt writes delivered -> completed separately; it does not reset the refund window.
-- Cross-module integration test is in omise-payments.test.js; it is skipped until R1 review/refund modules are present, then verifies real R1 APIs against an R5 paid order with constructor-injected provider/Inventory doubles.
+- Cross-module integration tests in omise-payments.test.js verify real R1 APIs against R5 paid orders with constructor-injected provider/Inventory doubles. R1 modules are now merged locally and these tests pass, including admin partial/full refund, stock movements, audit and payment/order status.
 
 
 ### R5 — Events / admin audit integration readiness (2026-11-02)
@@ -1627,7 +1653,7 @@ Reference: https://docs.omise.co/truemoney-wallet . Live activation requires req
 
 **Single producer:** Cart add and verified purchase enqueue events on the server. R5 does not also call trackEvent in the browser. Updates/removals, failed mutations, preview, failed payments and duplicate completion do not create extra business events. Existing outbox rows remain readable; missing session context gets a stable opaque event-derived fallback.
 
-**R4 adapter:** createEvents({r4Transport,receiverDeduplicates:true}) prepares bodies exactly {product_id,event_type,session_id}, one per unique product. Quantity/price/order/user identifiers do not enter this public body. r4Transport(body,{signal,idempotencyKey,userId}) is constructor-injected; it must resolve status 201 or 204 and pass user identity through an agreed trusted channel. Do not save/replay browser Bearer tokens in the outbox. Stable idempotency key is parent event key + product ID; receiver must honor it (e.g. a dedup header agreed with R4). Existing draft #51 does not yet specify this or server identity propagation.
+**R4 adapter:** createEvents({r4Transport,receiverDeduplicates:true}) prepares bodies exactly {product_id,event_type,session_id}, one per unique product. Quantity/price/order/user identifiers do not enter this public body. r4Transport(body,{signal,idempotencyKey,userId}) is constructor-injected; it must resolve status 201 or 204 and pass user identity through an agreed trusted channel. Do not save/replay browser Bearer tokens in the outbox. Stable idempotency key is parent event key + product ID; receiver must honor it (e.g. a dedup header agreed with R4). The contract/helper from merged PR #51 does not yet specify this or server identity propagation; it does not provide the Events API implementation.
 
 Migration 007 stores delivered_product_ids so partial success retries only unacknowledged products. Lost HTTP acknowledgement can still cause a retry of the same key; only receiver deduplication closes that gap. Per-call timeout is two seconds, AbortSignal forwarded. Payloads/raw transport errors/keys are not logged. Omise Test purchase events are excluded by default; allowTestEvents is explicit constructor-only test plumbing.
 
@@ -1636,3 +1662,67 @@ No real R4 transport, worker, environment switch or HTTP activation endpoint is 
 **Admin audit:** status and tracking changes call the R1 logAdminAction helper using the exact fulfillment transaction client when that module is present. Before R1 merge, an R5 adapter inserts the same parameterized shared admin_action_log schema. Both are mandatory: audit failure rolls back order/status/tracking writes. action_type is update_order_status or update_order_tracking, target_type=order, target_id=order ID. Notes contain only order code and transition, not addresses, names, phone numbers or tracking contents. Rejected/stale requests, unchanged tracking and customer receipt add no admin action. Receipt still has its separate order_status_log entry.
 
 Isolated R1 activity integration adds order target codes/search and links /admin/orders?id=<id>, with TH/EN labels. The R1 shared-file extension is preserved separately in .local/r5/r1-order-audit-extension.patch pending the normal main merge; it is not copied into primary R1 paths before merge.
+`EVENTS_ENABLED = true` ใน `frontend/js/config.js` แล้ว (หน้าเว็บส่งจริง) — ปิดชั่วคราวได้โดยเปลี่ยนเป็น `false`
+
+## สินค้าแนะนำ (R4)
+
+### `GET /recommend/popular?limit=8` (ไม่ต้องล็อกอิน)
+
+สินค้ายอดนิยม เฉพาะที่ขายได้ (`status = 'available'` และ `stock_quantity > 0`) เรียงจากคะแนนมากไปน้อย
+
+ใช้สามสัญญาณตามเอกสารโครงงาน (S5) แต่ทำให้อยู่ในหน่วยเดียวกันก่อน แล้วถ่วงน้ำหนัก → คะแนนเต็ม 100
+
+```
+คะแนน = 100 × ( 0.50 × ยอดขาย' + 0.25 × ถูกใจ' + 0.25 × รีวิว' )
+
+น้ำหนักตามเวลา = 0.5 ^ (อายุเป็นวัน / 30)                     ครึ่งชีวิต 30 วัน · 60 วัน เหลือ 1/4 · 90 วัน เหลือ 1/8
+ยอดขาย' = ln(1 + Σ ชิ้น × น้ำหนักตามเวลา) / ln(1 + ค่าสูงสุดในร้าน)   นับจาก "order".placed_at ไม่นับออเดอร์ cancelled / refunded
+ถูกใจ'  = ln(1 + Σ น้ำหนักตามเวลา) / ln(1 + ค่าสูงสุดในร้าน)          นับจาก wishlist.added_at
+รีวิว'  = (ดาวที่ปรับแล้ว − 1) / 4
+          ดาวที่ปรับแล้ว = (3 × ดาวเฉลี่ยทั้งร้าน + ผลรวมดาว) / (3 + จำนวนรีวิว)   ← Bayesian average
+คะแนนเท่ากัน → view_count มากก่อน → สินค้าใหม่ก่อน
+```
+
+- **ทำไมถ่วงเวลา:** ของที่ขายดีเมื่อหลายเดือนก่อนแต่ตอนนี้เงียบ ไม่ควรค้างอันดับ 1 · ครึ่งชีวิต 30 วันเพราะร้านเดียวขายไม่ถี่ สั้นกว่านี้อันดับจะสั่นตามออเดอร์ไม่กี่ใบ · **รีวิวไม่ลดตามเวลา** เพราะดาวบอกคุณภาพของตัวสินค้า
+- **ทำไม normalize:** เดิมบวกยอดขาย (หลักร้อยได้) กับดาว (0–5) ตรง ๆ หน่วยไม่เท่ากัน · หารด้วยค่าสูงสุดทำให้ทุกส่วนอยู่ใน 0–1
+- **ทำไมใช้ ln:** ชิ้นที่ 1→2 มีความหมายมากกว่า 50→51 · ชิ้นขายดีชิ้นเดียวจึงไม่กดชิ้นอื่นจนเหลือศูนย์
+- **ทำไม Bayesian:** เดิมรีวิวเดียว 5 ดาวชนะ 4.8 จาก 4 รีวิว · ตอนนี้รีวิวน้อยถูกดึงเข้าหาค่าเฉลี่ยร้าน ยังไม่มีรีวิว = เท่าค่าเฉลี่ยร้าน (เป็นกลาง)
+- **ทำไม 50 / 25 / 25:** ยอดขาย : ถูกใจ = 2 : 1 ตรงกับน้ำหนัก event ของ "แนะนำสำหรับคุณ" (purchase 6 · wishlist 3) · รีวิวเป็นสัญญาณคุณภาพ
+- ค่าน้ำหนักอยู่ที่ `WEIGHTS`, `PRIOR_REVIEWS` และ `HALF_LIFE_DAYS` ใน `backend/src/modules/recommend/recommend.service.js`
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- แต่ละชิ้นมีรูปข้อมูลเหมือน `GET /products` (วาดการ์ดด้วยโค้ดเดิมได้) และมี `popularity` เพิ่ม
+
+```json
+{ "data": [ { "product_id": 4, "title": "...", "price": 7900, "category": { ... },
+              "popularity": { "score": 97.4, "sold": 6, "wishlist": 4,
+                              "weighted_sold": 4.14, "weighted_wishlist": 2.75, "adjusted_rating": 4.58,
+                              "parts": { "sales": 1, "wishlist": 1, "rating": 0.894 } } } ] }
+```
+
+- `sold` / `wishlist` = ยอดดิบทั้งหมด · `weighted_sold` / `weighted_wishlist` = หลังถ่วงเวลา (ใช้คิดคะแนนจริง)
+- `parts` = แต่ละส่วนหลัง normalize (0–1) ก่อนคูณน้ำหนัก ไว้อธิบายว่าชิ้นนี้ติดอันดับเพราะอะไร
+- ฐานข้อมูลใหม่ยังไม่มีออเดอร์ / ถูกใจ / รีวิว → ทุกชิ้นได้คะแนนเท่ากัน (มีแค่ส่วนรีวิวที่เป็นกลาง) เรียงตาม view_count · อยากเห็นอันดับจริงบนเครื่องตัวเอง สั่ง
+  `docker compose exec api node scripts/demo-activity.js` (ไม่รันเองตอน `docker compose up` · รันได้ครั้งเดียว · ล้างด้วย `npm run db:reset`)
+  ได้ลูกค้าตัวอย่าง 8 คน (`demo_ploy` … `demo_ton` รหัสผ่าน `Demo@1234`) พร้อมคำสั่งซื้อ รีวิว wishlist และ `user_event`
+  ผลสุ่มเหมือนกันทุกเครื่อง · ไม่ตัดสต็อก · รายละเอียดอยู่หัวไฟล์ `backend/scripts/demo-activity.js`
+- ภายหลัง R4 จะเพิ่ม `GET /recommend/related/:productId` (สินค้าที่เกี่ยวข้อง) และ `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding`
+R1 activity integration in the primary branch now includes order target codes/search and links /admin/orders?id=<id>, with TH/EN labels, after the main merge through PR #52. The earlier isolated patch is only a local backup, not a pending integration step.
+
+### R5 → R4 Events — ข้อเสนอรอ R4 ยืนยัน (7 พ.ย. 2026)
+
+**สถานะที่ตรวจ:** fetched `origin/feat/r4-events-api` ถึง `eca5f61` มี `POST /api/events` และเปิด `EVENTS_ENABLED` แล้ว แต่ยังไม่รวมเข้า main/branch R5 ที่ตรวจ (`origin/main` ขณะตรวจครั้งนั้น = `1ad3a21`). API ปัจจุบันรับ `{product_id,event_type,session_id}` อ่านผู้ใช้จาก Bearer token แบบ optional และ INSERT ทุกคำขอ ยังไม่พบ deduplication หรือช่องทางรับ trusted user identity จาก outbox ฝั่ง Backend ข้อเสนอต่อไปนี้ **ยังไม่ใช่ความสามารถของ API ปัจจุบัน** และยังไม่เปิดส่งจริงจาก R5
+
+| เรื่องที่ต้องตกลง | ข้อเสนอของ R5 | สิ่งที่ขอให้ R4 ยืนยัน |
+|---|---|---|
+| ป้องกันส่งซ้ำ | ใช้ `Idempotency-Key` ใน header; key คงเดิมต่อ outbox event + product หนึ่งรายการ แม้ retry หรือคำตอบหาย ไม่เปลี่ยน public body | ชื่อ/ความยาว/ขอบเขต key และวิธีเก็บแบบ durable ที่กัน concurrent requests ได้; key เดิมและข้อมูลเดิมตอบสำเร็จโดยไม่ INSERT อีก, key เดิมแต่ข้อมูลต่างตอบ 409; กำหนดระยะเก็บให้ครอบคลุมช่วง retry |
+| ตัวตนผู้ใช้จาก Backend | เรียก service ภายในที่ตรวจสอบตัวตนแล้ว โดยส่ง `userId` เป็น trusted context จาก outbox; หากใช้ HTTP ต้องมีช่องทางยืนยัน service แยกจาก Browser และตกลงรูปแบบก่อน | เลือก in-process service หรือ authenticated internal HTTP และระบุการตรวจสิทธิ์; ห้ามเชื่อ `user_id` ที่ Browser ส่งเอง ห้ามเก็บ/ส่งซ้ำ Bearer token ของลูกค้าใน outbox และไม่ลด event ของลูกค้าที่รู้ตัวตนให้เป็น anonymous โดยเงียบ ๆ |
+| ผลตอบรับ | adapter R5 รับ HTTP 201 หรือ 204 เป็นการรับสำเร็จ; ส่งซ้ำที่ dedup แล้วให้ใช้ผลสำเร็จที่ตกลงกัน | ยืนยัน response ของรายการใหม่/รายการซ้ำ และให้ return หลัง event กับ dedup record commit แล้ว; กำหนด error/retry ให้ชัด |
+
+**ทางส่งเดียว:** `add_to_cart` เข้าคิวหลังเพิ่มตะกร้าสำเร็จ; `purchase` เข้าคิวหลัง Backend ตรวจ provider และสร้าง Order สำเร็จ ไม่ส่งจากการแสดง QR หรือ redirect กลับมาอย่างเดียว ส่งแยกต่อสินค้าไม่ซ้ำในออเดอร์ โดยไม่เรียก `trackEvent()` ฝั่ง Browser ซ้ำสำหรับสอง event นี้ Omise Test purchase ยังไม่เข้าข้อมูลแนะนำจริงตามค่าเริ่มต้น
+
+**เกณฑ์ก่อนเปิดใช้:** ทดสอบส่ง key เดิมซ้ำ/พร้อมกันแล้วมี event เดียว, คำตอบหายแล้ว retry ไม่เพิ่มแถว, ระบุผู้ใช้ถูกคนโดย Browser ปลอมไม่ได้ และส่งบางสินค้าสำเร็จแล้ว retry เฉพาะที่เหลือ เมื่อ R4 ยืนยัน contract จึงเชื่อม transport/worker และทดสอบร่วมกัน; ระหว่างนี้ R5 คงการส่งจริงปิดไว้
+
+
+### R5 — รวม main 7 พ.ย. 2026
+
+รวม upstream ถึง `9a5ada6` (PR #53–58) ใน working tree R5 แล้ว: Search/Detail, Events/Recommendation, Header และ Embedding/Docker. ใช้ Gallery/breadcrumb/specs ของ R4 พร้อม mount Cart ของ R5 โดยรักษาจำนวน/ผลการเพิ่มเมื่อสลับภาษา; ใช้ Header ของ R2 และคงเมนู Cart/Orders. Events API มีในแอปแล้ว แต่ outbox R5 ยังไม่เปิด dispatch เพราะ contract deduplication/trusted identity ยังรอยืนยัน. Inventory ยังไม่มี implementation. ข้อความก่อนหน้านี้ที่ระบุว่ายังไม่ merge เป็นบันทึกตามวันที่ตรวจ ไม่ใช่สถานะหลังรวมครั้งนี้.

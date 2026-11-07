@@ -425,6 +425,53 @@ test('paid checkout keeps frozen address even if address was edited and deleted 
  assert.equal((await db.query('SELECT address_id FROM "order" WHERE order_id=$1',[paid.order_id])).rows[0].address_id,null);
 });
 
+test('R5 paid order → admin partial/full refund updates stock, payment and audit exactly once', async()=>{
+ const buyer=await user(),p=await product(4);
+ await add(buyer.cart,p,2);
+ const attempt=await payments.create(buyer.u,await paymentRequest(buyer,[p]));
+ Object.assign(charges.get(attempt.charge_id),{status:'successful',paid:true});
+ await noCooldown(attempt.attempt_id);
+ const paid=await payments.sync(buyer.u,attempt.attempt_id);
+ let order=await service.getById(buyer.u,paid.order_id);
+ for(const status of ['packing','shipped','delivered'])order=await service.fulfill(adminId,order.order_id,{expected_status:order.current_status,expected_version:order.fulfillment_version,status,...(status==='shipped'?{carrier:'Refund QA',tracking_no:'REFUND-QA'}:{})});
+ await service.receive(buyer.u,order.order_id);
+ const express=require('express'),{signToken}=require('../src/middleware/auth');
+ const app=express();app.use(express.json());
+ app.use('/api/refund-requests',require('../src/modules/refunds/refunds.routes'));
+ app.use('/api/admin/refund-requests',require('../src/modules/refunds/refunds.admin.routes'));
+ app.use(require('../src/middleware/errorHandler').errorHandler);
+ const server=app.listen(0,'127.0.0.1');await new Promise(r=>server.once('listening',r));
+ async function http(id,method,path,body){const r=await fetch('http://127.0.0.1:'+server.address().port+'/api'+path,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+signToken(id)},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,body:await r.json()};}
+ const item=order.items[0];
+ try{
+  let firstId;
+  for(let n=0;n<2;n++){
+   const created=await http(buyer.u,'POST','/refund-requests',{order_item_id:item.order_item_id,refund_qty:1,reason:'R5 admin refund integration test'});
+   assert.equal(created.status,201);assert.equal(created.body.data.amount,item.unit_price_at_purchase);
+   const id=created.body.data.refund_id;firstId??=id;
+   assert.equal((await http(buyer.u,'PATCH','/admin/refund-requests/'+id,{action:'approve',restock_decision:'return'})).status,403);
+   const approved=await http(adminId,'PATCH','/admin/refund-requests/'+id,{action:'approve',restock_decision:n===0?'return':'write_off'});
+   assert.equal(approved.status,200);assert.equal(approved.body.data.status,'approved');
+   assert.equal((await http(adminId,'PATCH','/admin/refund-requests/'+id,{action:'approve',restock_decision:'return'})).status,409);
+   const done=await http(adminId,'PATCH','/admin/refund-requests/'+id,{action:'refund'});
+   assert.equal(done.status,200);assert.equal(done.body.data.status,'refunded');
+   assert.equal((await http(adminId,'PATCH','/admin/refund-requests/'+id,{action:'refund'})).status,409);
+   const current=await service.getById(buyer.u,order.order_id);
+   assert.equal(current.current_status,n===0?'completed':'refunded');
+   assert.equal(current.payment.status,n===0?'succeeded':'refunded');
+  }
+  assert.equal(Number((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity),3);
+  const movements=(await db.query('SELECT movement_type,qty_change FROM stock_movement WHERE order_item_id=$1 ORDER BY movement_id',[item.order_item_id])).rows;
+  assert.deepEqual(movements.map(r=>[r.movement_type,r.qty_change]),[['sale',-2],['return',1]]);
+  assert.equal((await db.query("SELECT * FROM order_status_log WHERE order_id=$1 AND to_status='refunded'",[order.order_id])).rows.length,1);
+  const logs=(await db.query("SELECT action_type FROM admin_action_log WHERE target_type='refund_request' AND target_id=$1 ORDER BY log_id",[firstId])).rows;
+  assert.deepEqual(logs.map(r=>r.action_type),['approve_refund','complete_refund']);
+  const customer=await http(buyer.u,'GET','/refund-requests/'+firstId);
+  assert.equal(customer.body.data.status,'refunded');
+  assert.equal((await http(buyer.u,'GET','/refund-requests/refundable')).body.data.length,0);
+ }finally{await new Promise(r=>server.close(r));}
+});
+
 test('R5 paid order → R1 review/refund uses delivered log, ownership and exact 7-day window',{
  skip:!require('node:fs').existsSync(require('node:path').join(__dirname,'../src/modules/refunds/refunds.routes.js')),
 },async()=>{
