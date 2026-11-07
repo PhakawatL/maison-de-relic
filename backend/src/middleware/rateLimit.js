@@ -6,6 +6,8 @@
 //
 // เกินแล้วได้ 429 TOO_MANY_REQUESTS พร้อม details.retry_after (วินาที) และ header Retry-After
 //   onlyFailed: true → นับเฉพาะครั้งที่ไม่สำเร็จ (status >= 400) ผู้ใช้ที่ล็อกอินถูกไม่โดนนับ
+//   key: นับแยกตามอะไร (ค่าเริ่มต้น = IP) — route ที่อยู่หลัง requireAuth นับตามผู้ใช้ได้
+//        เช่น key: (req) => `u${req.user.user_id}` (คนใน Wi-Fi เดียวกันใช้ IP เดียวกัน จะได้ไม่โดนนับรวม)
 //
 // นับในหน่วยความจำของ API (รีสตาร์ต = เริ่มนับใหม่) พอสำหรับ API ตัวเดียว
 // ถ้าวาง API หลัง reverse proxy ต้องตั้ง TRUST_PROXY ไม่อย่างนั้นทุกคนจะได้ IP ของ proxy แล้วโดนนับรวมกัน
@@ -23,12 +25,12 @@ setInterval(() => {
   }
 }, 60 * 1000).unref();
 
-function rateLimit({ name, max, windowMs, onlyFailed = false }) {
+function rateLimit({ name, max, windowMs, onlyFailed = false, key: keyOf = (req) => req.ip }) {
   return function rateLimiter(req, res, next) {
     if (!env.rateLimit.enabled) return next();
 
     const now = Date.now();
-    const key = `${name}:${req.ip}`;
+    const key = `${name}:${keyOf(req)}`;
     let bucket = buckets.get(key);
     if (!bucket || bucket.resetAt <= now) {
       bucket = { count: 0, resetAt: now + windowMs };

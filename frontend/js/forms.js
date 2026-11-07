@@ -34,6 +34,10 @@ export function issueText(issue) {
   if (m) return t('form.maxLength', { n: m[1] });
   m = issue.match(/^ต้องยาว (\d+)–(\d+) ตัวอักษร$/);
   if (m) return t('form.passwordLength', { min: m[1], max: m[2] });
+  // ข้อความจากตัวช่วยตรวจข้อมูลของ R1 (backend/src/utils/validate.js)
+  m = issue.match(/^ต้องยาวอย่างน้อย (\d+) ตัวอักษร$/);
+  if (m) return t('form.minLength', { n: m[1] });
+  if (issue === 'ต้องเป็นจำนวนเต็มบวก') return t('form.positiveInt');
   return issue;
 }
 
@@ -65,7 +69,9 @@ export function showErrors(form, err) {
   if (err instanceof ApiError && Array.isArray(err.details)) {
     for (const { field, issue } of err.details) {
       const box = form.querySelector(`[data-error-for="${field}"]`);
-      const input = form.elements[field];
+      let input = form.elements[field];
+      // ช่องแบบ radio หลายตัวชื่อเดียวกัน (เช่น ให้คะแนน 1–5 ดาว) ได้ RadioNodeList → ใช้ตัวแรกแทน
+      if (input instanceof RadioNodeList) input = input[0];
       if (!box || !input) continue;
       box.textContent = issueText(issue);
       input.setAttribute('aria-invalid', 'true');

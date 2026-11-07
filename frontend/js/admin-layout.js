@@ -24,10 +24,13 @@ initLang();
 initTheme();
 
 // เมนูซ้าย — เพิ่ม/ลบหน้าแอดมินที่นี่ที่เดียว (ชื่อเมนูอยู่ใน locales/*.js หมวด admin.*)
+// ownerOnly: true = แสดงเฉพาะ owner (เมนูขึ้นหลังรู้ว่าใครล็อกอิน — API ก็กันสิทธิ์อีกชั้น)
 const ADMIN_NAV = [
   { href: '/admin/products', key: 'admin.nav.products', icon: 'box' },
   { href: '/admin/users', key: 'admin.nav.users', icon: 'users' },
   { href: '/admin/reports', key: 'admin.nav.reports', icon: 'flag' },
+  { href: '/admin/refunds', key: 'admin.nav.refunds', icon: 'refund' },
+  { href: '/admin/activity', key: 'admin.nav.activity', icon: 'history', ownerOnly: true },
   { href: '/', key: 'admin.nav.backToSite', icon: 'back' },
 ];
 
@@ -35,6 +38,8 @@ const ICONS = {
   box: '<path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
   users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18.5 20a6.5 6.5 0 0 0-3-5.5"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+  refund: '<path d="M3 12a9 9 0 1 0 2.6-6.4L3 8"/><path d="M3 3v5h5"/><path d="M14.5 9.5h-3a1.5 1.5 0 0 0 0 3h1a1.5 1.5 0 0 1 0 3h-3M12 8v1.5M12 15.5V17"/>',
+  history: '<path d="M12 7v5l3 2"/><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6L3.5 8.5"/><path d="M3.5 4v4.5H8"/>',
   back: '<path d="M10 6 4 12l6 6"/><path d="M4 12h16"/>',
 };
 const icon = (name) =>
@@ -94,7 +99,7 @@ function renderSidenav() {
   if (!el) return;
   el.classList.add('admin-sidenav');
   el.setAttribute('aria-label', t('admin.navLabel'));
-  el.innerHTML = ADMIN_NAV.map(
+  el.innerHTML = ADMIN_NAV.filter((item) => !item.ownerOnly || me?.admin_role === 'owner').map(
     ({ href, key, icon: name }) =>
       `<a href="${href}"${isActive(href) ? ' aria-current="page"' : ''}${href === '/' ? ' class="nav-back"' : ''}>${icon(name)}<span>${t(key)}</span></a>`
   ).join('');
@@ -123,6 +128,7 @@ requireAdminPage().then((user) => {
   if (!user) return;
   me = user;
   renderTopbar();
+  if (me.admin_role === 'owner') renderSidenav(); // เพิ่มเมนูเฉพาะ owner
 });
 
 // เลื่อนหน้าลง → แถบบนเป็นกระจกฝ้าและมีเงาบาง ๆ (เหมือน header หน้าร้าน)
