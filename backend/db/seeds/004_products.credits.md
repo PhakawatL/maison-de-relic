@@ -67,3 +67,42 @@
 | k08 | `k08-cuba-sailing-ship-stamps.webp` | Cuba Sailing Ship Stamps — 3 ดวง | [Pexels #35619805](https://www.pexels.com/photo/close-up-of-vintage-cuban-ship-stamps-35619805/) | [Tolga deniz Aran](https://www.pexels.com/@sanlad) |
 | k09 | `k09-usa-christmas-stamps.webp` | USA Christmas Stamps — Vintage Set | [Pexels #35467935](https://www.pexels.com/photo/vintage-usa-christmas-stamps-on-turquoise-background-35467935/) | [Tolga deniz Aran](https://www.pexels.com/@sanlad) |
 | k10 | `k10-poland-stamps-album.webp` | Poland Stamps Album — อัลบั้มแสตมป์โปแลนด์ | [Pexels #7763084](https://www.pexels.com/photo/close-up-of-stamps-collection-from-poland-7763084/) | Ahsen |
+
+## รูปเพิ่มเติม (seed `005_product_images.sql`)
+
+รูปที่ 2 ขึ้นไปของสินค้าบางชิ้น ถ่ายชุดเดียวกับรูปปกโดยช่างภาพคนเดิม
+
+| รหัส | ลำดับ | ไฟล์ | ที่มา | ช่างภาพ |
+|---|---|---|---|---|
+| c06 | 2 | `c06-pokemon-card-bulk-lot-2.webp` | [Pexels #7708406](https://www.pexels.com/photo/a-stack-of-pokemon-cards-7708406/) | [Caleb Oquendo](https://www.pexels.com/@caleboquendo) |
+| c06 | 3 | `c06-pokemon-card-bulk-lot-3.webp` | [Pexels #7708409](https://www.pexels.com/photo/collectible-cards-with-fictional-creatures-drawn-on-backs-7708409/) | [Caleb Oquendo](https://www.pexels.com/@caleboquendo) |
+| c06 | 4 | `c06-pokemon-card-bulk-lot-4.webp` | [Pexels #7708407](https://www.pexels.com/photo/collection-of-cards-for-trading-game-7708407/) | [Caleb Oquendo](https://www.pexels.com/@caleboquendo) |
+| c09 | 2 | `c09-yu-gi-oh-rush-duel-deck-jp-2.webp` | [Pexels #31296167](https://www.pexels.com/photo/close-up-of-yu-gi-oh-cards-held-in-hands-31296167/) | [Jovan Vasiljević](https://www.pexels.com/@jovanvasiljevic) |
+| c10 | 2 | `c10-vintage-nhl-hockey-cards-lot-2.webp` | [Pexels #7783413](https://www.pexels.com/photo/close-up-of-vintage-hockey-cards-collection-7783413/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| f02 | 2 | `f02-yamato-2.webp` | [Pexels #23070734](https://www.pexels.com/photo/close-up-of-a-yamato-figure-from-one-piece-anime-23070734/) | hikoshi92 |
+| f02 | 3 | `f02-yamato-3.webp` | [Pexels #23070736](https://www.pexels.com/photo/a-colorful-doll-by-the-wall-23070736/) | hikoshi92 |
+| f02 | 4 | `f02-yamato-4.webp` | [Pexels #23070743](https://www.pexels.com/photo/a-colorful-doll-on-the-kitchen-counter-23070743/) | hikoshi92 |
+| f05 | 2 | `f05-itachi-uchiha-2.webp` | [Pexels #38250877](https://www.pexels.com/photo/anime-character-collectible-figurine-close-up-38250877/) | Grigore Scar |
+| f06 | 2 | `f06-kokkoro-2.webp` | [Pexels #35261744](https://www.pexels.com/photo/anime-figurine-with-white-hair-and-flower-accessory-35261744/) | [Fenn](https://www.pexels.com/@Fenn) |
+| f09 | 2 | `f09-wargreymon-2.webp` | [Pexels #9367709](https://www.pexels.com/photo/close-up-of-robot-toy-9367709/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| f10 | 2 | `f10-duke-nukem-2.webp` | [Pexels #6342784](https://www.pexels.com/photo/crop-unrecognizable-person-choosing-christmas-gifts-in-souvenir-room-6342784/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| a06 | 2 | `a06-baby-groot-2.webp` | [Pexels #7248316](https://www.pexels.com/photo/toy-in-stylish-t-shirt-7248316/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| a06 | 3 | `a06-baby-groot-3.webp` | [Pexels #7248317](https://www.pexels.com/photo/modern-toy-on-black-box-7248317/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| a07 | 2 | `a07-funko-pop-homelander-978-the-boys-2.webp` | [Pexels #7258495](https://www.pexels.com/photo/collection-toy-of-cartoon-character-on-timber-parquet-7258495/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| a08 | 2 | `a08-funko-pop-harry-potter-with-birthday-cake-2.webp` | [Pexels #34040856](https://www.pexels.com/photo/vinyl-figure-with-personalized-birthday-cake-34040856/) | Dina |
+| a09 | 2 | `a09-funko-pop-harley-quinn-2.webp` | [Pexels #34089248](https://www.pexels.com/photo/colorful-anime-style-figurine-by-poolside-34089248/) | Dina |
+| a09 | 3 | `a09-funko-pop-harley-quinn-3.webp` | [Pexels #34089246](https://www.pexels.com/photo/colorful-figure-toy-against-urban-backdrop-34089246/) | Dina |
+| b06 | 2 | `b06-x-men-storm-2.webp` | [Pexels #6654171](https://www.pexels.com/photo/collection-of-various-comic-books-in-box-6654171/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| b08 | 2 | `b08-marvel-vintage-lot-2.webp` | [Pexels #7809123](https://www.pexels.com/photo/colorful-comics-covers-7809123/) | [Erik Mclean](https://www.pexels.com/@introspectivedsgn) |
+| k08 | 2 | `k08-cuba-sailing-ship-stamps-2.webp` | [Pexels #35619809](https://www.pexels.com/photo/vintage-cuban-postage-stamps-on-wooden-surface-35619809/) | [Tolga deniz Aran](https://www.pexels.com/@sanlad) |
+| k09 | 2 | `k09-usa-christmas-stamps-2.webp` | [Pexels #35467937](https://www.pexels.com/photo/vintage-christmas-stamp-with-winter-scene-35467937/) | [Tolga deniz Aran](https://www.pexels.com/@sanlad) |
+| k09 | 3 | `k09-usa-christmas-stamps-3.webp` | [Pexels #35467934](https://www.pexels.com/photo/colorful-collection-of-vintage-postage-stamps-35467934/) | [Tolga deniz Aran](https://www.pexels.com/@sanlad) |
+| k10 | 2 | `k10-poland-stamps-album-2.webp` | [Pexels #7763056](https://www.pexels.com/photo/collection-of-postal-stamps-in-book-7763056/) | Ahsen |
+| m04 | 2 | `m04-ferrari-348-rally-177-2.webp` | [Pexels #102985](https://www.pexels.com/photo/toy-red-yellow-racecar-102985/) | [Mike Bird](https://www.pexels.com/@MikeBird) |
+| m04 | 3 | `m04-ferrari-348-rally-177-3.webp` | [Pexels #102977](https://www.pexels.com/photo/red-coupe-car-toy-102977/) | [Mike Bird](https://www.pexels.com/@MikeBird) |
+| m04 | 4 | `m04-ferrari-348-rally-177-4.webp` | [Pexels #102980](https://www.pexels.com/photo/red-sports-car-102980/) | [Mike Bird](https://www.pexels.com/@MikeBird) |
+| m08 | 2 | `m08-royal-aircraft-factory-s-e-5a-2.webp` | [Pexels #14720965](https://www.pexels.com/photo/model-of-military-biplane-14720965/) | [Matias Luge](https://www.pexels.com/@matiasluge) |
+| m08 | 3 | `m08-royal-aircraft-factory-s-e-5a-3.webp` | [Pexels #14720966](https://www.pexels.com/photo/close-up-of-a-british-air-force-fighter-airplane-model-14720966/) | [Matias Luge](https://www.pexels.com/@matiasluge) |
+| m09 | 2 | `m09-type-97-chi-ha-2.webp` | [Pexels #33552347](https://www.pexels.com/photo/detailed-model-tank-build-with-painting-tools-33552347/) | [Matias Luge](https://www.pexels.com/@matiasluge) |
+| m09 | 3 | `m09-type-97-chi-ha-3.webp` | [Pexels #33552351](https://www.pexels.com/photo/detailed-model-tank-on-metallic-surface-33552351/) | [Matias Luge](https://www.pexels.com/@matiasluge) |
+| m09 | 4 | `m09-type-97-chi-ha-4.webp` | [Pexels #33552344](https://www.pexels.com/photo/scale-model-tank-on-display-surface-33552344/) | [Matias Luge](https://www.pexels.com/@matiasluge) |
