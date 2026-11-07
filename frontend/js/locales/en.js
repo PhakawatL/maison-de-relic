@@ -32,6 +32,24 @@ export default {
   'cond.fair': 'Fair',
   'cond.poor': 'Flawed',
 
+  // Product detail page (R4)
+  'detail.condition': 'Condition',
+  'detail.score': 'Score {n}/10',
+  'detail.stock': 'Stock',
+  'detail.inStock': '{n} in stock',
+  'detail.outOfStock': 'Out of stock',
+  'detail.description': 'Description',
+  'detail.noDescription': 'No description yet',
+  'detail.noImage': 'No image yet',
+  'detail.imageN': 'View image {n} of {total}',
+  'detail.breadcrumb': 'Breadcrumb',
+  'detail.specs': 'More details',
+  'detail.addToCart': 'Add to cart',
+  'detail.cartSoon': 'Cart is coming soon',
+  'detail.noId': 'No product specified',
+  'detail.notFound': 'Product not found. It may have been removed from the shop.',
+  'detail.backToSearch': 'Back to search',
+
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'Art toys',
   'cat.trading-cards': 'Cards',

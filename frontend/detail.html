@@ -8,16 +8,28 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/base.css">
+  <!-- ใช้สี ตัวแปร และ animation ชุดเดียวกับหน้าแรก (kicker, card-enter, skel) -->
+  <link rel="stylesheet" href="/css/pages/home.css">
+  <link rel="stylesheet" href="/css/pages/detail.css">
 </head>
-<body>
+<!-- page-home = ใช้สี/ตัวแปรของหน้าแรก · page-detail = สไตล์เฉพาะหน้านี้ (detail.css) -->
+<body class="page-home page-detail">
   <header id="site-header"></header>
 
   <main class="container">
     <!-- หน้าบังคับ: Detail Page — แสดงรายละเอียดสินค้าตาม Data Model
          URL: /detail?id=123
          ผู้รับผิดชอบ: R4 (คอมโพเนนต์รีวิวจาก R1 ภายใน W5) -->
-    <article id="product-detail">
-      <p class="muted">กำลังโหลด...</p>
+    <!-- ตอนแรกเป็นโครงเทา ๆ (skeleton) ระหว่างรอ API แล้ว detail.js จะเขียนทับด้วยข้อมูลจริง -->
+    <article id="product-detail" class="detail" aria-busy="true">
+      <div class="detail-media skel-box"></div>
+      <div class="detail-info">
+        <span class="skel" style="width: 30%"></span>
+        <span class="skel skel-title"></span>
+        <span class="skel" style="width: 25%; height: 1.6em"></span>
+        <span class="skel" style="width: 90%"></span>
+        <span class="skel" style="width: 75%"></span>
+      </div>
     </article>
     <section id="reviews"><!-- R1: คอมโพเนนต์รีวิว --></section>
   </main>
