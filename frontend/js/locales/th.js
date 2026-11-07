@@ -57,6 +57,8 @@ export default {
   'detail.noId': 'ไม่ได้ระบุสินค้า',
   'detail.notFound': 'ไม่พบสินค้านี้ อาจถูกนำออกจากร้านแล้ว',
   'detail.backToSearch': 'กลับไปหน้าค้นหา',
+  'detail.relatedKicker': 'คล้ายกับชิ้นนี้',
+  'detail.relatedTitle': 'สินค้าที่เกี่ยวข้อง',
 
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'อาร์ตทอย',
@@ -94,8 +96,8 @@ export default {
   'home.catArttoyDesc': 'ฟิกเกอร์ดีไซเนอร์ กล่องสุ่ม ตัวละครพิเศษ',
   'home.catCardDesc': 'การ์ดเกม การ์ดศิลปิน',
   'home.catModelDesc': 'รถ เครื่องบิน ของเก่า',
-  'home.recKicker': '01 · คัดมาให้',
-  'home.recTitle': 'ของสะสมที่แนะนำ',
+  'home.recKicker': '01 · คนชอบมากที่สุด',
+  'home.recTitle': 'ยอดนิยม',
   'home.viewAll': 'ดูทั้งหมด',
   'home.newKicker': '02 · เพิ่งเข้าร้าน',
   'home.newTitle': 'มาใหม่ล่าสุด',

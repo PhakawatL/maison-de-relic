@@ -49,6 +49,8 @@ export default {
   'detail.noId': 'No product specified',
   'detail.notFound': 'Product not found. It may have been removed from the shop.',
   'detail.backToSearch': 'Back to search',
+  'detail.relatedKicker': 'Similar pieces',
+  'detail.relatedTitle': 'You may also like',
 
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'Art toys',
@@ -86,8 +88,8 @@ export default {
   'home.catArttoyDesc': 'Designer figures, blind boxes, special characters',
   'home.catCardDesc': 'Game cards, artist cards',
   'home.catModelDesc': 'Cars, planes, vintage pieces',
-  'home.recKicker': '01 · Curated for you',
-  'home.recTitle': 'Recommended pieces',
+  'home.recKicker': '01 · Most loved',
+  'home.recTitle': 'Popular',
   'home.viewAll': 'View all',
   'home.newKicker': '02 · Just in',
   'home.newTitle': 'New arrivals',

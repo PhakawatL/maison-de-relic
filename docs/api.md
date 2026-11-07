@@ -132,6 +132,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
 | POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
 | GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
+| GET | `/recommend/related/:productId` | - | R4 | สินค้าที่เกี่ยวข้อง 8 ชิ้นที่ความหมายใกล้ที่สุด (embedding) |
 | | | | | |
 
 ---
@@ -1037,4 +1038,21 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
   `docker compose exec api node scripts/demo-activity.js` (ไม่รันเองตอน `docker compose up` · รันได้ครั้งเดียว · ล้างด้วย `npm run db:reset`)
   ได้ลูกค้าตัวอย่าง 8 คน (`demo_ploy` … `demo_ton` รหัสผ่าน `Demo@1234`) พร้อมคำสั่งซื้อ รีวิว wishlist และ `user_event`
   ผลสุ่มเหมือนกันทุกเครื่อง · ไม่ตัดสต็อก · รายละเอียดอยู่หัวไฟล์ `backend/scripts/demo-activity.js`
-- ภายหลัง R4 จะเพิ่ม `GET /recommend/related/:productId` (สินค้าที่เกี่ยวข้อง) และ `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding`
+
+### `GET /recommend/related/:productId?limit=8` (ไม่ต้องล็อกอิน)
+
+สินค้าที่ "ความหมายใกล้" สินค้านี้ที่สุด ใช้ใต้หน้า Detail (แถว "สินค้าที่เกี่ยวข้อง")
+
+- เทียบเวกเตอร์ `product.embedding` ด้วย `<=>` ของ pgvector (cosine distance · ใกล้สุดก่อน) ไม่เรียกโมเดลตอนค้น จึงเร็ว
+- ตัดตัวเอง · เฉพาะของที่ขายได้ (`available` และ `stock_quantity > 0`) · ข้ามชิ้นที่ยังไม่มีเวกเตอร์
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- รหัสสินค้าไม่ใช่จำนวนเต็มบวก → `400 INVALID_ID` · ไม่มีสินค้า / ไม่ได้วางขาย → `404 PRODUCT_NOT_FOUND`
+- สินค้าตั้งต้นยังไม่มีเวกเตอร์ → `200` พร้อม `data: []` (หน้าเว็บซ่อนแถวนี้ ไม่ใช่ error)
+- แต่ละชิ้นรูปข้อมูลเหมือน `GET /products` และมี `similarity` (0–1 · 1 = ความหมายเหมือนกัน · = 1 − cosine distance)
+
+```json
+{ "data": [ { "product_id": 46, "title": "Volkswagen Type 2 — ...", "price": 2400, "category": { ... },
+              "similarity": 0.54 } ] }
+```
+
+- ภายหลัง R4 จะเพิ่ม `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding` เหมือนกัน
