@@ -135,9 +135,10 @@ async function loadRecommended() {
   showSkeletons(el);
   let products = [];
   try {
-    // TODO (R4): เปลี่ยนไปเรียก GET /api/recommend/popular เมื่อทำเสร็จ (W5)
-    // ตอนนี้ API สินค้าไม่มี sort แบบ "แนะนำ" จึงใช้สินค้าใหม่ล่าสุดไปก่อน
-    products = await fetchProducts({ sort: 'newest' });
+    // ยอดนิยมจาก GET /api/recommend/popular (ยอดขาย + ถูกใจ + รีวิว ถ่วงเวลา · คะแนน 0–100)
+    // ตอบรูปข้อมูลเดียวกับการ์ดสินค้า → ใช้ renderShelf เดิมได้เลย
+    const { data } = await api.get('/recommend/popular', { limit: SHELF_SIZE });
+    products = data;
   } catch (err) {
     showSampleNote('home.sampleNote', err.message);
   }
