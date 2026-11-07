@@ -9,6 +9,9 @@ WORKDIR /app
 
 # ติดตั้ง package ก่อนคัดลอกโค้ด — ถ้า package.json ไม่เปลี่ยน Docker จะใช้ของเดิม build เร็วขึ้น
 COPY package.json package-lock.json ./
+# onnxruntime-node บน Linux x64 จะโหลดไฟล์ CUDA (ใช้ GPU) เพิ่มจาก api.nuget.org ตอนติดตั้ง
+# เราใช้แค่ CPU (ไฟล์ CPU มากับแพ็กเกจอยู่แล้ว) จึงข้ามไป → image เล็กลง build เร็วขึ้น ไม่พังเวลาเน็ตบล็อก nuget
+ENV ONNXRUNTIME_NODE_INSTALL=skip
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY . .
