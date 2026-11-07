@@ -35,7 +35,7 @@ async function insertProduct(key, { status = 'available', stock = 1 } = {}) {
     `INSERT INTO product (category_id, created_by, title, price, condition, status, stock_quantity)
      VALUES ((SELECT category_id FROM category ORDER BY category_id LIMIT 1), $1, $2, 900, 'good', $3, $4)
      RETURNING product_id`,
-    [ids.seller, `${key} ${TAG}`, status, stock]
+    [ids.admin, `${key} ${TAG}`, status, stock]
   );
   ids[key] = Number(rows[0].product_id);
 }
@@ -79,8 +79,8 @@ const getPopular = async (qs = '') => {
 
 before(async () => {
   await cleanup();
-  ids.seller = await insertUser('seller');
-  await query(`INSERT INTO admin (user_id, admin_role) VALUES ($1, 'staff')`, [ids.seller]);
+  ids.admin = await insertUser('admin');
+  await query(`INSERT INTO admin (user_id, admin_role) VALUES ($1, 'staff')`, [ids.admin]);
   ids.buyer = await insertUser('buyer');
   for (let i = 0; i < 3; i++) fans.push(await insertUser(`fan${i}`));
 
