@@ -45,6 +45,7 @@ export default {
   'detail.description': 'รายละเอียด',
   'detail.noDescription': 'ยังไม่มีคำอธิบาย',
   'detail.noImage': 'ยังไม่มีรูป',
+  'detail.imageN': 'ดูรูปที่ {n} จาก {total}',
   'detail.noId': 'ไม่ได้ระบุสินค้า',
   'detail.notFound': 'ไม่พบสินค้านี้ อาจถูกนำออกจากร้านแล้ว',
   'detail.backToSearch': 'กลับไปหน้าค้นหา',

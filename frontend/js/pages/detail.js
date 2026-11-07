@@ -22,14 +22,76 @@ function show(fn) {
 // 'excellent' → 'สภาพดีมาก' (คีย์ cond.* มีอยู่แล้วในไฟล์คำแปล ใช้ร่วมกับหน้าแรก)
 const conditionText = (c) => (has(`cond.${c}`) ? t(`cond.${c}`) : c);
 
+/* ---------- แกลเลอรีรูป ---------- */
+// รูปของสินค้าที่กำลังโชว์ [{ url, alt }] และลำดับรูปที่เลือกอยู่ (0 = รูปแรก)
+// เก็บไว้นอกฟังก์ชันวาด เพื่อให้สลับภาษาแล้วยังอยู่ที่รูปเดิม ไม่เด้งกลับรูปแรก
+let gallery = [];
+let current = 0;
+
+// รวมรายการรูปจาก API ให้เหลือรูปแบบเดียว
+// - ปกติใช้ images[] (เรียงตาม seq มาจาก API แล้ว)
+// - ถ้า images[] ว่าง แต่มี cover_image_url → ใช้รูปปกรูปเดียว
+// - ไม่มีอะไรเลย → [] (วาดกล่อง "ยังไม่มีรูป")
+function collectImages(p) {
+  const list = (p.images || [])
+    .filter((img) => img.url)
+    .map((img) => ({ url: img.url, alt: img.alt_text || p.title }));
+  if (list.length === 0 && p.cover_image_url) list.push({ url: p.cover_image_url, alt: p.title });
+  return list;
+}
+
+// HTML ของฝั่งรูป: รูปใหญ่ 1 รูป + แถวรูปย่อย (thumbnail) ถ้ามีมากกว่า 1 รูป
+function galleryHtml() {
+  if (gallery.length === 0) {
+    // สินค้าบางชิ้นอาจยังไม่มีรูป → โชว์กล่องข้อความแทน รูปจะได้ไม่แตก
+    return `<div class="detail-media"><span class="no-image">${t('detail.noImage')}</span></div>`;
+  }
+  const img = gallery[current];
+  const main = `<div class="detail-media"><img id="detail-main-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt)}"></div>`;
+  if (gallery.length === 1) return main; // รูปเดียว ไม่ต้องมีแถวรูปย่อย
+
+  // รูปย่อยเป็น <button> (ไม่ใช่ <img> เฉย ๆ) เพื่อให้กด Tab มาโฟกัส แล้วกด Enter/Space เลือกได้
+  // data-index = ลำดับรูป ไว้บอกว่าปุ่มนี้คือรูปที่เท่าไร · aria-pressed บอกโปรแกรมอ่านหน้าจอว่ารูปไหนถูกเลือก
+  const thumbs = gallery
+    .map(
+      (g, i) => `
+        <button type="button" class="detail-thumb" data-index="${i}" aria-pressed="${i === current}"
+                aria-label="${t('detail.imageN', { n: i + 1, total: gallery.length })}">
+          <img src="${escapeHtml(g.url)}" alt="" loading="lazy">
+        </button>`
+    )
+    .join('');
+  return `${main}<div class="detail-thumbs">${thumbs}</div>`;
+}
+
+// เปลี่ยนรูปใหญ่เป็นรูปที่ index (ไม่วาดทั้งหน้าใหม่ แก้แค่ src/alt และสถานะปุ่ม)
+function selectImage(index) {
+  if (index === current || !gallery[index]) return;
+  current = index;
+  const main = document.getElementById('detail-main-img');
+  main.src = gallery[index].url; // ใส่ผ่าน property ไม่ใช่ innerHTML จึงไม่ต้อง escape
+  main.alt = gallery[index].alt;
+  // เล่น animation "pop" (keyframes จาก home.css) ใหม่ทุกครั้งที่เปลี่ยนรูป:
+  // ลบคลาส → อ่าน offsetWidth บังคับให้เบราว์เซอร์คำนวณหน้าใหม่ → ใส่คลาสกลับ
+  main.classList.remove('img-swap');
+  void main.offsetWidth;
+  main.classList.add('img-swap');
+  box.querySelectorAll('.detail-thumb').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String(Number(btn.dataset.index) === index));
+  });
+}
+
+// ฟังคลิกที่ box ครั้งเดียว (event delegation) แทนการผูกกับทุกปุ่ม
+// เพราะ renderProduct เขียน innerHTML ใหม่ทุกครั้งที่สลับภาษา ปุ่มเก่าจะหายไป แต่ box ยังอยู่
+box.addEventListener('click', (e) => {
+  const btn = e.target.closest('.detail-thumb'); // คลิกโดนรูปข้างในปุ่มก็นับเป็นปุ่ม
+  if (btn) selectImage(Number(btn.dataset.index));
+});
+
 /* ---------- วาดสินค้า ---------- */
 function renderProduct(p) {
   // ทุกค่าจาก API ผ่าน escapeHtml() กันโค้ดแปลกปลอมในชื่อ/คำอธิบาย (XSS) เหมือนหน้า Search
   const title = escapeHtml(p.title);
-  // สินค้าบางชิ้นอาจยังไม่มีรูป → โชว์กล่องข้อความแทน รูปจะได้ไม่แตก
-  const media = p.cover_image_url
-    ? `<img src="${escapeHtml(p.cover_image_url)}" alt="${title}">`
-    : `<span class="no-image">${t('detail.noImage')}</span>`;
   // series เป็น null ได้ (เช่นเหรียญ แสตมป์) มีค่อยต่อท้ายหมวด
   const series = p.series ? ` · ${escapeHtml(p.series.name)}` : '';
   const stock = p.in_stock
@@ -37,7 +99,7 @@ function renderProduct(p) {
     : `<dd class="stock-out">${t('detail.outOfStock')}</dd>`;
 
   box.innerHTML = `
-    <div class="detail-media card-enter" style="--i:0">${media}</div>
+    <div class="detail-gallery card-enter" style="--i:0">${galleryHtml()}</div>
     <div class="detail-info card-enter" style="--i:1">
       <p class="kicker">${escapeHtml(p.category.name)}${series}</p>
       <h1>${title}</h1>
@@ -82,6 +144,8 @@ async function load() {
   try {
     // encodeURIComponent กันกรณี id มีอักขระแปลก ๆ (เช่น /) ทำให้ path ผิด
     const { data } = await api.get(`/products/${encodeURIComponent(id)}`);
+    gallery = collectImages(data); // เตรียมรูปครั้งเดียวตอนโหลด (สลับภาษาไม่ต้องทำใหม่)
+    current = 0;
     show(() => renderProduct(data));
   } catch (err) {
     // INVALID_ID = id ไม่ใช่ตัวเลข · PRODUCT_NOT_FOUND = ไม่มีสินค้านี้ หรือซ่อน/ยังเป็น draft

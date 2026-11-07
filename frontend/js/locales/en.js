@@ -37,6 +37,7 @@ export default {
   'detail.description': 'Description',
   'detail.noDescription': 'No description yet',
   'detail.noImage': 'No image yet',
+  'detail.imageN': 'View image {n} of {total}',
   'detail.noId': 'No product specified',
   'detail.notFound': 'Product not found. It may have been removed from the shop.',
   'detail.backToSearch': 'Back to search',
