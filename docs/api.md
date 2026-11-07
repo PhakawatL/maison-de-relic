@@ -1017,4 +1017,8 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
               "popularity": { "score": 5.5, "sold": 2, "wishlist": 3 } } ] }
 ```
 
+- ฐานข้อมูลใหม่ยังไม่มีออเดอร์ / ถูกใจ / รีวิว → ทุกชิ้นได้ 0 คะแนน · อยากเห็นอันดับจริงบนเครื่องตัวเอง สั่ง
+  `docker compose exec api node scripts/demo-activity.js` (ไม่รันเองตอน `docker compose up` · รันได้ครั้งเดียว · ล้างด้วย `npm run db:reset`)
+  ได้ลูกค้าตัวอย่าง 8 คน (`demo_ploy` … `demo_ton` รหัสผ่าน `Demo@1234`) พร้อมคำสั่งซื้อ รีวิว wishlist และ `user_event`
+  ผลสุ่มเหมือนกันทุกเครื่อง · ไม่ตัดสต็อก · รายละเอียดอยู่หัวไฟล์ `backend/scripts/demo-activity.js`
 - ภายหลัง R4 จะเพิ่ม `GET /recommend/related/:productId` (สินค้าที่เกี่ยวข้อง) และ `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding`
