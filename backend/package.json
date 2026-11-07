@@ -14,6 +14,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "db:reset": "node scripts/reset.js",
+    "db:demo-orders": "node scripts/demo-orders.js",
     "test": "node --import ./test/setup.js --test \"test/**/*.test.js\""
   },
   "dependencies": {

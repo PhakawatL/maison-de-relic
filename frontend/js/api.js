@@ -3,7 +3,7 @@
 //   import { api, ApiError } from './api.js';
 //
 //   const { data } = await api.get('/products', { q: 'gundam', category: 3 });
-//   const { data } = await api.post('/wishlist', { productId: 12 });
+//   const { data } = await api.post('/wishlist', { product_id: 12 });
 //
 //   try { ... } catch (err) {
 //     if (err instanceof ApiError && err.code === 'PRODUCT_NOT_FOUND') { ... }
@@ -61,7 +61,7 @@ function buildUrl(path, params) {
   return url;
 }
 
-async function request(method, path, { params, body } = {}) {
+async function request(method, path, { params, body, keepalive = false } = {}) {
   const headers = { Accept: 'application/json' };
   const token = auth.getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -75,6 +75,7 @@ async function request(method, path, { params, body } = {}) {
       method,
       headers,
       body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      keepalive, // true = ส่งต่อให้จบแม้ผู้ใช้เปลี่ยนหน้า (ใช้กับ event ใน events.js)
     });
   } catch {
     // เน็ตหลุด, server ปิด หรือโดน CORS บล็อก
@@ -106,7 +107,8 @@ async function request(method, path, { params, body } = {}) {
 
 export const api = {
   get: (path, params) => request('GET', path, { params }),
-  post: (path, body) => request('POST', path, { body }),
+  // options.keepalive: ส่งต่อแม้หน้ากำลังปิด/เปลี่ยนหน้า (ข้อมูลเล็ก ๆ เช่น event ใน events.js)
+  post: (path, body, options) => request('POST', path, { body, ...options }),
   put: (path, body) => request('PUT', path, { body }),
   patch: (path, body) => request('PATCH', path, { body }),
   delete: (path) => request('DELETE', path),

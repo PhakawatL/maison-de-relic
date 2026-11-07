@@ -1,0 +1,213 @@
+/* ส่วนรีวิวในหน้ารายละเอียดสินค้า (R1 · js/product-reviews.js โหลดไฟล์นี้ให้เอง) */
+.pr-section {
+  margin-top: var(--space-5);
+  --star: #c98a12;
+}
+[data-theme='dark'] .pr-section {
+  --star: #e7bd6a;
+}
+
+.pr-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.pr-head h2 {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.4rem;
+}
+.pr-badge {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+.pr-report {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.pr-report:hover {
+  color: var(--color-danger);
+}
+
+/* ---------- สรุปคะแนน ---------- */
+.pr-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+}
+.pr-score {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 110px;
+}
+.pr-score strong {
+  font-size: 2.4rem;
+  line-height: 1;
+}
+/* ดาวเฉลี่ยแบบเติมสีตามสัดส่วน เช่น 4.5 = เต็ม 4 ดวงครึ่ง (ชั้นล่างสีจาง ชั้นบนสีทองตัดตามความกว้าง) */
+.pr-stars {
+  position: relative;
+  display: inline-block;
+  color: var(--color-border);
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+.pr-stars-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  overflow: hidden;
+  color: var(--star);
+}
+.pr-count {
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+.pr-bars {
+  display: grid;
+  gap: 4px;
+}
+.pr-bar {
+  display: grid;
+  grid-template-columns: 34px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.pr-bar:hover {
+  border-color: var(--color-border);
+}
+.pr-bar[aria-pressed='true'] {
+  border-color: var(--color-text);
+  color: var(--color-text);
+}
+.pr-bar-track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.pr-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--star);
+}
+.pr-bar-n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- รายการรีวิว ---------- */
+.pr-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  background: var(--color-surface);
+}
+.pr-item {
+  padding: var(--space-3) 0;
+}
+.pr-item + .pr-item {
+  border-top: 1px solid var(--color-border);
+}
+.pr-item-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 0.9rem;
+}
+.pr-name {
+  font-weight: 600;
+}
+.pr-item-stars {
+  color: var(--star);
+  font-weight: 600;
+}
+.pr-date {
+  margin-left: auto;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+.pr-comment {
+  margin: 4px 0 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.pr-filter-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 var(--space-2);
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.pr-clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.pr-more {
+  display: block;
+  margin: var(--space-3) auto 0;
+}
+.pr-empty-card {
+  padding: var(--space-4);
+  border: 1px dashed var(--color-border);
+  border-radius: 18px;
+  text-align: center;
+}
+.pr-empty-card p {
+  margin: 0;
+}
+.pr-empty-card p + p {
+  margin-top: 4px;
+}
+
+@media (max-width: 640px) {
+  .pr-summary {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .pr-list {
+    padding-inline: var(--space-3);
+  }
+  .pr-head {
+    flex-wrap: wrap;
+  }
+}

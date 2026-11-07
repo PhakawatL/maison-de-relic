@@ -9,3 +9,7 @@ const PRODUCTION_API = 'https://YOUR-API-HOST/api'; // TODO: ยังไม่�
 const isLocal = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
 
 export const API_BASE = isLocal ? LOCAL_API : PRODUCTION_API;
+
+// บันทึก event พฤติกรรมผู้ใช้ (js/events.js ของ R1 · #8) ไปที่ POST /api/events ของ R4 (#26)
+// ปิดไว้จนกว่า API ของ R4 จะ merge — R4 เปลี่ยนเป็น true ใน PR เดียวกับ API ได้เลย
+export const EVENTS_ENABLED = false;

@@ -3,6 +3,8 @@
 import { api, ApiError } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
+import { heartButton, setupHeartButtons } from '../wishlist-button.js'; // ปุ่มหัวใจ wishlist (R1)
+import { mountProductReviews } from '../product-reviews.js'; // ส่วนรีวิว + ลิงก์รายงานสินค้า (R1)
 
 applyI18n(); // แปลข้อความที่มี data-i18n ในหน้า (คำแปลอยู่ที่ js/locales/th.js และ en.js)
 
@@ -102,7 +104,10 @@ function renderProduct(p) {
     <div class="detail-gallery card-enter" style="--i:0">${galleryHtml()}</div>
     <div class="detail-info card-enter" style="--i:1">
       <p class="kicker">${escapeHtml(p.category.name)}${series}</p>
-      <h1>${title}</h1>
+      <div class="detail-title-row">
+        <h1>${title}</h1>
+        ${heartButton(p.product_id)}
+      </div>
       <p class="detail-price">${priceFormat.format(p.price)}</p>
       <dl class="detail-facts">
         <div>
@@ -121,6 +126,9 @@ function renderProduct(p) {
     </div>`;
   // ชื่อแท็บเบราว์เซอร์เป็นชื่อสินค้า (ตอนแชร์ลิงก์หรือเปิดหลายแท็บจะได้รู้ว่าแท็บไหนของอะไร)
   document.title = `${p.title} · Maison de Relic`;
+  // ปุ่มหัวใจถูกวาดใหม่ทุกครั้ง (รวมตอนสลับภาษา) จึงต้องเรียกทุกครั้ง ให้มันระบายหัวใจตามว่าอยู่ใน wishlist ไหม
+  // (R1 เขียนไว้ว่าเรียกซ้ำได้ · ผูกคลิกกับ box แค่ครั้งแรก)
+  setupHeartButtons(box);
 }
 
 /* ---------- วาด error ---------- */
@@ -147,6 +155,9 @@ async function load() {
     gallery = collectImages(data); // เตรียมรูปครั้งเดียวตอนโหลด (สลับภาษาไม่ต้องทำใหม่)
     current = 0;
     show(() => renderProduct(data));
+    // ส่วนรีวิวของ R1 เรียกครั้งเดียวพอ (ไม่อยู่ใน renderProduct) เพราะมันดูแลการสลับภาษาของมันเอง
+    // เรียกเฉพาะตอนโหลดสินค้าสำเร็จ ถ้า error จะไม่มีส่วนรีวิว
+    mountProductReviews(document.getElementById('reviews'), data);
   } catch (err) {
     // INVALID_ID = id ไม่ใช่ตัวเลข · PRODUCT_NOT_FOUND = ไม่มีสินค้านี้ หรือซ่อน/ยังเป็น draft
     // ทั้งสองแบบผู้ใช้ไม่ต้องรู้ความต่าง บอกแค่ว่า "ไม่พบสินค้านี้"

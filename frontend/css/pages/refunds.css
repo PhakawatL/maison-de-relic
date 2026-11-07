@@ -1,0 +1,233 @@
+/* คืนเงินของลูกค้า (R1 · /refunds) — ใช้คู่กับ support.css (หัวหน้า การ์ด สถานะ) */
+
+.rf-sub {
+  margin: 0 0 var(--space-3);
+  font-size: 1.2rem;
+}
+.rf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.rf-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 16px;
+}
+.rf-row-body {
+  flex: 1;
+  min-width: 0;
+}
+.rf-thumb {
+  flex: none;
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(150deg, #f2e9da, #dfceb2);
+}
+[data-theme='dark'] .rf-thumb {
+  background: linear-gradient(150deg, #2e271e, #3d3326);
+}
+.rf-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.rf-title {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.rf-meta,
+.rf-deadline {
+  margin: 2px 0 0;
+  color: var(--color-muted);
+  font-size: 0.82rem;
+}
+.rf-deadline {
+  color: #b4650d;
+}
+[data-theme='dark'] .rf-deadline {
+  color: #e7bd6a;
+}
+
+/* สถานะคำขอ (ใช้สีของ .sp-status ใน support.css) */
+.rf-status[data-status='requested'] { --tone: #b4650d; }
+.rf-status[data-status='approved'] { --tone: #2f5f8f; }
+.rf-status[data-status='rejected'] { --tone: var(--color-danger); }
+.rf-status[data-status='refunded'] { --tone: var(--color-success); }
+[data-theme='dark'] .rf-status[data-status='requested'] { --tone: #e7bd6a; }
+[data-theme='dark'] .rf-status[data-status='approved'] { --tone: #8ab8e6; }
+.rf-status-note {
+  margin: var(--space-2) 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--color-bg);
+  font-size: 0.85rem;
+}
+.rf-status-note[data-status='rejected'] {
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+.rf-status-note[data-status='refunded'] {
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+
+/* ---------- ฟอร์มขอคืนเงิน (popup) ---------- */
+.rf-dialog {
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 22px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.4);
+  overflow: auto;
+}
+.rf-dialog::backdrop {
+  background: rgb(28 24 20 / 0.45);
+  backdrop-filter: blur(3px);
+}
+.rf-dialog[open] {
+  animation: rf-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* ปิดแบบมี animation — js/pages/refunds.js ใส่ class นี้แล้วรอ animationend ค่อยปิดจริง */
+.rf-dialog.closing {
+  animation: rf-out 0.16s ease-in forwards;
+}
+@keyframes rf-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rf-out {
+  to { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* ยังต้องมี animation สั้น ๆ ไว้ให้ animationend ทำงาน (ไม่งั้น popup ปิดไม่ได้) */
+  .rf-dialog[open],
+  .rf-dialog.closing {
+    animation-duration: 1ms;
+  }
+}
+.rf-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.rf-dialog-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+.rf-x {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.rf-x svg {
+  width: 20px;
+  height: 20px;
+}
+.rf-x:hover {
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+.rf-product {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.rf-dialog .field input,
+.rf-dialog .field select,
+.rf-dialog .field textarea {
+  width: 100%;
+}
+.rf-dialog textarea {
+  resize: vertical;
+  border-radius: 14px;
+  background: var(--color-bg);
+}
+.rf-dialog .field small.muted {
+  font-size: 0.78rem;
+}
+.rf-qty-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.rf-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.rf-stepper button {
+  width: 38px;
+  height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.rf-stepper button:hover {
+  background: var(--color-bg);
+}
+.rf-stepper input {
+  width: 56px !important;
+  border: 0;
+  border-radius: 0;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.rf-stepper input::-webkit-outer-spin-button,
+.rf-stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rf-amount {
+  display: grid;
+  justify-items: end;
+  margin-bottom: var(--space-3);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+}
+.rf-amount strong {
+  color: var(--color-text);
+  font-size: 1.4rem;
+  font-variant-numeric: tabular-nums;
+}
+.rf-note {
+  margin: 0 0 var(--space-3);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .rf-row {
+    flex-wrap: wrap;
+  }
+  .rf-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .rf-dialog {
+    padding: 18px 16px;
+  }
+}
