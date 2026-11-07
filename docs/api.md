@@ -130,6 +130,8 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
 | PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
 | GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
+| POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
+| GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
 | | | | | |
 
 ---
@@ -961,7 +963,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 
 ## บันทึก event พฤติกรรมผู้ใช้ (หน้าเว็บ R1 · API R4)
 
-> **ร่างข้อตกลง** — R1 เขียนฝั่งหน้าเว็บ (#8) ตามร่างนี้ไว้แล้ว R4 ทำ API (#26) ตามนี้ หรือแก้ร่างแล้วบอก R1 ได้เลย
+> R1 เขียนฝั่งหน้าเว็บ (#8) · R4 ทำ API (#26) ตามข้อตกลงนี้แล้ว (`backend/src/modules/events/`) และเปิด `EVENTS_ENABLED` แล้ว
 
 ตาราง `user_event` (BR-10, BR-11) เก็บว่าใครดู / กด / ถูกใจ / ใส่ตะกร้า / ซื้อสินค้าอะไร ไว้ทำสินค้าแนะนำ
 
@@ -974,8 +976,9 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 - `event_type` = `view` · `click` · `wishlist` · `add_to_cart` · `purchase` (ตาม CHECK ของตาราง)
 - `session_id` = รหัสสุ่มจากหน้าเว็บ (ไม่ว่างเกิน 30 นาทีใช้รหัสเดิม) — แยกการใช้งานแต่ละช่วงได้แม้ยังไม่ล็อกอิน
 - ถ้ามี token มาด้วย → API ใส่ `user_id` จาก token เอง (ไม่รับ `user_id` จาก body) · token ใช้ไม่ได้ / ไม่มี token → บันทึกแบบไม่ระบุผู้ใช้ (`user_id` = null)
-- ตอบ `201` (หรือ `204`) · `400 VALIDATION_ERROR` ข้อมูลผิดรูปแบบ · `404 PRODUCT_NOT_FOUND` ไม่มีสินค้านี้
-- ควรมี rate limit กันยิงรัว (หน้าเว็บส่งแบบไม่รอผล ผู้ใช้ไม่เห็น error นี้)
+- ตอบ `201` พร้อม `{ "data": { "event_id", "product_id", "event_type", "created_at" } }` · `400 VALIDATION_ERROR` ข้อมูลผิดรูปแบบ (`session_id` ยาวไม่เกิน 100 ตัว) · `404 PRODUCT_NOT_FOUND` ไม่มีสินค้านี้
+- `view` เพิ่ม `product.view_count` ของสินค้านั้น +1 ด้วย (ใน transaction เดียวกัน)
+- rate limit 120 ครั้งต่อนาทีต่อ IP → `429 TOO_MANY_REQUESTS` (หน้าเว็บส่งแบบไม่รอผล ผู้ใช้ไม่เห็น error นี้)
 
 ### หน้าเว็บเรียกที่ไหน (`frontend/js/events.js`)
 
@@ -991,4 +994,27 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
 | `purchase` | R5 | จ่ายเงินสำเร็จ — เรียกทีละสินค้าในคำสั่งซื้อ |
 | `view` / `click` | R4 (ถ้าระบบแนะนำต้องใช้) | เปิดหน้า Detail / กดการ์ดจากผลค้นหาหรือสินค้าแนะนำ |
 
-ตอนนี้ `EVENTS_ENABLED = false` ใน `frontend/js/config.js` (หน้าเว็บยังไม่ส่ง) — **R4 เปลี่ยนเป็น `true` ใน PR เดียวกับ API**
+`EVENTS_ENABLED = true` ใน `frontend/js/config.js` แล้ว (หน้าเว็บส่งจริง) — ปิดชั่วคราวได้โดยเปลี่ยนเป็น `false`
+
+## สินค้าแนะนำ (R4)
+
+### `GET /recommend/popular?limit=8` (ไม่ต้องล็อกอิน)
+
+สินค้ายอดนิยม เฉพาะที่ขายได้ (`status = 'available'` และ `stock_quantity > 0`) เรียงจากคะแนนมากไปน้อย
+
+```
+คะแนน = ชิ้นที่ขายได้ (SUM order_item.quantity ไม่นับออเดอร์ cancelled / refunded)
+      + จำนวนคนที่กดถูกใจ (COUNT wishlist)
+      + คะแนนรีวิวเฉลี่ย (AVG review.rating ยังไม่มีรีวิว = 0)
+คะแนนเท่ากัน → view_count มากก่อน → สินค้าใหม่ก่อน
+```
+
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- แต่ละชิ้นมีรูปข้อมูลเหมือน `GET /products` (วาดการ์ดด้วยโค้ดเดิมได้) และมี `popularity` เพิ่ม
+
+```json
+{ "data": [ { "product_id": 12, "title": "...", "price": 7900, "category": { ... },
+              "popularity": { "score": 5.5, "sold": 2, "wishlist": 3 } } ] }
+```
+
+- ภายหลัง R4 จะเพิ่ม `GET /recommend/related/:productId` (สินค้าที่เกี่ยวข้อง) และ `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding`

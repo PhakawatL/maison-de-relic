@@ -57,7 +57,9 @@ app.use('/api/products', require('./modules/products/products.routes')); // R3
 const { categoriesRouter, seriesRouter } = require('./modules/products/catalog.routes');
 app.use('/api/categories', categoriesRouter);                             // R3
 app.use('/api/series', seriesRouter);                                     // R3
-// app.use('/api/search', require('./modules/search/search.routes'));      // R4
+// app.use('/api/search', require('./modules/search/search.routes'));      // R4 (semantic search · ทำทีหลัง)
+app.use('/api/events', require('./modules/events/events.routes'));         // R4 บันทึกพฤติกรรม (user_event)
+app.use('/api/recommend', require('./modules/recommend/recommend.routes')); // R4 สินค้าแนะนำ
 // app.use('/api/cart', require('./modules/cart/cart.routes'));            // R5
 // app.use('/api/orders', require('./modules/orders/orders.routes'));      // R5
 app.use('/api/wishlist', require('./modules/wishlist/wishlist.routes'));   // R1
