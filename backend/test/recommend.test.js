@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 
 const app = require('../src/app');
 const { pool, query } = require('../src/db/pool');
+const { popular } = require('../src/modules/recommend/recommend.service');
 
 const TAG = 'zzr4pop';
 const ids = {};
@@ -40,13 +41,14 @@ async function insertProduct(key, { status = 'available', stock = 1 } = {}) {
   ids[key] = Number(rows[0].product_id);
 }
 
-// ขาย productKey ไป qty ชิ้น ในออเดอร์สถานะ status · คืน order_item_id (ไว้ใส่รีวิว)
-async function sell(productKey, qty, status = 'paid') {
+// ขาย productKey ไป qty ชิ้น ในออเดอร์สถานะ status เมื่อ daysAgo วันก่อน · คืน order_item_id (ไว้ใส่รีวิว)
+async function sell(productKey, qty, status = 'paid', daysAgo = 0) {
   const { rows } = await query(
     `INSERT INTO "order" (user_id, grand_total, current_status, ship_name, ship_phone, ship_line1,
-                          ship_district, ship_province, ship_postcode)
-     VALUES ($1, 900, $2, 'ทดสอบ', '0800000000', '1 ถนนทดสอบ', 'เขต', 'กรุงเทพฯ', '10100') RETURNING order_id`,
-    [ids.buyer, status]
+                          ship_district, ship_province, ship_postcode, placed_at)
+     VALUES ($1, 900, $2, 'ทดสอบ', '0800000000', '1 ถนนทดสอบ', 'เขต', 'กรุงเทพฯ', '10100',
+             NOW() - $3::float8 * INTERVAL '1 day') RETURNING order_id`,
+    [ids.buyer, status, daysAgo]
   );
   const item = await query(
     `INSERT INTO order_item (order_id, product_id, quantity, unit_price_at_purchase, title_snapshot)
@@ -90,6 +92,9 @@ before(async () => {
   await insertProduct('oneReview');                 // รีวิวเดียว 5 ดาว
   await insertProduct('manyReviews');               // 5 รีวิว 5 ดาวทุกอัน → น่าเชื่อกว่า ต้องอยู่สูงกว่า
   await insertProduct('badReview');                 // รีวิว 1 ดาว → ทำให้ค่าเฉลี่ยร้านต่ำกว่า 5 แน่ ๆ
+  // สองชิ้นนี้ขาย 20 ชิ้นเท่ากัน ต่างกันแค่ "เมื่อไหร่" (time decay)
+  await insertProduct('fresh');                     // ขายวันนี้
+  await insertProduct('stale');                     // ขายเมื่อ 120 วันก่อน (4 ครึ่งชีวิต → น้ำหนักเหลือ 1/16)
   await insertProduct('hidden', { status: 'hidden' }); // คะแนนสูงสุด แต่ถูกซ่อน → ต้องไม่โผล่
   await insertProduct('soldout', { stock: 0 });     // คะแนนสูงสุด แต่ของหมด → ต้องไม่โผล่
   await insertProduct('cancelled');                 // ขายได้แต่ออเดอร์ถูกยกเลิก → ไม่นับยอดขาย
@@ -104,6 +109,8 @@ before(async () => {
   await sellAndReview('oneReview', [5, null, null, null, null]);
   await sellAndReview('manyReviews', [5, 5, 5, 5, 5]);
   await sellAndReview('badReview', [1]);
+  await sell('fresh', 20, 'delivered', 0);
+  await sell('stale', 20, 'delivered', 120);
 
   server = app.listen(0);
   await new Promise((r) => server.once('listening', r));
@@ -142,6 +149,20 @@ test('normalize แล้ว: คะแนนอยู่ใน 0–100 แล�
   // second ขาย 500 จาก 900 (≈ 0.56 เท่า) แต่ ln ทำให้ได้ ≈ 0.91 = ผลตอบแทนลดลง ชิ้นขายดีสุดไม่กดคนอื่นจนเหลือศูนย์
   const second = body.data.find((p) => p.product_id === ids.second).popularity;
   assert.ok(second.parts.sales > 0.9 && second.parts.sales < 1, `sales part ${second.parts.sales}`);
+});
+
+test('time decay: ขายเท่ากัน ของที่ขายช่วงนี้อยู่สูงกว่าของที่ขายไปนานแล้ว · ครึ่งชีวิต 30 วัน', async () => {
+  // stale คะแนนต่ำจนหลุด 24 อันดับแรก (สูงสุดที่ API ยอมให้ขอ) จึงเรียก service ตรง ๆ ให้เห็นทุกชิ้น
+  const all = await popular({ limit: 10000 });
+  const at = (key) => all.findIndex((p) => p.product_id === ids[key]);
+  const fresh = all[at('fresh')].popularity;
+  const stale = all[at('stale')].popularity;
+  assert.equal(fresh.sold, 20);
+  assert.equal(stale.sold, 20); // ยอดขายดิบเท่ากัน
+  assert.ok(Math.abs(fresh.weighted_sold - 20) < 0.1, `fresh ${fresh.weighted_sold}`); // ขายวันนี้ น้ำหนัก ≈ 1
+  // 120 วัน = 4 ครึ่งชีวิต → 20 × (1/2)^4 = 1.25
+  assert.ok(Math.abs(stale.weighted_sold - 1.25) < 0.05, `stale ${stale.weighted_sold}`);
+  assert.ok(at('fresh') < at('stale'), 'fresh ต้องอยู่อันดับดีกว่า');
 });
 
 test('Bayesian: 5 รีวิว 5 ดาว อยู่สูงกว่า รีวิวเดียว 5 ดาว (ขายเท่ากัน)', async () => {
