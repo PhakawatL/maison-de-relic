@@ -5,6 +5,9 @@ const { pool } = require('./db/pool');
 
 const server = app.listen(env.port, () => {
   console.log(`API พร้อมใช้งานที่ http://localhost:${env.port}/api/health (${env.nodeEnv})`);
+  // R4: โหลดโมเดล semantic search ไว้เบื้องหลังตั้งแต่เปิด (ไม่รอ) → คนแรกที่ค้นไม่ต้องรอโหลด
+  // ระหว่างยังโหลดไม่เสร็จ / โหลดไม่ได้ ช่องค้นหาใช้การค้นจากชื่อแทน
+  require('./modules/search/embedding').warmUpModel();
 });
 
 // ปิดการเชื่อมต่อให้เรียบร้อยตอน docker compose สั่งหยุดกล่อง
