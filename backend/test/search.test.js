@@ -92,6 +92,10 @@ test('escapeLike: หนี % _ \\ ไม่ให้เป็น wildcard ข�
   assert.equal(escapeLike('กันดั้ม'), 'กันดั้ม');
 });
 
+test('dict: "แสตมป์" → stamp (คำไทยที่โมเดลไม่เข้าใจ ไม่ใช่แค่ชื่อเฉพาะ)', () => {
+  assert.equal(expandQuery('แสตมป์เก่า'), 'stamp เก่า');
+});
+
 test('ตรวจข้อมูล: ไม่มี q / q ว่าง / ยาวเกิน 100 / limit ผิด → 400 VALIDATION_ERROR', async () => {
   const cases = ['', '?q=', '?q=%20%20', `?q=${'ก'.repeat(101)}`, '?q=a&limit=0', '?q=a&limit=51', '?q=a&limit=abc'];
   for (const qs of cases) {
@@ -99,6 +103,14 @@ test('ตรวจข้อมูล: ไม่มี q / q ว่าง / ย�
     assert.equal(res.status, 400, qs);
     assert.equal(res.body.error.code, 'VALIDATION_ERROR', qs);
   }
+});
+
+test('ตรวจตัวกรอง: สภาพผิด / ราคาติดลบ / ต่ำสุด > สูงสุด / หมวดผิดรูป → 400 บอกทุกช่องพร้อมกัน', async () => {
+  const res = await search('?q=a&condition=bad&minPrice=9&maxPrice=1&category=' + encodeURIComponent('ฟิกเกอร์'));
+  assert.equal(res.status, 400);
+  const fields = res.body.error.details.map((d) => d.field).sort();
+  assert.deepEqual(fields, ['category', 'condition', 'minPrice']);
+  assert.equal((await search('?q=a&minPrice=-1')).status, 400);
 });
 
 // ---------- กลุ่ม 2: ต้องโหลดโมเดล (ข้ามบน CI) ----------
@@ -138,9 +150,32 @@ test('"100%" ไม่ทำให้ทุกชิ้นตรงชื่อ 
   assert.ok(body.data.every((p) => p.match === 'meaning'));
 });
 
-test('ค่าเริ่มต้น 20 ชิ้น · ?limit= ใช้ได้ · รูปข้อมูลเหมือนการ์ดสินค้า', { skip: SKIP_MODEL }, async () => {
-  assert.equal((await search('?q=figure')).body.data.length, 20);
-  const { body } = await search('?q=figure&limit=3');
+test('เกณฑ์ตัด: ร้านไม่มีของที่เกี่ยว ("นาฬิกา") → ไม่พบ (ไม่โชว์ของมั่ว ๆ เต็มหน้า)', { skip: SKIP_MODEL }, async () => {
+  const { status, body } = await search('?q=' + encodeURIComponent('นาฬิกา'));
+  assert.equal(status, 200);
+  assert.deepEqual(body.data, []);
+});
+
+test('เกณฑ์ตัด: มีของตรงชัด ("ตุ๊กตาน่ารัก") → ไม่เอาของที่ห่างจากอันดับ 1 เกิน 0.20 มาปน', { skip: SKIP_MODEL }, async () => {
+  const { body } = await search('?q=' + encodeURIComponent('ตุ๊กตาน่ารัก'));
+  assert.ok(body.data.length >= 1);
+  const top = body.data[0].similarity;
+  for (const p of body.data.filter((x) => x.match === 'meaning')) {
+    assert.ok(p.similarity >= Math.max(0.35, top - 0.2), `${p.title} ${p.similarity}`);
+  }
+});
+
+test('ตัวกรอง: ผลทุกชิ้นตรงหมวดและช่วงราคา (กรองก่อนเรียงตามความหมาย)', { skip: SKIP_MODEL }, async () => {
+  const { body } = await search('?q=' + encodeURIComponent('เหรียญเงิน') + '&category=coins-stamps&maxPrice=3000');
+  assert.ok(body.data.length > 0);
+  for (const p of body.data) {
+    assert.equal(p.category.slug, 'coins-stamps', p.title);
+    assert.ok(p.price <= 3000, `${p.title} ${p.price}`);
+  }
+});
+
+test('?limit= เป็นเพดาน · รูปข้อมูลเหมือนการ์ดสินค้า', { skip: SKIP_MODEL }, async () => {
+  const { body } = await search('?q=' + encodeURIComponent('ฟิกเกอร์อนิเมะ') + '&limit=3');
   assert.equal(body.data.length, 3);
   assert.equal(body.data[0].in_stock, true);
   assert.ok(body.data[0].category.slug);
