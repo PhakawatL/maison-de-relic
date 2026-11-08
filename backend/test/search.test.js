@@ -14,6 +14,21 @@ const app = require('../src/app');
 const { pool, query } = require('../src/db/pool');
 const { expandQuery } = require('../src/modules/search/synonyms');
 const { escapeLike } = require('../src/modules/search/search.service');
+const embedding = require('../src/modules/search/embedding');
+
+// แทนฟังก์ชันของ embedding ชั่วคราว (จำลองโมเดลยังไม่พร้อม / พัง) แล้วคืนของเดิมเมื่อจบ
+async function withFakeModel(fakes, fn) {
+  const saved = {};
+  for (const [name, fake] of Object.entries(fakes)) {
+    saved[name] = embedding[name];
+    embedding[name] = fake;
+  }
+  try {
+    await fn();
+  } finally {
+    Object.assign(embedding, saved);
+  }
+}
 
 const MODEL_FILE = path.join(
   __dirname, '..', '.model-cache', 'Xenova', 'paraphrase-multilingual-MiniLM-L12-v2', 'onnx', 'model_quantized.onnx'
@@ -113,7 +128,63 @@ test('ตรวจตัวกรอง: สภาพผิด / ราคาต
   assert.equal((await search('?q=a&minPrice=-1')).status, 400);
 });
 
+// ---------- ทางสำรอง: โมเดลไม่พร้อม/พัง → ค้นจากชื่อ (ไม่โหลดโมเดลจริง รันบน CI ได้) ----------
+
+test('ทางสำรอง: โมเดลยังโหลดไม่เสร็จ → ค้นจากชื่อทันที (200) และสั่งโหลดโมเดลเบื้องหลัง', async () => {
+  let warmUps = 0;
+  await withFakeModel(
+    {
+      isModelReady: () => false,
+      warmUpModel: () => { warmUps += 1; },
+      embedText: async () => assert.fail('ยังไม่พร้อมต้องไม่รอโมเดล'),
+    },
+    async () => {
+      const res = await search('?q=qwzxv'); // ตัวพิมพ์เล็ก: ILIKE ไม่สนตัวพิมพ์
+      assert.equal(res.status, 200);
+      assert.equal(res.body.meta.mode, 'name');
+      assert.deepEqual(res.body.data.map((p) => p.product_id), [ids.noVector]);
+      assert.equal(res.body.data[0].match, 'name');
+      assert.equal(res.body.data[0].similarity, null);
+    }
+  );
+  assert.equal(warmUps, 1);
+});
+
+test('ทางสำรอง: โหลดโมเดลไม่ได้ (เช่นเข้า huggingface.co ไม่ได้) → ไม่ตอบ 500 · ค้นจากชื่อแทน', async () => {
+  await withFakeModel(
+    {
+      isModelReady: () => true,
+      embedText: async () => { throw new Error('fetch failed'); },
+    },
+    async () => {
+      const res = await search('?q=Qwzxv');
+      assert.equal(res.status, 200);
+      assert.equal(res.body.meta.mode, 'name');
+      assert.deepEqual(res.body.data.map((p) => p.product_id), [ids.noVector]);
+    }
+  );
+});
+
+test('ทางสำรอง: ตัวกรองยังใช้ได้ · ชื่อไม่ตรงเลย → ไม่พบ', async () => {
+  await withFakeModel({ isModelReady: () => false, warmUpModel: () => {} }, async () => {
+    assert.deepEqual((await search('?q=Qwzxv&maxPrice=100')).body.data, []); // สินค้าทดสอบราคา 900
+    assert.deepEqual((await search('?q=Qwzxv&condition=new')).body.data, []); // สภาพ good
+    assert.deepEqual((await search(`?q=${encodeURIComponent('นาฬิกา')}`)).body.data, []);
+  });
+});
+
 // ---------- กลุ่ม 2: ต้องโหลดโมเดล (ข้ามบน CI) ----------
+
+// โหลดโมเดลให้เสร็จก่อน ไม่งั้นคำค้นแรกจะได้ทางสำรอง (ค้นจากชื่อ) เพราะโมเดลยังไม่พร้อม
+before(async () => {
+  if (!SKIP_MODEL) await embedding.embedText('warm up');
+});
+
+test('โมเดลพร้อมแล้ว → ได้ผลแบบผสม (meta.mode = semantic)', { skip: SKIP_MODEL }, async () => {
+  const res = await search(`?q=${encodeURIComponent('เหรียญเงิน')}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.meta.mode, 'semantic');
+});
 
 test('ชื่อเฉพาะ: "Charizard" → ชิ้นที่ชื่อตรงขึ้นก่อน (match = name)', { skip: SKIP_MODEL }, async () => {
   const { status, body } = await search('?q=Charizard');

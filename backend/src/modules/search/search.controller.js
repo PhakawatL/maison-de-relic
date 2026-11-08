@@ -47,8 +47,9 @@ async function semantic(req, res) {
   }
 
   check.done(); // ผิดช่องไหนบ้าง ตอบ 400 ทีเดียวพร้อมบอกทุกช่อง (ก่อนเรียกโมเดล)
-  const items = await service.semantic({ q, category, condition, minPrice, maxPrice, limit });
-  res.json({ data: items });
+  const { items, mode } = await service.semantic({ q, category, condition, minPrice, maxPrice, limit });
+  // meta.mode บอกว่าได้ผลแบบไหน: 'semantic' = ผสมชื่อ + ความหมาย · 'name' = ทางสำรอง (โมเดลยังไม่พร้อม/พัง)
+  res.json({ data: items, meta: { mode } });
 }
 
 module.exports = { semantic };
