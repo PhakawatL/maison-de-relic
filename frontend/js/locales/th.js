@@ -464,7 +464,7 @@ export default {
   // ---------- หน้าค้นหา (R4) ----------
   'search.title': 'ค้นหาสินค้า',
   'search.q': 'ชื่อสินค้า',
-  'search.qPlaceholder': 'เช่น Gundam, Charizard',
+  'search.qPlaceholder': 'เช่น Gundam, เหรียญเงิน, ตุ๊กตาน่ารัก',
   'search.filters': 'ตัวกรอง',
   'search.applyFilters': 'ใช้ตัวกรอง',
   'search.showN': 'แสดง {n} ชิ้น',
@@ -488,8 +488,6 @@ export default {
   'search.prev': '← ก่อนหน้า',
   'search.next': 'ถัดไป →',
   'search.page': 'หน้า {page} / {pages}',
-  'search.semantic': 'ค้นตามความหมาย (AI)',
-
   // ---------------------------------------------------------------- Wishlist: หน้ารายการที่ถูกใจ + ปุ่มหัวใจ (R1)
   'wishlist.pageTitle': 'รายการที่ถูกใจ · Maison de Relic',
   'wishlist.title': 'รายการที่ถูกใจ',

@@ -456,7 +456,7 @@ export default {
   // ---------- Search page (R4) ----------
   'search.title': 'Search',
   'search.q': 'Product name',
-  'search.qPlaceholder': 'e.g. Gundam, Charizard',
+  'search.qPlaceholder': 'e.g. Gundam, silver coins, cute plush',
   'search.filters': 'Filters',
   'search.applyFilters': 'Apply filters',
   'search.showN': 'Show {n} items',
@@ -480,8 +480,6 @@ export default {
   'search.prev': '← Previous',
   'search.next': 'Next →',
   'search.page': 'Page {page} / {pages}',
-  'search.semantic': 'Search by meaning (AI)',
-
   // ---------------------------------------------------------------- Wishlist: page + heart button (R1)
   'wishlist.pageTitle': 'Wishlist · Maison de Relic',
   'wishlist.title': 'Wishlist',
