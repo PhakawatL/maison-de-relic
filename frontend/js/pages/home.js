@@ -1,5 +1,5 @@
 // หน้าแรก — ผู้รับผิดชอบ: R4 (Figma: 01-Home)
-import { api } from '../api.js';
+import { api, auth } from '../api.js'; // auth.getToken() = รู้ว่าล็อกอินอยู่ไหม (แถวแนะนำสำหรับคุณ)
 import { escapeHtml } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
 
@@ -33,7 +33,7 @@ const SAMPLE_PRODUCTS = [
 let usingSample = false;
 
 // สินค้าที่แสดงอยู่ เก็บไว้วาดใหม่ตอนสลับภาษาโดยไม่ต้องโหลดซ้ำ
-const shown = { recommended: [], newest: [] };
+const shown = { forYou: [], recommended: [], newest: [] };
 
 const priceFormat = new Intl.NumberFormat('th-TH', {
   style: 'currency',
@@ -71,12 +71,17 @@ function productCard(p, i) {
   const rating = p.avg_rating
     ? `<span class="product-rating">★ ${Number(p.avg_rating).toFixed(1)}</span>`
     : '';
+  // แถวแนะนำสำหรับคุณ: API บอกว่าแนะนำชิ้นนี้เพราะผู้ใช้สนใจชิ้นไหน → "เพราะคุณสนใจ X" (แถวอื่นไม่มี because)
+  const because = p.because
+    ? `<span class="product-because">${t('home.because', { title: escapeHtml(p.because.title) })}</span>`
+    : '';
 
   return `<a class="product-card card-enter" style="--i:${i}" href="/detail?id=${encodeURIComponent(p.product_id)}">
       <div class="product-media ${style.tone}">${media}${condition}</div>
       <div class="product-body">
         ${tag}
         <h3 class="product-title">${escapeHtml(title)}</h3>
+        ${because}
         <div class="product-foot">
           <span class="product-price">${priceFormat.format(Number(p.price) || 0)}</span>
           ${rating}
@@ -128,6 +133,21 @@ function showSampleNote(reasonKey, detail = '') {
 async function fetchProducts(params) {
   const { data } = await api.get('/products', { pageSize: SHELF_SIZE, ...params });
   return data;
+}
+
+// แนะนำสำหรับคุณ (R4) — GET /api/recommend/for-you (ต้องล็อกอิน)
+// ไม่ได้ล็อกอิน / ยังไม่มีประวัติ (personalized = false ได้ยอดนิยมแทน) / API พัง → ไม่โชว์แถวนี้
+//   (ยอดนิยมแทน ถ้าโชว์จะซ้ำกับแถว "ยอดนิยม" ด้านล่าง)
+async function loadForYou() {
+  if (!auth.getToken()) return;
+  try {
+    const { data, meta } = await api.get('/recommend/for-you', { limit: SHELF_SIZE });
+    if (!meta?.personalized || !data.length) return;
+    document.getElementById('for-you-shelf').hidden = false;
+    renderShelf(document.getElementById('forYou'), data);
+  } catch {
+    // token หมดอายุ (api.js ล้าง token ให้เอง) หรือ API ล่ม → แค่ไม่โชว์ แถวอื่นยังทำงานปกติ
+  }
 }
 
 async function loadRecommended() {
@@ -298,6 +318,7 @@ function setupMarquee() {
 
 // สลับภาษา: วาดส่วนที่สร้างด้วย JS ใหม่ (ข้อความใน HTML แปลโดย applyI18n แล้ว)
 onLangChange(() => {
+  if (shown.forYou.length) renderShelf(document.getElementById('forYou'), shown.forYou);
   renderShelf(document.getElementById('recommended'), shown.recommended);
   renderShelf(document.getElementById('newest'), shown.newest);
   fillHeroArt(shown.recommended);
@@ -309,5 +330,6 @@ setupReveal();
 setupParallax();
 setupSearchHints();
 setupNewestFilter();
+loadForYou(); // ไม่ต้องรอ แถวอื่นโหลดพร้อมกันได้
 await loadRecommended();
 loadNewest();
