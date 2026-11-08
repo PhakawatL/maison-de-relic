@@ -25,4 +25,15 @@ async function related(req, res) {
   res.json({ data: items });
 }
 
-module.exports = { popular, related };
+// GET /api/recommend/for-you?limit=8 (ต้องล็อกอิน — route ใส่ requireAuth แล้ว)
+// ผู้ใช้มาจาก token เสมอ (req.user) ไม่รับ user_id จาก query / body → ดูคำแนะนำของคนอื่นไม่ได้
+// meta.personalized: true = แนะนำจากประวัติจริง · false = ยังไม่มีประวัติ ใช้ยอดนิยมแทน (หน้าเว็บใช้ซ่อนแถวไม่ให้ซ้ำ)
+async function forYou(req, res) {
+  const check = new Checker('เงื่อนไขไม่ถูกต้อง');
+  const limit = check.positiveInt(firstValue(req.query.limit), 'limit', { max: MAX_LIMIT }) ?? DEFAULT_LIMIT;
+  check.done();
+  const { items, personalized } = await service.forYou({ userId: req.user.user_id, limit });
+  res.json({ data: items, meta: { personalized } });
+}
+
+module.exports = { popular, related, forYou };
