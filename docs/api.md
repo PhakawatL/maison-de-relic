@@ -133,6 +133,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
 | GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
 | GET | `/recommend/related/:productId` | - | R4 | สินค้าที่เกี่ยวข้อง 8 ชิ้นที่ความหมายใกล้ที่สุด (embedding) |
+| GET | `/recommend/for-you` | login | R4 | แนะนำสำหรับคุณ จากประวัติ event (ไม่มีประวัติ → ยอดนิยม) |
 | GET | `/search/semantic?q=` | - | R4 | ค้นตามความหมายแบบผสม (ชื่อตรงก่อน + ความหมายใกล้) + ตัวกรอง |
 | | | | | |
 
@@ -1056,7 +1057,31 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
               "similarity": 0.54 } ] }
 ```
 
-- ภายหลัง R4 จะเพิ่ม `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding` เหมือนกัน
+### `GET /recommend/for-you?limit=8` (ต้องล็อกอิน)
+
+แนะนำสำหรับคุณ — แถวบนสุดของหน้าแรก (เฉพาะคนที่ล็อกอินและมีประวัติ)
+
+```
+1. 30 event ล่าสุดของผู้ใช้ (user_event) → คะแนนความสนใจต่อสินค้า
+   view 1 · click 2 · wishlist 3 · add_to_cart 4 · purchase 6
+2. แต่ละชิ้นที่สนใจ หาของที่ใกล้ (<=> บน product.embedding · ไม่เรียกโมเดล)
+3. ผลัดกันหยิบทีละชิ้น เริ่มจากความสนใจที่คะแนนมากสุด (item-to-item)
+4. ตัดชิ้นที่เคยเห็นใน 30 event และของที่ซื้อแล้ว (ไม่นับออเดอร์ cancelled / refunded)
+```
+
+- **ทำไมไม่เฉลี่ยเวกเตอร์:** ทดลองกับลูกค้าตัวอย่างแล้ว ค่าเฉลี่ยถูกดึงไปทางกลุ่มการ์ดทุกคน ความสนใจรองหายไป (centroid problem) · แยกทีละชิ้นได้ครบทุกแนวที่ผู้ใช้สนใจ
+- ผู้ใช้มาจาก token เท่านั้น · ไม่ล็อกอิน / token ใช้ไม่ได้ → `401` · ไม่ต้องยืนยันอีเมล (อ่านอย่างเดียว)
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- ไม่มีประวัติ (cold start) / ไม่เหลือของให้แนะนำ → ได้ยอดนิยมแทน และ `meta.personalized = false` (หน้าแรกจึงซ่อนแถวนี้ ไม่ให้ซ้ำกับแถวยอดนิยม)
+- แต่ละชิ้นรูปข้อมูลเหมือน `GET /products` + `similarity` + `because` (ชิ้นที่ผู้ใช้สนใจซึ่งทำให้แนะนำชิ้นนี้)
+
+```json
+{ "data": [ { "product_id": 18, "title": "RMS Titanic — ...", "category": { ... }, "similarity": 0.517,
+              "because": { "product_id": 22, "title": "Cuba Sailing Ship Stamps — 3 ดวง" } } ],
+  "meta": { "personalized": true } }
+```
+
+- ลองบนเครื่อง: รัน `scripts/demo-activity.js` แล้วล็อกอินเป็น `demo_mint` / `Demo@1234`
 
 ## ค้นหาตามความหมาย (R4)
 

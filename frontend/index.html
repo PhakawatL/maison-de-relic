@@ -167,6 +167,19 @@
       </div>
     </section>
 
+    <!-- ---------- แนะนำสำหรับคุณ (R4 · GET /api/recommend/for-you) ----------
+         ซ่อนไว้ก่อน home.js เปิดให้เฉพาะคนที่ล็อกอินและมีประวัติ (personalized)
+         ผู้ใช้ใหม่ API คืนยอดนิยมแทน → ไม่โชว์ ไม่งั้นซ้ำกับแถวยอดนิยมด้านล่าง -->
+    <section class="container shelf" id="for-you-shelf" aria-labelledby="foryou-title" hidden>
+      <div class="shelf-head" data-reveal>
+        <div>
+          <p class="kicker" data-i18n="home.forYouKicker">เลือกจากสิ่งที่คุณเคยสนใจ</p>
+          <h2 id="foryou-title" data-i18n="home.forYouTitle">แนะนำสำหรับคุณ</h2>
+        </div>
+      </div>
+      <div class="product-grid" id="forYou" aria-live="polite"></div>
+    </section>
+
     <!-- ---------- ยอดนิยม (GET /api/recommend/popular) ---------- -->
     <section class="container shelf" aria-labelledby="rec-title">
       <div class="shelf-head" data-reveal>

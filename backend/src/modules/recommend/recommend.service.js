@@ -161,4 +161,92 @@ async function related({ productId, limit }) {
   }));
 }
 
-module.exports = { popular, related, WEIGHTS, PRIOR_REVIEWS, HALF_LIFE_DAYS };
+// ---------- แนะนำสำหรับคุณ (for-you) ----------
+// น้ำหนักของ event แต่ละประเภท — ยิ่งใกล้การจ่ายเงิน ยิ่งบอกความสนใจจริงมาก
+const EVENT_WEIGHTS = { view: 1, click: 2, wishlist: 3, add_to_cart: 4, purchase: 6 };
+const HISTORY_SIZE = 30; // ดูแค่ 30 event ล่าสุด = ความสนใจช่วงหลังสุด (นับตามจำนวน ไม่ใช่จำนวนวัน)
+
+/**
+ * แนะนำสำหรับคุณ — item-to-item: แต่ละชิ้นที่ผู้ใช้สนใจ หาของที่คล้าย แล้วผลัดกันหยิบตามคะแนนความสนใจ
+ * ทำไมไม่เฉลี่ยเวกเตอร์: ทดลองกับลูกค้าตัวอย่างแล้ว ค่าเฉลี่ยถูกดูดไปทางการ์ดทุกคน
+ *   ความสนใจรองหายไป (user 193 ชอบแสตมป์มากสุด แต่ผลไม่มีแสตมป์เลย) = centroid problem
+ * คืน { items, personalized }
+ *   personalized = false → ยังไม่มีประวัติ (cold start) ใช้ยอดนิยมแทน · หน้าเว็บใช้ซ่อนแถวไม่ให้ซ้ำกับแถวยอดนิยม
+ */
+async function forYou({ userId, limit }) {
+  // ① 30 event ล่าสุด (เฉพาะสินค้าที่มีเวกเตอร์) → รวมคะแนนต่อสินค้า
+  const { rows: events } = await query(
+    `SELECT e.product_id, e.event_type
+       FROM user_event e
+       JOIN product p ON p.product_id = e.product_id
+      WHERE e.user_id = $1 AND p.embedding IS NOT NULL
+      ORDER BY e.created_at DESC, e.event_id DESC
+      LIMIT $2`,
+    [userId, HISTORY_SIZE]
+  );
+  const score = new Map(); // product_id → คะแนนความสนใจรวม
+  for (const e of events) {
+    const id = String(e.product_id); // pg คืน BIGINT เป็นข้อความ → ใช้ข้อความเป็น key ทั้งฟังก์ชัน
+    score.set(id, (score.get(id) ?? 0) + (EVENT_WEIGHTS[e.event_type] ?? 1));
+  }
+  if (!score.size) {
+    return { items: await popular({ limit }), personalized: false }; // cold start → ยอดนิยม
+  }
+  // เรียงความสนใจจากคะแนนมากไปน้อย = ลำดับการได้หยิบก่อน (คะแนนเท่ากัน → id น้อยก่อน ผลคงที่)
+  const interests = [...score.keys()].sort((a, b) => score.get(b) - score.get(a) || Number(a) - Number(b));
+
+  // ② SQL ครั้งเดียว: ทุกชิ้นที่สนใจ (i) × สินค้าที่ขายได้ (p) → ระยะห่าง
+  //    ตัด: ชิ้นที่เคยเห็นใน 30 event (= ทุกชิ้นที่สนใจ ไม่แนะนำซ้ำ) และของที่ซื้อแล้ว (ของสะสมมีชิ้นเดียว)
+  //    ANY / ALL = "อยู่ใน / ไม่อยู่ใน" array ของ id ที่ส่งเข้าไปทีเดียวผ่าน $1
+  const { rows } = await query(
+    `SELECT ${SUMMARY_COLUMNS},
+            i.product_id AS because_id, i.title AS because_title,
+            p.embedding <=> i.embedding AS distance
+       ${FROM_JOINS}
+       JOIN product i ON i.product_id = ANY($1::bigint[])
+      WHERE p.status = 'available' AND p.stock_quantity > 0
+        AND p.embedding IS NOT NULL
+        AND p.product_id <> ALL($1::bigint[])
+        AND p.product_id NOT IN (
+          SELECT oi.product_id
+            FROM order_item oi
+            JOIN "order" o ON o.order_id = oi.order_id
+           WHERE o.user_id = $2 AND o.current_status NOT IN ('cancelled', 'refunded'))
+      ORDER BY i.product_id, distance, p.product_id`,
+    [interests, userId]
+  );
+
+  // ③ แยกเป็นรายการต่อความสนใจ (แต่ละรายการเรียงใกล้สุดก่อนจาก SQL แล้ว)
+  const lists = new Map(interests.map((id) => [id, []]));
+  for (const row of rows) lists.get(String(row.because_id)).push(row);
+
+  // ผลัดกันหยิบ: วนความสนใจจากคะแนนมากไปน้อย หยิบชิ้นที่ใกล้ที่สุดที่ยังไม่ถูกหยิบ ทีละ 1 จนครบ limit
+  const picked = [];
+  const used = new Set();
+  while (picked.length < limit) {
+    let added = false;
+    for (const id of interests) {
+      const list = lists.get(id);
+      while (list.length && used.has(String(list[0].product_id))) list.shift(); // ข้ามชิ้นที่ความสนใจอื่นหยิบไปแล้ว
+      const next = list.shift();
+      if (!next) continue;
+      used.add(String(next.product_id));
+      picked.push(next);
+      added = true;
+      if (picked.length === limit) break;
+    }
+    if (!added) break; // ทุกรายการหมดแล้ว
+  }
+  if (!picked.length) {
+    return { items: await popular({ limit }), personalized: false }; // ไม่เหลือของให้แนะนำ → ยอดนิยม
+  }
+
+  const items = picked.map((row) => ({
+    ...toSummary(row),
+    similarity: Number((1 - Number(row.distance)).toFixed(3)),
+    because: { product_id: Number(row.because_id), title: row.because_title }, // "เพราะคุณสนใจ X"
+  }));
+  return { items, personalized: true };
+}
+
+module.exports = { popular, related, forYou, WEIGHTS, PRIOR_REVIEWS, HALF_LIFE_DAYS, EVENT_WEIGHTS };
