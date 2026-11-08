@@ -8,7 +8,8 @@
 // ถ้าไม่ตัด ค้นอะไรก็ได้ทั้งร้าน (ค้น "นาฬิกา" ทั้งที่ร้านไม่มีนาฬิกา ก็ได้เหรียญมาเต็มหน้า)
 const { query } = require('../../db/pool');
 const { SUMMARY_COLUMNS, FROM_JOINS, toSummary } = require('../products/products.service');
-const { embedText } = require('./embedding');
+// เรียกผ่านตัวแปร embedding.xxx (ไม่แยกชื่อออกมา) เพื่อให้ test แทนฟังก์ชันจำลองโมเดลพังได้
+const embedding = require('./embedding');
 const { expandQuery } = require('./synonyms');
 
 // ---------- เกณฑ์ตัด (ได้จากทดลองคำค้นจริง 12 คำ) ----------
@@ -24,29 +25,77 @@ const MAX_GAP = 0.2;
 // คำค้นจากผู้ใช้ไปอยู่ใน LIKE → ต้องหนี % _ \ ไม่งั้นพิมพ์ "%" แล้วจะตรงกับทุกชิ้น
 const escapeLike = (text) => text.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 
+// ---------- ตัวกรอง → อยู่ใน WHERE (กรองก่อนเรียง = pre-filtering) ----------
+// ใช้ร่วมกันทั้งค้นตามความหมายและทางสำรอง · params ตัวแรก ๆ ต้องใส่ไว้ก่อนเรียก (เลข $ ต่อจากนั้น)
+function buildFilters(params, { category, condition, minPrice, maxPrice }) {
+  const where = [`p.status = 'available'`, 'p.stock_quantity > 0'];
+  if (category !== undefined) {
+    where.push(
+      typeof category === 'number' ? `p.category_id = ${add(params, category)}` : `c.slug = ${add(params, category)}`
+    );
+  }
+  if (condition) where.push(`p.condition = ${add(params, condition)}`);
+  if (minPrice !== undefined) where.push(`p.price >= ${add(params, minPrice)}`);
+  if (maxPrice !== undefined) where.push(`p.price <= ${add(params, maxPrice)}`);
+  return where;
+}
+
+// ใส่ค่าลง params แล้วคืนเลข $ ของมัน เช่น params มี 3 ตัว → ใส่ตัวที่ 4 → คืน "$4"
+// ค่าจากผู้ใช้จึงไม่ถูกต่อเข้า SQL ตรง ๆ (กัน SQL injection)
+function add(params, value) {
+  params.push(value);
+  return `$${params.length}`;
+}
+
 /**
  * filters: { q, category, condition, minPrice, maxPrice, limit }
  *   category รับได้ทั้ง id (ตัวเลข) และ slug เหมือน GET /products
+ * คืน { items, mode } · mode = 'semantic' (ผสมชื่อ + ความหมาย) หรือ 'name' (ทางสำรอง: ค้นจากชื่ออย่างเดียว)
  */
-async function semantic({ q, category, condition, minPrice, maxPrice, limit }) {
-  const original = q.trim();
-  const expanded = expandQuery(original); // "ฟิกเกอร์กันดั้ม" → "ฟิกเกอร์ Gundam"
-  const vector = await embedText(expanded); // แปลงคำค้น (ที่แปลงคำทับศัพท์แล้ว) เป็นเวกเตอร์
+async function semantic(filters) {
+  const original = filters.q.trim();
+  const expanded = expandQuery(original); // "ฟิกเกอร์กันดั้ม" → "ฟิกเกอร์ Gundam" (dict ไม่ต้องใช้โมเดล ทางสำรองก็ได้ประโยชน์)
 
-  // ---------- ตัวกรอง → อยู่ใน WHERE (กรองก่อนเรียงตามความหมาย = pre-filtering) ----------
+  // ---------- ทางสำรอง: ค้นด้วยชื่อต้องใช้ได้เสมอ (ใบโครงงานบังคับ) ----------
+  // โมเดลยังโหลดไม่เสร็จ (เปิดเครื่องใหม่ต้องดาวน์โหลด 118 MB · 1–3 นาที) → ไม่ให้ผู้ใช้รอ
+  //   เริ่มโหลดไว้เบื้องหลัง แล้วตอบด้วยการค้นจากชื่อไปก่อน
+  // โหลดพัง (เข้า huggingface.co ไม่ได้ / เน็ตหลุด) → ค้นจากชื่อเหมือนกัน แทนที่จะตอบ 500
+  if (!embedding.isModelReady()) {
+    embedding.warmUpModel();
+    return { items: await nameSearch(original, expanded, filters), mode: 'name' };
+  }
+  let vector;
+  try {
+    vector = await embedding.embedText(expanded); // แปลงคำค้น (ที่แปลงคำทับศัพท์แล้ว) เป็นเวกเตอร์
+  } catch (err) {
+    console.warn(`[semantic] แปลงคำค้นไม่ได้ ค้นจากชื่อแทน: ${err.message}`);
+    return { items: await nameSearch(original, expanded, filters), mode: 'name' };
+  }
+  return { items: await hybridSearch(vector, original, expanded, filters), mode: 'semantic' };
+}
+
+// ค้นจากชื่ออย่างเดียว (ทางสำรอง) · ตัวกรองเหมือนเดิม · ตอบรูปเดียวกับแบบผสม (match = 'name', similarity = null)
+// หน้าเว็บจึงไม่ต้องแก้อะไร
+async function nameSearch(original, expanded, { limit, ...filters }) {
+  const params = [`%${escapeLike(original)}%`, `%${escapeLike(expanded)}%`];
+  const where = buildFilters(params, filters);
+  where.push('(p.title ILIKE $1 OR p.title ILIKE $2)');
+  const { rows } = await query(
+    `SELECT ${SUMMARY_COLUMNS}
+       ${FROM_JOINS}
+      WHERE ${where.join(' AND ')}
+      ORDER BY p.created_at DESC, p.product_id
+      LIMIT ${add(params, limit)}`,
+    params
+  );
+  return rows.map((row) => ({ ...toSummary(row), match: 'name', similarity: null }));
+}
+
+// ค้นแบบผสม: ชื่อตรงก่อน → แล้วตามความหมาย + เกณฑ์ตัด
+async function hybridSearch(vector, original, expanded, { limit, ...filters }) {
   // ผลที่ได้ทุกชิ้นตรงตัวกรอง และเกณฑ์ตัดคิดจาก "อันดับ 1 ในกลุ่มที่กรองแล้ว"
   const params = [`[${vector.join(',')}]`, `%${escapeLike(original)}%`, `%${escapeLike(expanded)}%`];
-  const add = (value) => {
-    params.push(value);
-    return `$${params.length}`;
-  };
-  const where = [`p.status = 'available'`, 'p.stock_quantity > 0'];
-  if (category !== undefined) {
-    where.push(typeof category === 'number' ? `p.category_id = ${add(category)}` : `c.slug = ${add(category)}`);
-  }
-  if (condition) where.push(`p.condition = ${add(condition)}`);
-  if (minPrice !== undefined) where.push(`p.price >= ${add(minPrice)}`);
-  if (maxPrice !== undefined) where.push(`p.price <= ${add(maxPrice)}`);
+  const where = buildFilters(params, filters);
   // ไม่มีเวกเตอร์ก็ยังเจอได้ ถ้าชื่อตรง (เช่นสินค้าเพิ่งลง embedProduct ยังไม่เสร็จ)
   where.push('(p.embedding IS NOT NULL OR p.title ILIKE $2 OR p.title ILIKE $3)');
 
