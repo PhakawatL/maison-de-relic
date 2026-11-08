@@ -488,6 +488,7 @@ export default {
   'search.prev': '← ก่อนหน้า',
   'search.next': 'ถัดไป →',
   'search.page': 'หน้า {page} / {pages}',
+  'search.semantic': 'ค้นตามความหมาย (AI)',
 
   // ---------------------------------------------------------------- Wishlist: หน้ารายการที่ถูกใจ + ปุ่มหัวใจ (R1)
   'wishlist.pageTitle': 'รายการที่ถูกใจ · Maison de Relic',

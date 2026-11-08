@@ -110,6 +110,13 @@
 
         <!-- ค้นหาแบบไม่มีเงื่อนไข (โจทย์บังคับ) -->
         <button class="btn btn-ghost btn-pill" type="button" id="show-all" data-i18n="search.showAll">แสดงทั้งหมด</button>
+
+        <!-- ค้นตามความหมาย (R4 · semantic search แบบผสม) — ติ๊กแล้วฟอร์มส่ง semantic=true
+             ใช้คลาส search-check เดียวกับช่อง "เฉพาะที่มีของ" หน้าตาจึงเหมือนกัน · ตัวกรองยังใช้ได้ (กรองผลจากความหมาย) -->
+        <label class="search-check search-semantic">
+          <input type="checkbox" name="semantic" value="true">
+          <span data-i18n="search.semantic">ค้นตามความหมาย (AI)</span>
+        </label>
       </div>
     </form>
 

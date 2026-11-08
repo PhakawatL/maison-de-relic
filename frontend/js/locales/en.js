@@ -480,6 +480,7 @@ export default {
   'search.prev': '← Previous',
   'search.next': 'Next →',
   'search.page': 'Page {page} / {pages}',
+  'search.semantic': 'Search by meaning (AI)',
 
   // ---------------------------------------------------------------- Wishlist: page + heart button (R1)
   'wishlist.pageTitle': 'Wishlist · Maison de Relic',
