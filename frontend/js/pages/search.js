@@ -1,6 +1,6 @@
 // หน้าค้นหา — ผู้รับผิดชอบ: R4
 // ลำดับการทำงาน: แปลข้อความ → โหลดหมวดหมู่ → อ่านเงื่อนไขจาก URL → ค้นหา → แสดงการ์ด + ปุ่มเปลี่ยนหน้า
-import { api, ApiError } from '../api.js';
+import { api, ApiError, auth } from '../api.js';
 import { escapeHtml } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
 
@@ -59,6 +59,10 @@ function productCard(p, i, animate) {
     ? `<img src="${escapeHtml(p.cover_image_url)}" alt="" loading="lazy">`
     : '';
   const outOfStock = p.in_stock ? '' : `<span class="out-badge">${t('search.outOfStock')}</span>`;
+  // มีเฉพาะแถวแนะนำสำหรับคุณ: บอกว่าแนะนำเพราะเคยสนใจชิ้นไหน (ข้อความเดียวกับหน้าแรก)
+  const because = p.because
+    ? `<p class="product-because">${escapeHtml(t('home.because', { title: p.because.title }))}</p>`
+    : '';
   // card-enter = animation ลอยขึ้นจาก home.css · --i บอกว่าเป็นใบที่เท่าไหร่ ใบหลังโผล่ช้ากว่านิดหนึ่ง
   return `<a class="product-card${animate ? ' card-enter' : ''}" style="--i:${i}" href="/detail?id=${encodeURIComponent(p.product_id)}">
       <div class="product-media">
@@ -69,6 +73,7 @@ function productCard(p, i, animate) {
       <div class="product-body">
         <span class="product-tag">${escapeHtml(categoryText(p.category))}</span>
         <h3 class="product-title">${escapeHtml(p.title)}</h3>
+        ${because}
         <div class="product-foot">
           <span class="product-price">${priceFormat.format(p.price)}</span>
         </div>
@@ -85,7 +90,10 @@ function render(animate = true) {
     return;
   }
   results.innerHTML = items.map((p, i) => productCard(p, i, animate)).join('');
-  countEl.textContent = t('search.count', { n: meta.total.toLocaleString('th-TH') });
+  // แถวแนะนำ (meta.rec มีค่า) → บอกว่าเป็นของแนะนำแบบไหน แทน "พบ N ชิ้น"
+  countEl.textContent = meta.rec
+    ? t(meta.rec === 'forYou' ? 'search.recForYou' : 'search.recPopular')
+    : t('search.count', { n: meta.total.toLocaleString('th-TH') });
   renderPager(meta);
 }
 
@@ -189,11 +197,37 @@ function replay(el, className) {
 }
 
 // =========================================================
-// ค้นหา: ทุกทางมาจบที่ฟังก์ชันนี้ (กดค้นหา, ใช้ตัวกรอง, แสดงทั้งหมด, เปลี่ยนหน้า, กด back, เปิดหน้า)
+// ค้นหา: ทุกทางมาจบที่ฟังก์ชันนี้ (กดค้นหา, ใช้ตัวกรอง, เปลี่ยนหน้า, กด back, เปิดหน้า)
 // =========================================================
-// มีคำค้น → ค้นตามความหมายเสมอ (semantic แบบผสม: ชื่อตรงขึ้นก่อน จึงยังค้นด้วยชื่อได้ตามใบโครงงาน)
-// ไม่มีคำค้น ("แสดงทั้งหมด" หรือเลือกแค่ตัวกรอง) → ไม่มีอะไรให้เทียบความหมาย → รายการทั้งร้านแบบแบ่งหน้าของ R3
+// แบ่งเป็น 3 แบบ ตามสิ่งที่อยู่ใน URL:
+// 1. ไม่มีอะไรเลย (/search เปิดหน้ามาเฉย ๆ ยังไม่ได้ค้น) → แถวแนะนำ (for-you หรือยอดนิยม)
+// 2. มีคำค้น → ค้นตามความหมายเสมอ (semantic แบบผสม: ชื่อตรงขึ้นก่อน จึงยังค้นด้วยชื่อได้ตามใบโครงงาน)
+// 3. ไม่มีคำค้น แต่กดค้นหา/เลือกตัวกรอง → รายการทั้งร้านแบบแบ่งหน้าของ R3
+//    กดค้นหาโดยไม่กรอกอะไรเลย = "ค้นหาแบบไม่มีเงื่อนไข" (โจทย์บังคับ) → URL เป็น ?all=1
+//    ต้องมี all=1 เพราะถ้า URL ว่าง จะแยกไม่ออกจากแบบที่ 1 (กด F5 / back แล้วจะกลายเป็นแถวแนะนำ)
+const isRecommend = (params) => Object.keys(params).length === 0;
 const isSemantic = (params) => Boolean(params.q);
+
+const REC_SIZE = 12; // แถวแนะนำ 12 ชิ้น = เท่ากับผลค้นหา 1 หน้า
+
+// แถวแนะนำตอนยังไม่ได้ค้น (R4)
+// ล็อกอินอยู่ → ลอง for-you ก่อน ใช้เมื่อเป็นผลเฉพาะตัวจริง (personalized) เท่านั้น
+// ไม่ล็อกอิน / ไม่มีประวัติ / for-you error → ยอดนิยม (ใช้ได้กับทุกคน)
+// meta.rec บอก render() ว่าเป็นแถวแบบไหน · total = จำนวนชิ้น ปุ่มเปลี่ยนหน้าจะซ่อนเอง (มีหน้าเดียว)
+async function recommendations() {
+  if (auth.getToken()) {
+    try {
+      const { data, meta } = await api.get('/recommend/for-you', { limit: REC_SIZE });
+      if (meta?.personalized && data.length) {
+        return { data, meta: { rec: 'forYou', page: 1, pageSize: data.length, total: data.length } };
+      }
+    } catch {
+      // token หมดอายุ ฯลฯ → ไม่ต้องแจ้ง ใช้ยอดนิยมแทน
+    }
+  }
+  const { data } = await api.get('/recommend/popular', { limit: REC_SIZE });
+  return { data, meta: { rec: 'popular', page: 1, pageSize: Math.max(data.length, 1), total: data.length } };
+}
 
 // เรียงผลจากความหมายตามราคา เมื่อผู้ใช้เลือกเอง · ค่าเริ่มต้น (newest) = เรียงตามความใกล้ที่ API ส่งมา
 const PRICE_SORT = {
@@ -220,11 +254,13 @@ async function search(params, { pushUrl = true } = {}) {
   results.setAttribute('aria-busy', 'true'); // บอกโปรแกรมอ่านหน้าจอว่ากำลังโหลด + CSS ทำให้ผลเดิมจางลง
   countEl.textContent = t('search.loading');
   try {
-    // มีคำค้น → semantic search (R4) · ไม่มีคำค้น → รายการทั้งร้านของ R3 (ตัวกรอง + แบ่งหน้า)
-    // api.js ข้ามค่าที่ว่างให้เอง · pageSize ใส่เพิ่มทุกครั้ง
-    const res = isSemantic(params)
-      ? await semanticSearch(params)
-      : await api.get('/products', { ...params, pageSize: PAGE_SIZE });
+    // ไม่มีอะไรเลย → แถวแนะนำ · มีคำค้น → semantic search (R4) · ไม่มีคำค้น → รายการทั้งร้านของ R3
+    // all ใช้แค่ใน URL ไม่ส่งให้ API (...rest = ทุกค่ายกเว้น all) · api.js ข้ามค่าที่ว่างให้เอง
+    const { all, ...rest } = params;
+    let res;
+    if (isRecommend(params)) res = await recommendations();
+    else if (isSemantic(params)) res = await semanticSearch(params);
+    else res = await api.get('/products', { ...rest, pageSize: PAGE_SIZE });
     if (myRequest !== searchRequest) return; // มีการค้นหาใหม่กว่าแล้ว ทิ้งผลนี้
     last = { params, items: res.data, meta: res.meta };
     render();
@@ -308,13 +344,10 @@ form.addEventListener('submit', (event) => {
   filters.open = false; // กดค้นหา/ใช้ตัวกรองแล้ว หุบกล่องตัวกรองให้เห็นผลลัพธ์
   replay(searchIcon, 'is-nudging'); // แว่นขยาย "ส่อง" ทีหนึ่ง
   updateFilterBadge();
-  search(formToParams()); // ค้นใหม่เริ่มหน้า 1 เสมอ (ฟอร์มไม่มีช่อง page)
-});
-
-document.getElementById('show-all').addEventListener('click', () => {
-  form.reset();
-  updateFilterBadge();
-  search({}); // ไม่มีเงื่อนไข = แสดงทั้งหมด (โจทย์บังคับ)
+  // ค้นใหม่เริ่มหน้า 1 เสมอ (ฟอร์มไม่มีช่อง page)
+  // ไม่ได้กรอกอะไรเลย = ค้นหาแบบไม่มีเงื่อนไข → { all: '1' } = แสดงทั้งร้าน (ไม่ใช่แถวแนะนำ)
+  const params = formToParams();
+  search(isRecommend(params) ? { all: '1' } : params);
 });
 
 // กด back/forward ของเบราว์เซอร์ → อ่าน URL ใหม่แล้วค้นตามนั้น (ไม่ต้อง push URL ซ้ำ)
