@@ -182,15 +182,39 @@ async function recordStock(db, { productId, type, change, balance, note, adminId
 }
 
 /**
- * ชื่อ / คำอธิบาย / หมวด / ซีรีส์เปลี่ยน → เวกเตอร์เดิม (ของ R4) ใช้ไม่ได้แล้ว
- * ใน transaction ล้างเป็น NULL ไว้ก่อน (สคริปต์ backfill ของ R4 จะหาเจอ)
- * แล้วหลัง commit ถ้าโมเดลโหลดอยู่แล้วก็คำนวณใหม่เบื้องหลัง ไม่ให้แอดมินต้องรอ
+ * สินค้าใหม่ / ชื่อ คำอธิบาย หมวด ซีรีส์เปลี่ยน → ต้องมีเวกเตอร์ใหม่ (R4: "สินค้าที่แอดมินลงใหม่ได้เวกเตอร์จาก embedProduct() ตอนบันทึก")
+ * ใน transaction ล้างเป็น NULL ไว้ก่อน แล้วหลัง commit คำนวณเบื้องหลัง ไม่ให้แอดมินต้องรอ
+ *   โมเดลพร้อมแล้ว → คำนวณเลย
+ *   ยังไม่พร้อม (server เพิ่งเปิด กำลังโหลดโมเดล 1–3 นาที) → จดไว้ แล้วเช็กทุก 30 วินาที พร้อมเมื่อไหร่ค่อยทำ
+ *   ระหว่างรอ semantic search ยังหาเจอจากชื่อ · ถ้า server ปิดก่อน ชิ้นที่ค้างใช้ backfill-embeddings.js เติมได้
+ * ที่นี่ไม่สั่งโหลดโมเดลเอง (server.js ทำตอนเปิดแล้ว) เพื่อไม่ให้ test บน CI ไปดาวน์โหลดโมเดล 118 MB
  */
-function refreshEmbeddingLater(productId) {
-  if (!embedding.isModelReady()) return;
+const pendingEmbeddings = new Set();
+let pendingTimer = null;
+const PENDING_CHECK_MS = 30_000;
+
+function embedNow(productId) {
   embedding
     .embedProduct(productId)
     .catch((err) => console.warn(`[products] คำนวณ embedding ของสินค้า ${productId} ไม่ได้: ${err.message}`));
+}
+
+function refreshEmbeddingLater(productId) {
+  if (embedding.isModelReady()) {
+    pendingEmbeddings.delete(productId);
+    embedNow(productId);
+    return;
+  }
+  pendingEmbeddings.add(productId);
+  if (pendingTimer) return;
+  pendingTimer = setInterval(() => {
+    if (!embedding.isModelReady()) return;
+    for (const id of pendingEmbeddings) embedNow(id);
+    pendingEmbeddings.clear();
+    clearInterval(pendingTimer);
+    pendingTimer = null;
+  }, PENDING_CHECK_MS);
+  pendingTimer.unref(); // ไม่ทำให้ process (เช่น test) ค้างรอ timer นี้
 }
 
 const TEXT_FIELDS = ['title', 'description', 'category_id', 'series_id'];
