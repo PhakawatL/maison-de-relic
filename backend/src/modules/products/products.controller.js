@@ -3,6 +3,7 @@ const AppError = require('../../utils/AppError');
 const service = require('./products.service');
 
 const CONDITIONS = ['new', 'like_new', 'excellent', 'good', 'fair', 'poor'];
+const STATUSES = ['available', 'hidden', 'draft'];
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 50;
 
@@ -14,8 +15,9 @@ function parseId(raw) {
   return id;
 }
 
-/** ตรวจ query string ทั้งหมดก่อนส่งให้ service ถ้าผิดตอบ 400 พร้อมบอกว่าช่องไหนผิด */
-function parseListQuery(qs) {
+/** ตรวจ query string ทั้งหมดก่อนส่งให้ service ถ้าผิดตอบ 400 พร้อมบอกว่าช่องไหนผิด
+ *  admin = true → รับ ?status= เพิ่ม (หน้าร้านไม่รับ เพราะเห็นแค่ available อยู่แล้ว) */
+function parseListQuery(qs, { admin = false } = {}) {
   const errors = [];
   const filters = {};
 
@@ -81,6 +83,13 @@ function parseListQuery(qs) {
 
   filters.inStock = get('inStock') === 'true';
 
+  if (admin) {
+    filters.status = get('status');
+    if (filters.status && !STATUSES.includes(filters.status)) {
+      errors.push({ field: 'status', issue: `ต้องเป็นหนึ่งใน ${STATUSES.join(', ')}` });
+    }
+  }
+
   filters.sort = get('sort') || 'newest';
   if (!service.SORTS[filters.sort]) {
     errors.push({ field: 'sort', issue: `ต้องเป็นหนึ่งใน ${Object.keys(service.SORTS).join(', ')}` });
@@ -95,6 +104,98 @@ function parseListQuery(qs) {
   return filters;
 }
 
+// ---------- ตรวจข้อมูลสินค้าที่แอดมินส่งมา (POST / PUT) ----------
+
+const MAX_PRICE = 9999999999.99; // NUMERIC(12,2)
+// ช่องเสริมที่เก็บใน product.attributes (JSON) — ตรงกับฟอร์มในหน้า /admin/products
+const ATTRIBUTES = {
+  year: null,
+  size: null,
+  material: null,
+  original_box: ['with_cert', 'yes', 'no'],
+  grading_company: ['none', 'PSA', 'BGS', 'CGC', 'other'],
+  grade: null,
+};
+
+/**
+ * ตรวจ body ทั้งก้อน (PUT = ส่งครบทุกช่องเหมือน POST) ผิดตอบ 400 พร้อม details: [{ field, issue }]
+ * หน้าเว็บอ่าน details ไปแสดงใต้ช่องที่ผิดได้เลย
+ */
+function parseProductBody(body) {
+  const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const errors = [];
+  const err = (field, issue) => errors.push({ field, issue });
+  const text = (v) => (typeof v === 'string' ? v.trim() : v);
+
+  const title = text(b.title);
+  if (typeof title !== 'string' || title === '') err('title', 'กรอกชื่อสินค้า');
+  else if (title.length > 200) err('title', 'ยาวได้ไม่เกิน 200 ตัวอักษร');
+
+  let description = text(b.description);
+  if (description === undefined || description === '') description = null;
+  if (description !== null && typeof description !== 'string') err('description', 'ต้องเป็นข้อความ');
+  else if (description && description.length > 5000) err('description', 'ยาวได้ไม่เกิน 5000 ตัวอักษร');
+
+  const positiveId = (v) => Number.isInteger(v) && v > 0;
+  if (!positiveId(b.category_id)) err('category_id', 'เลือกหมวดหมู่');
+  const seriesId = b.series_id === undefined || b.series_id === null || b.series_id === '' ? null : b.series_id;
+  if (seriesId !== null && !positiveId(seriesId)) err('series_id', 'รหัสซีรีส์ไม่ถูกต้อง');
+
+  if (!STATUSES.includes(b.status)) err('status', `ต้องเป็นหนึ่งใน ${STATUSES.join(', ')}`);
+  if (!CONDITIONS.includes(b.condition)) err('condition', `ต้องเป็นหนึ่งใน ${CONDITIONS.join(', ')}`);
+
+  if (typeof b.price !== 'number' || !Number.isFinite(b.price) || b.price < 0) {
+    err('price', 'ราคาต้องเป็นตัวเลขตั้งแต่ 0 ขึ้นไป');
+  } else if (b.price > MAX_PRICE) {
+    err('price', 'ราคาสูงเกินไป');
+  } else if (Math.round(b.price * 100) / 100 !== b.price) {
+    err('price', 'ทศนิยมได้ไม่เกิน 2 ตำแหน่ง');
+  }
+
+  if (!Number.isInteger(b.stock_quantity) || b.stock_quantity < 0) {
+    err('stock_quantity', 'จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
+  } else if (b.stock_quantity > 100000) {
+    err('stock_quantity', 'จำนวนมากเกินไป');
+  }
+
+  const attributes = {};
+  const rawAttrs = b.attributes ?? {};
+  if (typeof rawAttrs !== 'object' || Array.isArray(rawAttrs)) {
+    err('attributes', 'ต้องเป็น object');
+  } else {
+    for (const [key, raw] of Object.entries(rawAttrs)) {
+      if (!(key in ATTRIBUTES)) {
+        err(key, 'ไม่รู้จักช่องนี้');
+        continue;
+      }
+      if (raw === null || raw === '') continue; // ช่องว่าง = ไม่เก็บ
+      const value = typeof raw === 'number' ? String(raw) : text(raw);
+      if (typeof value !== 'string' || value.length > 100) {
+        err(key, 'ต้องเป็นข้อความไม่เกิน 100 ตัวอักษร');
+      } else if (ATTRIBUTES[key] && !ATTRIBUTES[key].includes(value)) {
+        err(key, `ต้องเป็นหนึ่งใน ${ATTRIBUTES[key].join(', ')}`);
+      } else if (value !== '') {
+        attributes[key] = value;
+      }
+    }
+  }
+
+  if (errors.length) throw AppError.badRequest('VALIDATION_ERROR', 'ข้อมูลสินค้าไม่ถูกต้อง', errors);
+  return {
+    title,
+    description,
+    category_id: b.category_id,
+    series_id: seriesId,
+    status: b.status,
+    condition: b.condition,
+    price: b.price,
+    stock_quantity: b.stock_quantity,
+    attributes,
+  };
+}
+
+const notFound = () => AppError.notFound('PRODUCT_NOT_FOUND', 'ไม่พบสินค้านี้');
+
 // GET /api/products
 async function list(req, res) {
   const filters = parseListQuery(req.query);
@@ -108,8 +209,46 @@ async function list(req, res) {
 // GET /api/products/:id
 async function getById(req, res) {
   const product = await service.getById(parseId(req.params.id));
-  if (!product) throw AppError.notFound('PRODUCT_NOT_FOUND', 'ไม่พบสินค้านี้');
+  if (!product) throw notFound();
   res.json({ data: product });
 }
 
-module.exports = { list, getById };
+// GET /api/admin/products (แอดมิน · ทุกสถานะ)
+async function adminList(req, res) {
+  const filters = parseListQuery(req.query, { admin: true });
+  const { items, total } = await service.list(filters, { admin: true });
+  res.json({
+    data: items,
+    meta: { page: filters.page, pageSize: filters.pageSize, total },
+  });
+}
+
+// GET /api/admin/products/:id (แอดมิน · ทุกสถานะ + has_orders)
+async function adminGetById(req, res) {
+  const product = await service.getById(parseId(req.params.id), { admin: true });
+  if (!product) throw notFound();
+  res.json({ data: product });
+}
+
+// POST /api/products (แอดมิน)
+async function create(req, res) {
+  const product = await service.create(parseProductBody(req.body), req.user.user_id);
+  res.status(201).json({ data: product });
+}
+
+// PUT /api/products/:id (แอดมิน)
+async function update(req, res) {
+  const id = parseId(req.params.id);
+  const product = await service.update(id, parseProductBody(req.body), req.user.user_id);
+  if (!product) throw notFound();
+  res.json({ data: product });
+}
+
+// DELETE /api/products/:id (แอดมิน) — เคยขายแล้วจะซ่อนแทนการลบ ดู result ในคำตอบ
+async function remove(req, res) {
+  const result = await service.remove(parseId(req.params.id), req.user.user_id);
+  if (!result) throw notFound();
+  res.json({ data: result });
+}
+
+module.exports = { list, getById, adminList, adminGetById, create, update, remove };

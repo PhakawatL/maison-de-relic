@@ -2,10 +2,11 @@
 // มุมมองสลับด้วย # ใน URL:   (ว่าง) = รายการ · #new = เพิ่ม · #edit/<id> = แก้ไข
 // ข้อความทุกตัวอยู่ใน js/locales/th.js และ en.js (หมวด admin.*, ap.*, status.*, cond.*, cat.*)
 //
-// API ที่ใช้:
-//   GET    /products, /products/:id, /categories, /series   ← มีแล้ว
-//   POST   /products, PUT /products/:id, DELETE /products/:id ← TODO (R3) รอ auth แอดมินของ R2
-// ตอนนี้ GET /products คืนเฉพาะสินค้า available — เมื่อมี API ฝั่งแอดมิน ให้เปลี่ยน LIST_PATH
+// API ที่ใช้ (ต้องล็อกอินเป็นแอดมิน):
+//   GET    /admin/products, /admin/products/:id  ← เห็นทุกสถานะ (available / hidden / draft)
+//   POST   /products, PUT /products/:id, DELETE /products/:id (เคยขายแล้ว → ซ่อนแทนการลบ)
+//   GET    /categories, /series
+//   POST   /products/:id/images ← TODO (R3) ยังไม่มี API รูป: บันทึกสินค้าได้ แต่รูปยังไม่ถูกอัปโหลด
 import { api, ApiError } from '../api.js';
 import { escapeHtml, formatBaht } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
@@ -14,7 +15,7 @@ import { requireAdminPage } from '../auth-guard.js';
 // ไม่ใช่แอดมิน (ยังไม่ล็อกอิน / ลูกค้า / token หมดอายุ) → ส่งไปหน้า /login แล้วกลับมาหน้านี้หลังล็อกอิน (R2)
 await requireAdminPage();
 
-const LIST_PATH = '/products'; // TODO (R3): เปลี่ยนเป็น endpoint ของแอดมินที่เห็นทุกสถานะ
+const LIST_PATH = '/admin/products';
 const PAGE_SIZE = 10;
 
 const STATUSES = ['available', 'hidden', 'draft'];
@@ -270,7 +271,7 @@ async function loadList() {
     const code = /^p0*(\d+)$/i.exec(state.q);
     if (code) {
       try {
-        const { data } = await api.get(`/products/${Number(code[1])}`);
+        const { data } = await api.get(`${LIST_PATH}/${Number(code[1])}`);
         state.lastRows = [data];
         state.lastMeta = { page: 1, pageSize: PAGE_SIZE, total: 1 };
       } catch (err) {
@@ -360,9 +361,10 @@ els.deleteConfirm.addEventListener('click', async () => {
   els.deleteConfirm.disabled = true;
   els.deleteConfirm.classList.add('is-loading');
   try {
-    await api.delete(`/products/${state.deleting}`);
+    const res = await api.delete(`/products/${state.deleting}`);
     closeDialog();
-    showMessage({ key: 'ap.ok.deleted' }, 'success');
+    // เคยขายแล้ว → backend ซ่อนแทนการลบ (คำสั่งซื้อ / รีวิว ยังอ้างถึงสินค้านี้อยู่)
+    showMessage({ key: res?.data?.result === 'hidden' ? 'ap.ok.hidden' : 'ap.ok.deleted' }, 'success');
     loadList();
   } catch (err) {
     closeDialog();
@@ -553,7 +555,7 @@ async function openForm(id) {
   }
   els.saveBtn.disabled = true;
   try {
-    const { data } = await api.get(`/products/${id}`);
+    const { data } = await api.get(`${LIST_PATH}/${id}`);
     fillForm(data);
   } catch (err) {
     showMessage(
@@ -589,14 +591,18 @@ els.form.addEventListener('submit', async (event) => {
       ? await api.put(`/products/${state.editingId}`, payload)
       : await api.post('/products', payload);
 
-    // TODO (R3): อัปโหลดรูปเมื่อมี API รูปสินค้า เช่น POST /products/:id/images (FormData)
+    // สินค้าบันทึกแล้ว → รูปพังก็ไม่ให้ค้างอยู่ในฟอร์ม (กดบันทึกซ้ำจะได้สินค้าซ้ำ) แค่บอกว่ารูปยังไม่ขึ้น
+    let okKey = state.editingId ? 'ap.ok.saved' : 'ap.ok.added';
     if (state.imageFile && res?.data?.product_id) {
-      const body = new FormData();
-      body.append('image', state.imageFile);
-      await api.post(`/products/${res.data.product_id}/images`, body);
+      try {
+        const body = new FormData();
+        body.append('image', state.imageFile);
+        await api.post(`/products/${res.data.product_id}/images`, body);
+      } catch {
+        okKey = 'ap.ok.savedNoImage'; // TODO (R3): ยังไม่มี API รูปสินค้า
+      }
     }
 
-    const okKey = state.editingId ? 'ap.ok.saved' : 'ap.ok.added';
     window.location.hash = '';
     showMessage({ key: okKey }, 'success');
   } catch (err) {

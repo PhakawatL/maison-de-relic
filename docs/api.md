@@ -106,6 +106,11 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | GET | `/categories` | - | R3 | หมวดหมู่ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
 | GET | `/series` | - | R3 | ซีรีส์ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
+| GET | `/admin/products` | แอดมิน | R3 | รายการสินค้าทุกสถานะ (available / hidden / draft) กรอง `status` ได้ |
+| GET | `/admin/products/:id` | แอดมิน | R3 | สินค้า 1 ชิ้นทุกสถานะ + `has_orders` |
+| POST | `/products` | แอดมิน | R3 | เพิ่มสินค้า |
+| PUT | `/products/:id` | แอดมิน | R3 | แก้ไขสินค้า (ส่งครบทุกช่อง) |
+| DELETE | `/products/:id` | แอดมิน | R3 | ลบสินค้า (เคยขายแล้ว → ซ่อนแทน) |
 | GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
@@ -621,6 +626,65 @@ await withTransaction(async (client) => {
 |---|---|
 | 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
 | 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
+
+### จัดการสินค้า (แอดมิน)
+
+ทุก endpoint ด้านล่างต้องล็อกอินเป็นแอดมิน (owner หรือ staff) · ไม่ล็อกอิน 401 · ลูกค้า 403
+ทุกการเพิ่ม / แก้ / ลบบันทึกลง `admin_action_log` (`create_product`, `update_product`, `delete_product`, `hide_product`)
+
+#### `GET /admin/products`
+
+query เหมือน `GET /products` ทุกตัว และเพิ่ม `status` = `available`, `hidden`, `draft` (ไม่ใส่ = ทุกสถานะ) · คำตอบรูปเดียวกัน
+
+#### `GET /admin/products/:id`
+
+เหมือน `GET /products/:id` แต่เปิดสินค้าได้ทุกสถานะ และมี `has_orders` (`true` = เคยขายแล้ว ลบจริงไม่ได้)
+
+#### `POST /products` และ `PUT /products/:id`
+
+body เดียวกัน (PUT ต้องส่งครบทุกช่อง) · POST ตอบ 201 · PUT ตอบ 200 · ได้สินค้าแบบเดียวกับ `GET /admin/products/:id`
+
+```json
+{
+  "title": "RX-78-2 Gundam Ver.Ka",
+  "description": "กล่องครบ ไม่มีรอย",
+  "category_id": 3,
+  "series_id": 3,
+  "status": "draft",
+  "condition": "like_new",
+  "price": 1500,
+  "stock_quantity": 1,
+  "attributes": { "year": "2020", "original_box": "yes", "grading_company": "PSA", "grade": "10" }
+}
+```
+
+| ช่อง | กติกา |
+|---|---|
+| `title` | บังคับ ไม่เกิน 200 ตัวอักษร |
+| `description` | ไม่บังคับ (`null` ได้) ไม่เกิน 5000 ตัวอักษร |
+| `category_id` | บังคับ ต้องมีอยู่จริง |
+| `series_id` | `null` ได้ ถ้าใส่ต้องมีอยู่จริง |
+| `status` | `available`, `hidden`, `draft` |
+| `condition` | `new`, `like_new`, `excellent`, `good`, `fair`, `poor` |
+| `price` | ตัวเลข ≥ 0 ทศนิยมไม่เกิน 2 ตำแหน่ง |
+| `stock_quantity` | จำนวนเต็ม ≥ 0 |
+| `attributes` | ได้เฉพาะ `year`, `size`, `material`, `original_box` (`with_cert` / `yes` / `no`), `grading_company` (`none` / `PSA` / `BGS` / `CGC` / `other`), `grade` · ค่าเป็นข้อความไม่เกิน 100 ตัว · ค่าว่างไม่เก็บ |
+
+- ผิดตอบ 400 `VALIDATION_ERROR` พร้อม `details: [{ field, issue }]` (field ตรงกับชื่อช่องในฟอร์ม)
+- `created_by` = แอดมินที่ล็อกอินอยู่ (BR-04)
+- สต็อกเปลี่ยนบันทึก `stock_movement` ให้เอง: เพิ่มสินค้า → `restock` · แก้จำนวน → `adjust` (ส่วนต่าง) · `balance_after` = จำนวนใหม่
+- ชื่อ / คำอธิบาย / หมวด / ซีรีส์เปลี่ยน → ล้าง `embedding` เป็น `NULL` แล้วคำนวณใหม่เบื้องหลังถ้าโมเดลของ R4 โหลดอยู่ (ไม่อย่างนั้นสคริปต์ `backfill-embeddings.js` จะเติมให้)
+- รูปสินค้ายังไม่อยู่ใน API นี้ (จะเป็น `POST /products/:id/images`)
+
+#### `DELETE /products/:id`
+
+```json
+{ "data": { "product_id": 12, "result": "deleted" } }
+```
+
+- ยังไม่เคยขาย → ลบจริง (`result: "deleted"`) รูป wishlist ตะกร้า event ลบตามไปด้วย
+- เคยขายแล้ว (มีใน `order_item`) → เปลี่ยนเป็น `hidden` แทน (`result: "hidden"`) เพราะคำสั่งซื้อ รีวิว และคำขอคืนเงินยังอ้างถึงสินค้านี้
+- ไม่มีสินค้านี้ → 404 `PRODUCT_NOT_FOUND`
 
 ### `GET /categories` และ `GET /series`
 
