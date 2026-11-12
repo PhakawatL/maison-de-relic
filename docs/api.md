@@ -114,6 +114,8 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/products/:id/images` | แอดมิน | R3 | อัปโหลดรูปสินค้า (ส่งไฟล์เป็น body) เก็บใน Supabase |
 | DELETE | `/products/:id/images/:seq` | แอดมิน | R3 | ลบรูปสินค้า |
 | PUT | `/products/:id/images/:seq/cover` | แอดมิน | R3 | ตั้งเป็นรูปปก |
+| POST | `/products/:id/stock` | แอดมิน | R3 | เติม / ตัดของเสีย / ปรับยอดสต็อก |
+| GET | `/products/:id/stock-movements` | แอดมิน | R3 | ประวัติสต็อกของสินค้า |
 | GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
@@ -708,6 +710,37 @@ body เดียวกัน (PUT ต้องส่งครบทุกช่
 {
   "data": { "seq": 2, "url": "https://<project>.supabase.co/storage/v1/object/public/Product_image/products/12/<uuid>.jpg", "alt_text": null, "is_cover": true },
   "meta": { "images": [ { "seq": 1, "...": "..." }, { "seq": 2, "...": "..." } ] }
+### สต็อก (แอดมิน)
+
+ทุกการเปลี่ยนสต็อกบันทึกลง `stock_movement` (ledger) พร้อมยอดคงเหลือหลังเปลี่ยน (`balance_after`) · ยอดไม่มีทางติดลบ
+แอดมินทำได้ 3 แบบ ส่วน `sale` (ระบบคำสั่งซื้อ R5) และ `return` (ระบบคืนเงิน R1) ระบบสร้างเอง
+
+#### `POST /products/:id/stock`
+
+```json
+{ "type": "restock", "quantity": 3, "note": "ของล็อตใหม่" }
+{ "type": "write_off", "quantity": 1, "note": "กล่องบุบ" }
+{ "type": "adjust", "new_quantity": 10, "note": "นับสต็อกสิ้นเดือน" }
+```
+
+| `type` | ทำอะไร | ช่องที่ต้องส่ง |
+|---|---|---|
+| `restock` | เติมของเข้า (+) | `quantity` ≥ 1 · `note` ไม่บังคับ |
+| `write_off` | ตัดของเสีย / หาย (−) | `quantity` ≥ 1 · **`note` บังคับ** |
+| `adjust` | ใส่ยอดที่นับได้จริง ระบบคิดส่วนต่างให้ (±) | `new_quantity` ≥ 0 · **`note` บังคับ** |
+
+ตอบ 201
+
+```json
+{
+  "data": {
+    "product_id": 12, "before": 5, "after": 8,
+    "movement": {
+      "movement_id": 31, "type": "restock", "qty_change": 3, "balance_after": 8, "note": "ของล็อตใหม่",
+      "created_at": "2026-11-12T07:43:00.000Z", "order_id": null,
+      "created_by": { "user_id": 2, "username": "Neptz", "display_name": "Neptz" }
+    }
+  }
 }
 ```
 
@@ -733,6 +766,30 @@ body เดียวกัน (PUT ต้องส่งครบทุกช่
 ตั้งรูปนี้เป็นปก ตอบ `{ "data": { "product_id", "cover_seq", "images": [...] } }`
 
 > `product.cover_image_url` ตรงกับรูปปกเสมอ (การ์ดสินค้าทุกหน้าอ่านจากช่องนี้) · ลบสินค้าที่ไม่เคยขาย → ไฟล์รูปใน `products/<id>/` ถูกลบตาม
+| 400 `VALIDATION_ERROR` | ช่องผิด / ไม่มีเหตุผล / `type` เป็น `sale` หรือ `return` / รวมแล้วเกิน 100000 |
+| 400 `NO_CHANGE` | `adjust` แล้วยอดเท่าเดิม |
+| 409 `INSUFFICIENT_STOCK` | ตัดมากกว่าที่มี (`details.stock_quantity` = ยอดตอนนี้) |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ |
+
+บันทึก `admin_action_log` ประเภท `adjust_stock` ด้วย
+
+#### `GET /products/:id/stock-movements?type=&page=&pageSize=`
+
+ประวัติใหม่สุดก่อน · `type` กรองประเภท · `pageSize` สูงสุด 100 (ค่าเริ่มต้น 20) · `meta.stock_quantity` = ยอดปัจจุบัน
+แต่ละแถวเหมือน `movement` ด้านบน · แถวที่มาจากคำสั่งซื้อ / คืนเงินมี `order_id`
+
+#### ฟังก์ชันสต็อกกลาง (สำหรับ R1 / R5)
+
+```js
+const { applyStockChange } = require('../inventory/inventory.service');
+await withTransaction(async (client) => {
+  // ขายออก (R5): change ติดลบ · ของไม่พอ → throw 409 INSUFFICIENT_STOCK ทั้ง transaction ย้อนกลับ
+  await applyStockChange(client, { productId, type: 'sale', change: -qty, orderItemId, actorId: userId });
+});
+```
+
+ล็อกแถวสินค้า (`FOR UPDATE`) → ตรวจไม่ติดลบ → อัปเดต `product.stock_quantity` → บันทึก `stock_movement` ในครั้งเดียว
+ระบบคืนเงินของ R1 (`return`) ตอนนี้เขียน SQL เอง ผลเหมือนกัน เปลี่ยนมาเรียกฟังก์ชันนี้ได้เมื่อสะดวก
 
 ### `GET /categories` และ `GET /series`
 
@@ -1024,7 +1081,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 กติกาฝั่งผู้ดูแล (บันทึก `admin_action_log` ทุกครั้ง: `approve_refund`, `reject_refund`, `complete_refund`)
 
 - **อนุมัติ** ต้องเลือก `restock_decision`
-  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (R3 เปลี่ยนไปเรียกฟังก์ชันสต็อกกลางได้เมื่อทำ #20 เสร็จ)
+  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (มีฟังก์ชันสต็อกกลาง `applyStockChange` ของ R3 แล้ว ดูหัวข้อ "สต็อก (แอดมิน)")
   - `write_off` ตัดจำหน่าย (ของเสียหายขายต่อไม่ได้) → สต็อกไม่เปลี่ยน
 - **โอนเงินคืนแล้ว** (จำลอง ไม่มี payment gateway) ถ้าคืนครบทุกชิ้นของคำสั่งซื้อ → `"order".current_status = 'refunded'` + แถวใหม่ใน `order_status_log` + `payment.status = 'refunded'` · คืนไม่ครบ สถานะคำสั่งซื้อเหมือนเดิม
 
