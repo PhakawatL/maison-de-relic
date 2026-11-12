@@ -6,7 +6,8 @@
 //   GET    /admin/products, /admin/products/:id  ← เห็นทุกสถานะ (available / hidden / draft)
 //   POST   /products, PUT /products/:id, DELETE /products/:id (เคยขายแล้ว → ซ่อนแทนการลบ)
 //   GET    /categories, /series
-//   POST   /products/:id/images ← TODO (R3) ยังไม่มี API รูป: บันทึกสินค้าได้ แต่รูปยังไม่ถูกอัปโหลด
+//   POST   /products/:id/images (ส่งไฟล์เป็น body) · DELETE /products/:id/images/:seq · PUT .../:seq/cover
+//          รูปเก็บใน Supabase Storage — เครื่องที่ยังไม่ใส่ key ใน .env บันทึกสินค้าได้ แต่อัปโหลดรูปไม่ได้
 import { api, ApiError } from '../api.js';
 import { escapeHtml, formatBaht } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
@@ -51,6 +52,8 @@ const els = {
   dropzone: $('dropzone'),
   fileInput: $('f-image'),
   preview: $('image-preview'),
+  gallery: $('image-gallery'),
+  galleryList: $('gallery-list'),
   dropzoneText: $('dropzone-text'),
   dialog: $('delete-dialog'),
   deleteName: $('delete-name'),
@@ -63,6 +66,8 @@ const state = {
   category: '',
   editingId: null,
   imageFile: null,
+  images: [], // รูปที่มีอยู่แล้วของสินค้าที่กำลังแก้ [{ seq, url, alt_text, is_cover }]
+  confirmDeleteSeq: null,
   deleting: null,
   categories: [],
   series: [],
@@ -453,7 +458,7 @@ function resetImage() {
 
 function pickImage(file) {
   if (!file) return;
-  if (!['image/jpeg', 'image/png'].includes(file.type)) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     showMessage({ key: 'ap.err.imageType' });
     return;
   }
@@ -524,16 +529,75 @@ function fillForm(product) {
   const attrs = product.attributes || {};
   for (const key of ATTRIBUTE_FIELDS) f[key].value = attrs[key] ?? '';
 
-  const images = product.images || [];
-  const cover = images.find((i) => i.is_cover) || images[0];
-  const url = cover?.url || product.cover_image_url;
-  if (url) {
-    els.preview.src = url;
-    els.preview.alt = cover?.alt_text || product.title;
-    els.preview.hidden = false;
+  setImages(product.images || [], product.title);
+}
+
+/* ---------- รูปที่มีอยู่แล้ว (ตอนแก้ไข) ---------- */
+
+// รูปปกโชว์ในกรอบอัปโหลด · รูปทั้งหมดโชว์เป็นแถวเล็กด้านล่าง
+function setImages(images, title = els.form.elements.title.value) {
+  state.images = images;
+  state.confirmDeleteSeq = null;
+  if (!state.imageFile) {
+    const cover = images.find((i) => i.is_cover) || images[0];
+    if (cover) {
+      els.preview.src = cover.url;
+      els.preview.alt = cover.alt_text || title;
+      els.preview.hidden = false;
+    } else {
+      els.preview.hidden = true;
+      els.preview.removeAttribute('src');
+    }
     renderDropzoneText();
   }
+  renderGallery();
 }
+
+function renderGallery() {
+  const images = state.images;
+  els.gallery.hidden = !state.editingId || images.length === 0;
+  els.galleryList.innerHTML = images
+    .map((img) => {
+      const confirming = state.confirmDeleteSeq === img.seq;
+      return `
+      <li class="gallery-item${img.is_cover ? ' is-cover' : ''}">
+        <img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt_text || '')}" loading="lazy">
+        ${img.is_cover ? `<span class="cover-badge">${escapeHtml(t('ap.gallery.cover'))}</span>` : ''}
+        <div class="gallery-actions">
+          ${img.is_cover ? '' : `<button type="button" class="gallery-btn" data-cover="${img.seq}">${escapeHtml(t('ap.gallery.makeCover'))}</button>`}
+          <button type="button" class="gallery-btn danger${confirming ? ' confirming' : ''}" data-remove="${img.seq}">
+            ${escapeHtml(t(confirming ? 'ap.gallery.confirmDelete' : 'ap.gallery.delete'))}
+          </button>
+        </div>
+      </li>`;
+    })
+    .join('');
+}
+
+// ตั้งปก / ลบ ทำทันทีกับ API (ไม่รอปุ่มบันทึก) · ลบต้องกด 2 ครั้ง กันพลาด
+els.galleryList.addEventListener('click', async (event) => {
+  const btn = event.target.closest('button');
+  if (!btn || !state.editingId) return;
+  const id = state.editingId;
+  const removeSeq = btn.dataset.remove ? Number(btn.dataset.remove) : null;
+  if (removeSeq && state.confirmDeleteSeq !== removeSeq) {
+    state.confirmDeleteSeq = removeSeq;
+    renderGallery();
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = removeSeq
+      ? await api.delete(`/products/${id}/images/${removeSeq}`)
+      : await api.put(`/products/${id}/images/${Number(btn.dataset.cover)}/cover`);
+    setImages(res.data.images);
+    showMessage({ key: removeSeq ? 'ap.ok.imageDeleted' : 'ap.ok.coverChanged' }, 'success');
+  } catch (err) {
+    state.confirmDeleteSeq = null;
+    renderGallery();
+    showMessage(errorMessage(err));
+  }
+});
 
 function renderFormTitle() {
   const id = state.editingId;
@@ -546,6 +610,7 @@ async function openForm(id) {
   clearFieldErrors();
   resetImage();
   state.editingId = id;
+  setImages([]);
   renderFormTitle();
   if (!id) {
     els.form.elements.status.value = 'draft'; // สินค้าใหม่เริ่มเป็นฉบับร่าง กันเผลอขึ้นเว็บ
@@ -592,14 +657,15 @@ els.form.addEventListener('submit', async (event) => {
       : await api.post('/products', payload);
 
     // สินค้าบันทึกแล้ว → รูปพังก็ไม่ให้ค้างอยู่ในฟอร์ม (กดบันทึกซ้ำจะได้สินค้าซ้ำ) แค่บอกว่ารูปยังไม่ขึ้น
+    // แก้ไขสินค้าแล้วเลือกรูปใหม่ = เปลี่ยนรูปปก (รูปเดิมยังอยู่ ลบได้ในแถวรูปด้านล่าง)
     let okKey = state.editingId ? 'ap.ok.saved' : 'ap.ok.added';
     if (state.imageFile && res?.data?.product_id) {
       try {
-        const body = new FormData();
-        body.append('image', state.imageFile);
-        await api.post(`/products/${res.data.product_id}/images`, body);
-      } catch {
-        okKey = 'ap.ok.savedNoImage'; // TODO (R3): ยังไม่มี API รูปสินค้า
+        await api.post(`/products/${res.data.product_id}/images`, state.imageFile, {
+          params: { cover: 'true', alt: payload.title },
+        });
+      } catch (err) {
+        okKey = err?.code === 'STORAGE_NOT_CONFIGURED' ? 'ap.ok.savedNoStorage' : 'ap.ok.savedNoImage';
       }
     }
 
@@ -649,6 +715,7 @@ onLangChange(() => {
   renderMessage();
   renderFieldErrors();
   renderDropzoneText();
+  renderGallery();
   if (currentView().form) {
     renderFormTitle();
   } else {

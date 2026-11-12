@@ -116,14 +116,16 @@ function createFixtures(TAG) {
     if (server) await new Promise((resolve) => server.close(resolve));
   }
 
-  async function api(method, path, { as, body } = {}) {
+  // raw = ส่ง Buffer เป็น body ตรง ๆ (เช่นไฟล์รูป) พร้อม contentType · ไม่ใส่ = ส่ง body เป็น JSON
+  async function api(method, path, { as, body, raw, contentType = 'application/octet-stream' } = {}) {
     const headers = {};
     if (as) headers.Authorization = `Bearer ${tokens[as]}`;
-    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    if (raw !== undefined) headers['Content-Type'] = contentType;
+    else if (body !== undefined) headers['Content-Type'] = 'application/json';
     const res = await fetch(`${base}/api${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: raw !== undefined ? raw : body === undefined ? undefined : JSON.stringify(body),
     });
     return { status: res.status, body: res.status === 204 ? null : await res.json() };
   }

@@ -5,6 +5,7 @@ const { query, withTransaction } = require('../../db/pool');
 const AppError = require('../../utils/AppError');
 const { logAdminAction } = require('../support/action-log.service');
 const embedding = require('../search/embedding');
+const { removeFilesQuietly } = require('./product-images.service');
 
 // ฟิลด์ที่ส่งให้หน้าเว็บ (ไม่ส่ง embedding / search_tsv เพราะใหญ่และหน้าเว็บไม่ได้ใช้)
 const SUMMARY_COLUMNS = `
@@ -295,9 +296,11 @@ async function update(id, data, adminId) {
  *   เคยขายแล้ว (มีใน order_item) → ลบจริงไม่ได้ เพราะคำสั่งซื้อ รีวิว และคำขอคืนเงินยังอ้างถึง → เปลี่ยนเป็น hidden แทน
  *   ยังไม่เคยขาย → ลบจริง (รูป / wishlist / ตะกร้า / event ลบตามด้วย CASCADE)
  * คืน { product_id, result: 'deleted' | 'hidden' }
+ * ลบจริงแล้ว → ลบไฟล์รูปของสินค้านี้ใน Supabase ตามไปด้วย (เฉพาะโฟลเดอร์ products/ · รูป seed ไม่แตะ)
  */
 async function remove(id, adminId) {
-  return withTransaction(async (client) => {
+  let imageUrls = [];
+  const result = await withTransaction(async (client) => {
     const { rows } = await client.query(
       `SELECT title, EXISTS (SELECT 1 FROM order_item oi WHERE oi.product_id = p.product_id) AS has_orders
          FROM product p WHERE product_id = $1 FOR UPDATE`,
@@ -315,6 +318,7 @@ async function remove(id, adminId) {
       return { product_id: id, result: 'hidden' };
     }
 
+    imageUrls = (await client.query('SELECT url FROM product_image WHERE product_id = $1', [id])).rows.map((r) => r.url);
     // ประวัติสต็อกของสินค้าที่ไม่เคยขายมีแค่ที่แอดมินปรับเอง ลบตามได้ (ไม่มี FK CASCADE จึงต้องลบเอง)
     await client.query('DELETE FROM stock_movement WHERE product_id = $1', [id]);
     await client.query('DELETE FROM product WHERE product_id = $1', [id]);
@@ -324,6 +328,8 @@ async function remove(id, adminId) {
     });
     return { product_id: id, result: 'deleted' };
   });
+  if (result?.result === 'deleted') await removeFilesQuietly(imageUrls);
+  return result;
 }
 
 // SUMMARY_COLUMNS / FROM_JOINS / toSummary ใช้ร่วมกับ module อื่นที่ต้องแสดงการ์ดสินค้าแบบเดียวกัน (เช่น wishlist ของ R1)

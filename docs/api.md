@@ -111,6 +111,9 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/products` | แอดมิน | R3 | เพิ่มสินค้า |
 | PUT | `/products/:id` | แอดมิน | R3 | แก้ไขสินค้า (ส่งครบทุกช่อง) |
 | DELETE | `/products/:id` | แอดมิน | R3 | ลบสินค้า (เคยขายแล้ว → ซ่อนแทน) |
+| POST | `/products/:id/images` | แอดมิน | R3 | อัปโหลดรูปสินค้า (ส่งไฟล์เป็น body) เก็บใน Supabase |
+| DELETE | `/products/:id/images/:seq` | แอดมิน | R3 | ลบรูปสินค้า |
+| PUT | `/products/:id/images/:seq/cover` | แอดมิน | R3 | ตั้งเป็นรูปปก |
 | GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
@@ -674,7 +677,7 @@ body เดียวกัน (PUT ต้องส่งครบทุกช่
 - `created_by` = แอดมินที่ล็อกอินอยู่ (BR-04)
 - สต็อกเปลี่ยนบันทึก `stock_movement` ให้เอง: เพิ่มสินค้า → `restock` · แก้จำนวน → `adjust` (ส่วนต่าง) · `balance_after` = จำนวนใหม่
 - ชื่อ / คำอธิบาย / หมวด / ซีรีส์เปลี่ยน → ล้าง `embedding` เป็น `NULL` แล้วคำนวณใหม่เบื้องหลังถ้าโมเดลของ R4 โหลดอยู่ (ไม่อย่างนั้นสคริปต์ `backfill-embeddings.js` จะเติมให้)
-- รูปสินค้ายังไม่อยู่ใน API นี้ (จะเป็น `POST /products/:id/images`)
+- รูปสินค้าแยกเป็น API ของตัวเอง ดูหัวข้อ "รูปสินค้า (แอดมิน)"
 
 #### `DELETE /products/:id`
 
@@ -685,6 +688,51 @@ body เดียวกัน (PUT ต้องส่งครบทุกช่
 - ยังไม่เคยขาย → ลบจริง (`result: "deleted"`) รูป wishlist ตะกร้า event ลบตามไปด้วย
 - เคยขายแล้ว (มีใน `order_item`) → เปลี่ยนเป็น `hidden` แทน (`result: "hidden"`) เพราะคำสั่งซื้อ รีวิว และคำขอคืนเงินยังอ้างถึงสินค้านี้
 - ไม่มีสินค้านี้ → 404 `PRODUCT_NOT_FOUND`
+
+### รูปสินค้า (แอดมิน)
+
+ไฟล์เก็บใน Supabase Storage bucket `Product_image` โฟลเดอร์ `products/<product_id>/` (ดู `docs/deploy.md` ข้อ 3)
+ต้องใส่ `SUPABASE_URL` และ `SUPABASE_SERVICE_ROLE_KEY` ใน `.env` ที่ root ก่อน ไม่ใส่ = ตอบ 503 `STORAGE_NOT_CONFIGURED` (ส่วนอื่นของระบบใช้ได้ปกติ)
+ทุกการเปลี่ยนแปลงบันทึก `admin_action_log`: `add_product_image`, `delete_product_image`, `set_product_cover`
+
+#### `POST /products/:id/images?cover=true&alt=...`
+
+ส่ง**ไฟล์รูปเป็น body ตรง ๆ** (ไม่ใช่ multipart) · หน้าเว็บ: `api.post('/products/12/images', file, { params: { cover: 'true' } })`
+
+- รองรับ JPG / PNG / WebP ไม่เกิน 5 MB · ชนิดไฟล์ดูจาก byte จริง ไม่เชื่อ `Content-Type`
+- `cover=true` = ตั้งเป็นรูปปก · รูปแรกของสินค้าเป็นปกเสมอ · `alt` = คำอธิบายรูป ไม่เกิน 200 ตัว
+- สินค้า 1 ชิ้นมีได้ไม่เกิน 8 รูป
+- ตอบ 201
+
+```json
+{
+  "data": { "seq": 2, "url": "https://<project>.supabase.co/storage/v1/object/public/Product_image/products/12/<uuid>.jpg", "alt_text": null, "is_cover": true },
+  "meta": { "images": [ { "seq": 1, "...": "..." }, { "seq": 2, "...": "..." } ] }
+}
+```
+
+| error | เมื่อไหร่ |
+|---|---|
+| 400 `NO_FILE` | ไม่ได้แนบไฟล์ |
+| 413 `IMAGE_TOO_LARGE` | ใหญ่เกิน 5 MB |
+| 415 `UNSUPPORTED_IMAGE` | ไม่ใช่ JPG / PNG / WebP |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ |
+| 409 `TOO_MANY_IMAGES` | ครบ 8 รูปแล้ว |
+| 502 `STORAGE_ERROR` | Supabase ตอบ error (ไม่มีแถวค้างใน DB) |
+| 503 `STORAGE_NOT_CONFIGURED` | ยังไม่ได้ใส่ key ใน `.env` |
+
+#### `DELETE /products/:id/images/:seq`
+
+ตอบ `{ "data": { "product_id", "seq", "images": [...] } }` (รูปที่เหลือ) · ไม่มีรูปนี้ → 404 `IMAGE_NOT_FOUND`
+
+- ลบรูปปก → รูปที่ `seq` น้อยสุดที่เหลือเป็นปกแทน · ไม่เหลือรูป → `cover_image_url` = `null`
+- ลบไฟล์ใน Storage ด้วย **เฉพาะในโฟลเดอร์ `products/`** · รูปตัวอย่างใน `seed/` ใช้ร่วมกันทุกเครื่อง จึงเอาออกจากสินค้าได้แต่ไม่ลบไฟล์
+
+#### `PUT /products/:id/images/:seq/cover`
+
+ตั้งรูปนี้เป็นปก ตอบ `{ "data": { "product_id", "cover_seq", "images": [...] } }`
+
+> `product.cover_image_url` ตรงกับรูปปกเสมอ (การ์ดสินค้าทุกหน้าอ่านจากช่องนี้) · ลบสินค้าที่ไม่เคยขาย → ไฟล์รูปใน `products/<id>/` ถูกลบตาม
 
 ### `GET /categories` และ `GET /series`
 

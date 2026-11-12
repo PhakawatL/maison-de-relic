@@ -66,15 +66,18 @@ async function request(method, path, { params, body, keepalive = false } = {}) {
   const token = auth.getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const isForm = body instanceof FormData; // อัปโหลดไฟล์ (รูปสินค้า) ให้เบราว์เซอร์ตั้ง Content-Type เอง
-  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
+  const isForm = body instanceof FormData; // multipart: ให้เบราว์เซอร์ตั้ง Content-Type เอง
+  // ไฟล์ (File / Blob) ส่งเป็น body ตรง ๆ เช่นรูปสินค้า: api.post('/products/12/images', file)
+  const isFile = typeof Blob !== 'undefined' && body instanceof Blob;
+  if (isFile) headers['Content-Type'] = body.type || 'application/octet-stream';
+  else if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
 
   let res;
   try {
     res = await fetch(buildUrl(path, params), {
       method,
       headers,
-      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm || isFile ? body : JSON.stringify(body),
       keepalive, // true = ส่งต่อให้จบแม้ผู้ใช้เปลี่ยนหน้า (ใช้กับ event ใน events.js)
     });
   } catch {
@@ -112,4 +115,5 @@ export const api = {
   put: (path, body) => request('PUT', path, { body }),
   patch: (path, body) => request('PATCH', path, { body }),
   delete: (path) => request('DELETE', path),
+  // options.params = query string เช่น { cover: 'true' }
 };
