@@ -54,6 +54,7 @@ app.use('/api/customers', require('./modules/users/customers.routes'));    // R2
 app.use('/api/addresses', require('./modules/users/addresses.routes'));    // R2
 app.use('/api/profile', require('./modules/users/profile.routes'));        // R2
 app.use('/api/products', require('./modules/products/products.routes')); // R3
+app.use('/api/products', require('./modules/inventory/inventory.routes')); // R3 สต็อก (/:id/stock, /:id/stock-movements)
 app.use('/api/admin/products', require('./modules/products/products.admin.routes')); // R3 แอดมิน (ทุกสถานะ)
 const { categoriesRouter, seriesRouter } = require('./modules/products/catalog.routes');
 app.use('/api/categories', categoriesRouter);                             // R3

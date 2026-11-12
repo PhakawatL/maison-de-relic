@@ -153,6 +153,8 @@
                   <input id="f-stock" name="stock_quantity" type="number" min="0" step="1" inputmode="numeric" placeholder="0" required>
                   <button type="button" class="stepper-btn" data-step="1" tabindex="-1" aria-hidden="true">+</button>
                 </div>
+                <!-- ตอนแก้ไข: จำนวนเปลี่ยนได้จากกล่อง "สต็อก" ด้านล่างเท่านั้น จะได้มีเหตุผลและประวัติทุกครั้ง -->
+                <small id="f-stock-hint" class="field-hint" data-i18n="ap.stock.lockedHint" hidden>แก้จำนวนได้ที่กล่อง "สต็อก" ด้านล่าง</small>
               </div>
             </div>
           </fieldset>
@@ -232,11 +234,63 @@
             <button type="submit" class="btn btn-ink" id="save-btn" data-i18n="ap.save">บันทึก</button>
           </div>
         </form>
+
+        <!-- สต็อก (เฉพาะตอนแก้ไข) — เติม / ตัดของเสีย / ปรับยอด + ประวัติ · ทำทันที ไม่ต้องกดบันทึกด้านบน -->
+        <section id="stock-card" class="form-card stock-card" aria-labelledby="stock-title" hidden>
+          <header class="stock-head">
+            <h2 id="stock-title"><span class="form-step">4</span> <span data-i18n="ap.stock.title">สต็อก</span></h2>
+            <p class="stock-now"><span data-i18n="ap.stock.now">คงเหลือตอนนี้</span> <strong id="stock-now">0</strong></p>
+          </header>
+
+          <form id="stock-form" class="stock-form" novalidate>
+            <div class="stock-types" role="radiogroup" aria-label="ประเภท" data-i18n-attr="aria-label:ap.stock.type">
+              <label><input type="radio" name="type" value="restock" checked> <span data-i18n="stock.type.restock">เติมสต็อก</span></label>
+              <label><input type="radio" name="type" value="write_off"> <span data-i18n="stock.type.write_off">ตัดของเสีย / หาย</span></label>
+              <label><input type="radio" name="type" value="adjust"> <span data-i18n="stock.type.adjust">ปรับยอดตามที่นับได้</span></label>
+            </div>
+            <div class="form-grid">
+              <div class="field">
+                <label for="stock-qty" id="stock-qty-label" data-i18n="ap.stock.qty.restock">จำนวนที่เติม</label>
+                <input id="stock-qty" name="qty" type="number" min="0" step="1" inputmode="numeric" required>
+              </div>
+              <div class="field">
+                <label for="stock-note"><span data-i18n="ap.stock.note">เหตุผล / หมายเหตุ</span> <span id="stock-note-req" class="req" aria-hidden="true" hidden>*</span></label>
+                <input id="stock-note" name="note" type="text" maxlength="300" placeholder="เช่น ของล็อตใหม่, กล่องบุบ, นับสต็อกสิ้นเดือน" data-i18n-attr="placeholder:ap.stock.notePh">
+              </div>
+            </div>
+            <p id="stock-preview" class="stock-preview" aria-live="polite"></p>
+            <div class="stock-actions">
+              <button type="submit" class="btn btn-ink btn-pill" id="stock-save" data-i18n="ap.stock.save">บันทึกสต็อก</button>
+            </div>
+          </form>
+
+          <h3 class="stock-sub" data-i18n="ap.stock.history">ประวัติสต็อก</h3>
+          <div class="stock-history-wrap">
+            <table class="stock-table">
+              <thead>
+                <tr>
+                  <th scope="col" data-i18n="ap.stock.col.date">วันที่</th>
+                  <th scope="col" data-i18n="ap.stock.col.type">ประเภท</th>
+                  <th scope="col" class="num" data-i18n="ap.stock.col.change">เปลี่ยน</th>
+                  <th scope="col" class="num" data-i18n="ap.stock.col.balance">คงเหลือ</th>
+                  <th scope="col" data-i18n="ap.stock.col.by">โดย</th>
+                  <th scope="col" data-i18n="ap.stock.col.note">หมายเหตุ</th>
+                </tr>
+              </thead>
+              <tbody id="stock-rows"></tbody>
+            </table>
+          </div>
+          <p id="stock-empty" class="stock-empty" data-i18n="ap.stock.empty" hidden>ยังไม่มีประวัติสต็อก</p>
+          <button type="button" id="stock-more" class="btn btn-ghost btn-pill stock-more" data-i18n="ap.stock.more" hidden>ดูเพิ่ม</button>
+        </section>
       </section>
     </main>
   </div>
 
   <!-- ===== 08 ยืนยันลบ ===== -->
+  <!-- ป๊อปอัปเล็กด้านล่าง: ผลของปุ่มที่ทำทันที (สต็อก / รูป) ไม่ต้องเลื่อนหน้ากลับขึ้นไปดูข้อความด้านบน -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
   <dialog id="delete-dialog" class="confirm-dialog" aria-labelledby="delete-title" aria-describedby="delete-desc">
     <span class="confirm-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>
