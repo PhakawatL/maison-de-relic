@@ -835,8 +835,22 @@ els.form.addEventListener('submit', async (event) => {
       }
     }
 
-    window.location.hash = '';
-    showMessage({ key: okKey }, 'success');
+    // แก้ไข → อยู่หน้าเดิม โหลดข้อมูลที่บันทึกแล้วมาแสดงใหม่ (รูปใหม่ขึ้นในแถวรูปทันที) แจ้งผลเป็นป๊อปอัป
+    // เพิ่มใหม่ → กลับไปหน้ารายการเหมือนเดิม
+    if (state.editingId) {
+      const id = state.editingId;
+      const { data } = await api.get(`${LIST_PATH}/${id}`);
+      if (state.editingId === id) {
+        resetImage();
+        fillForm(data);
+        state.stock.current = data.stock_quantity;
+        renderStockNow();
+      }
+      showToast({ key: okKey }, okKey === 'ap.ok.saved' ? 'success' : 'error');
+    } else {
+      window.location.hash = '';
+      showMessage({ key: okKey }, 'success');
+    }
   } catch (err) {
     // backend ตอบ details: [{ field, issue }] → แสดงใต้ช่องที่ผิด
     if (err instanceof ApiError && Array.isArray(err.details)) {
