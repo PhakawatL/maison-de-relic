@@ -1275,3 +1275,88 @@
   }
 }
 
+/* =========================================================
+   รูปทั้งหมดของสินค้า (ฟอร์มแก้ไข) — ตั้งปก / ลบ
+   ========================================================= */
+.image-gallery {
+  margin-top: 14px;
+}
+.gallery-title {
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+.gallery-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gallery-item {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--card);
+  min-width: 0;
+}
+.gallery-item.is-cover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.gallery-item img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: calc(var(--radius-md) - 4px);
+  background: var(--line-soft);
+}
+.cover-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-ink);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.gallery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gallery-btn {
+  flex: 1 1 auto;
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.gallery-btn:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.gallery-btn.danger:hover,
+.gallery-btn.confirming {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+.gallery-btn.confirming {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+}
+.gallery-btn:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}

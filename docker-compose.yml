@@ -49,6 +49,10 @@ services:
       MAIL_USER: ${MAIL_USER:-}
       MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # รูปสินค้า (R3) — Supabase Storage ใส่ค่าใน .env ที่ root (ค่าจริงอยู่ใน Notion ของทีม) เว้นว่าง = อัปโหลดรูปไม่ได้ แต่ระบบอื่นใช้ได้ปกติ
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_PRODUCT_BUCKET: ${SUPABASE_PRODUCT_BUCKET:-Product_image}
     ports:
       - "${API_PORT:-3000}:3000"
     # เปิดเครื่องมาแล้ว: สร้าง/อัปเดตตาราง → ใส่ข้อมูลตัวอย่าง → เปิด API แบบรีสตาร์ตเองเมื่อแก้โค้ด

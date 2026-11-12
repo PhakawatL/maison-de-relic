@@ -217,7 +217,12 @@
                   <span id="dropzone-text" data-i18n="ap.drop">ลากไฟล์มาวาง หรือคลิกเพื่อเลือกรูป</span>
                   <small data-i18n="ap.dropHint">รองรับ JPG / PNG ขนาดไม่เกิน 5 MB</small>
                 </div>
-                <input id="f-image" type="file" accept="image/jpeg,image/png" hidden>
+                <input id="f-image" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+                <!-- รูปที่มีอยู่แล้ว (เฉพาะตอนแก้ไข) ตั้งเป็นปก / ลบได้ทันที ไม่ต้องกดบันทึก -->
+                <div id="image-gallery" class="image-gallery" hidden>
+                  <p class="gallery-title" data-i18n="ap.gallery.title">รูปทั้งหมดของสินค้านี้</p>
+                  <ul id="gallery-list" class="gallery-list"></ul>
+                </div>
               </div>
             </div>
           </fieldset>

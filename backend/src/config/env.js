@@ -44,6 +44,14 @@ const env = {
   // ที่อยู่หน้าเว็บ ใช้สร้างลิงก์ในอีเมล เช่น ลิงก์รีเซ็ตรหัสผ่าน
   appUrl: (process.env.APP_URL || 'http://localhost:5500').replace(/\/+$/, ''),
 
+  // รูปสินค้าเก็บใน Supabase Storage (R3 · docs/deploy.md ข้อ 3) — ไม่ตั้ง = ระบบเปิดได้ปกติ แค่อัปโหลด/ลบรูปไม่ได้
+  // key นี้ข้ามสิทธิ์ทุกอย่างของ Supabase ใช้เฉพาะฝั่ง backend ห้ามส่งไปหน้าเว็บ
+  supabase: {
+    url: (process.env.SUPABASE_URL || '').replace(/\/+$/, ''),
+    serviceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+    productBucket: process.env.SUPABASE_PRODUCT_BUCKET || 'Product_image',
+  },
+
   // ส่งอีเมล (OTP, ลิงก์รีเซ็ตรหัส) ผ่าน Gmail — ไม่ตั้งค่า = แสดงอีเมลใน log ของ API แทนการส่งจริง
   mail: {
     user: process.env.MAIL_USER || '',
