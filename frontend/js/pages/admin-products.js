@@ -474,7 +474,9 @@ function toPayload(v) {
     status: v.status,
     condition: v.condition,
     price: Number(v.price),
-    stock_quantity: Number(v.stock_quantity),
+    // สต็อกส่งเฉพาะตอนเพิ่มสินค้าใหม่ · ตอนแก้ไขเปลี่ยนที่กล่องสต็อกเท่านั้น
+    // (ส่งยอดที่โหลดไว้ตอนเปิดฟอร์มกลับไป จะทับสต็อกที่คนอื่นเพิ่งเติม / ลูกค้าเพิ่งซื้อ)
+    ...(state.editingId ? {} : { stock_quantity: Number(v.stock_quantity) }),
     attributes,
   };
 }

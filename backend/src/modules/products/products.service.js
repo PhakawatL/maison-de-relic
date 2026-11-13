@@ -248,12 +248,16 @@ async function create(data, adminId) {
   return getById(id, { admin: true });
 }
 
-/** แก้ไขสินค้าทั้งก้อน (PUT) · คืน null ถ้าไม่มีสินค้านี้ */
+/**
+ * แก้ไขสินค้าทั้งก้อน (PUT) · คืน null ถ้าไม่มีสินค้านี้
+ * ไม่แตะสต็อก — เปลี่ยนสต็อกได้ทาง POST /products/:id/stock (หรือ applyStockChange) เท่านั้น
+ * เพราะฟอร์มส่งยอดที่โหลดไว้ตอนเปิดกลับมา ถ้าระหว่างนั้นมีคนเติมของ / ลูกค้าซื้อ ยอดใหม่จะถูกทับ (bug #65)
+ */
 async function update(id, data, adminId) {
   const result = await withTransaction(async (client) => {
     // FOR UPDATE = ล็อกแถวนี้ไว้จนจบ transaction กันระบบคืนเงินเปลี่ยนสต็อกแทรกกลางทาง
     const { rows } = await client.query(
-      'SELECT title, description, category_id, series_id, stock_quantity FROM product WHERE product_id = $1 FOR UPDATE',
+      'SELECT title, description, category_id, series_id FROM product WHERE product_id = $1 FOR UPDATE',
       [id]
     );
     const before = rows[0];
@@ -268,19 +272,14 @@ async function update(id, data, adminId) {
     await client.query(
       `UPDATE product
           SET category_id = $2, series_id = $3, title = $4, description = $5, price = $6,
-              condition = $7, status = $8, stock_quantity = $9, attributes = $10
+              condition = $7, status = $8, attributes = $9
               ${textChanged ? ', embedding = NULL' : ''}
         WHERE product_id = $1`,
       [
         id, data.category_id, data.series_id, data.title, data.description, data.price,
-        data.condition, data.status, data.stock_quantity, data.attributes,
+        data.condition, data.status, data.attributes,
       ]
     );
-    const change = data.stock_quantity - before.stock_quantity;
-    await recordStock(client, {
-      productId: id, type: 'adjust', change, balance: data.stock_quantity,
-      note: 'แก้จำนวนในหน้าจัดการสินค้า', adminId,
-    });
     await logAdminAction(client, {
       adminId, actionType: 'update_product', targetType: 'product', targetId: id, note: data.title,
     });

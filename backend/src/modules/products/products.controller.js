@@ -121,7 +121,7 @@ const ATTRIBUTES = {
  * ตรวจ body ทั้งก้อน (PUT = ส่งครบทุกช่องเหมือน POST) ผิดตอบ 400 พร้อม details: [{ field, issue }]
  * หน้าเว็บอ่าน details ไปแสดงใต้ช่องที่ผิดได้เลย
  */
-function parseProductBody(body) {
+function parseProductBody(body, { forUpdate = false } = {}) {
   const b = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
   const errors = [];
   const err = (field, issue) => errors.push({ field, issue });
@@ -152,10 +152,13 @@ function parseProductBody(body) {
     err('price', 'ทศนิยมได้ไม่เกิน 2 ตำแหน่ง');
   }
 
-  if (!Number.isInteger(b.stock_quantity) || b.stock_quantity < 0) {
-    err('stock_quantity', 'จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
-  } else if (b.stock_quantity > 100000) {
-    err('stock_quantity', 'จำนวนมากเกินไป');
+  // สต็อกตั้งต้นใส่ได้ตอนเพิ่มสินค้าเท่านั้น · PUT ไม่รับ (ส่งมาก็ไม่สนใจ) — เปลี่ยนสต็อกที่ POST /products/:id/stock
+  if (!forUpdate) {
+    if (!Number.isInteger(b.stock_quantity) || b.stock_quantity < 0) {
+      err('stock_quantity', 'จำนวนต้องเป็นจำนวนเต็มตั้งแต่ 0 ขึ้นไป');
+    } else if (b.stock_quantity > 100000) {
+      err('stock_quantity', 'จำนวนมากเกินไป');
+    }
   }
 
   const attributes = {};
@@ -189,7 +192,7 @@ function parseProductBody(body) {
     status: b.status,
     condition: b.condition,
     price: b.price,
-    stock_quantity: b.stock_quantity,
+    ...(forUpdate ? {} : { stock_quantity: b.stock_quantity }),
     attributes,
   };
 }
@@ -236,10 +239,10 @@ async function create(req, res) {
   res.status(201).json({ data: product });
 }
 
-// PUT /api/products/:id (แอดมิน)
+// PUT /api/products/:id (แอดมิน) — ไม่เปลี่ยนสต็อก
 async function update(req, res) {
   const id = parseId(req.params.id);
-  const product = await service.update(id, parseProductBody(req.body), req.user.user_id);
+  const product = await service.update(id, parseProductBody(req.body, { forUpdate: true }), req.user.user_id);
   if (!product) throw notFound();
   res.json({ data: product });
 }
