@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="sl.pageTitle">สรุปยอดขาย · Maison de Relic</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Serif+Thai:wght@500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/pages/admin.css">
+  <link rel="stylesheet" href="/css/pages/admin-sales.css">
+  <!-- ตั้งธีม/ภาษาก่อนหน้าแสดงผล กันหน้ากระพริบ (แบบเดียวกับ admin/products.html) -->
+  <script>
+    (function (root) {
+      var theme, lang;
+      try { theme = localStorage.getItem('mdr_theme'); lang = localStorage.getItem('mdr_lang'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.dataset.theme = theme;
+      if (lang === 'en') { root.lang = 'en'; root.classList.add('i18n-pending'); }
+    })(document.documentElement);
+  </script>
+</head>
+<body class="page-admin">
+  <!-- สรุปยอดขาย (R3) — API: GET /admin/sales-summary (docs/api.md หัวข้อ "สรุปยอดขาย")
+       ลิงก์ตรงเลือกช่วงได้: /admin/sales#7d · #30d · #90d · #month
+       ข้อความทั้งหมดอยู่ใน js/locales/th.js และ en.js หมวด sl.* -->
+  <div id="admin-topbar"></div>
+
+  <div class="container admin-shell">
+    <nav id="admin-sidenav"></nav>
+
+    <main class="admin-main view-enter">
+      <div id="page-message" class="alert" role="status" hidden></div>
+
+      <header class="page-head">
+        <div>
+          <p class="kicker" data-i18n="sl.kicker">แผงผู้ดูแล</p>
+          <h1 class="page-title" data-i18n="sl.title">สรุปยอดขาย</h1>
+          <p class="page-lede" data-i18n="sl.lede">ยอดขาย คำสั่งซื้อ และสินค้าขายดีของร้าน นับเฉพาะคำสั่งซื้อที่ไม่ถูกยกเลิก</p>
+        </div>
+      </header>
+
+      <!-- เลือกช่วงเวลา -->
+      <form id="range-form" class="sl-range" novalidate>
+        <div class="sl-presets" role="radiogroup" aria-label="ช่วงเวลา" data-i18n-attr="aria-label:sl.range">
+          <label><input type="radio" name="preset" value="7d"> <span data-i18n="sl.preset.7d">7 วัน</span></label>
+          <label><input type="radio" name="preset" value="30d" checked> <span data-i18n="sl.preset.30d">30 วัน</span></label>
+          <label><input type="radio" name="preset" value="90d"> <span data-i18n="sl.preset.90d">90 วัน</span></label>
+          <label><input type="radio" name="preset" value="month"> <span data-i18n="sl.preset.month">เดือนนี้</span></label>
+          <label><input type="radio" name="preset" value="custom"> <span data-i18n="sl.preset.custom">กำหนดเอง</span></label>
+        </div>
+        <div class="sl-custom" id="custom-range" hidden>
+          <label><span data-i18n="sl.from">ตั้งแต่</span> <input type="date" name="from" required></label>
+          <label><span data-i18n="sl.to">ถึง</span> <input type="date" name="to" required></label>
+          <button type="submit" class="btn btn-ink btn-pill" data-i18n="sl.apply">ดูยอด</button>
+        </div>
+        <p class="sl-range-text" id="range-text" aria-live="polite"></p>
+      </form>
+
+      <!-- ตัวเลขสรุป -->
+      <section class="sl-kpis" id="kpis" aria-label="ตัวเลขสรุป" data-i18n-attr="aria-label:sl.kpisLabel"></section>
+
+      <!-- ยอดขายรายวัน -->
+      <section class="sl-card" aria-labelledby="chart-title">
+        <header class="sl-card-head">
+          <h2 id="chart-title" data-i18n="sl.chart.title">ยอดขายรายวัน</h2>
+          <p class="sl-card-sub" id="chart-sub"></p>
+        </header>
+        <div class="sl-chart" id="chart"></div>
+      </section>
+
+      <div class="sl-grid">
+        <!-- สินค้าขายดี -->
+        <section class="sl-card" aria-labelledby="top-title">
+          <header class="sl-card-head">
+            <h2 id="top-title" data-i18n="sl.top.title">สินค้าขายดี</h2>
+            <p class="sl-card-sub" data-i18n="sl.top.sub">เรียงตามยอดเงิน</p>
+          </header>
+          <ol class="sl-top" id="top-list"></ol>
+        </section>
+
+        <!-- ยอดตามหมวด + สถานะคำสั่งซื้อ -->
+        <section class="sl-card" aria-labelledby="cat-title">
+          <header class="sl-card-head">
+            <h2 id="cat-title" data-i18n="sl.cat.title">ยอดตามหมวดหมู่</h2>
+          </header>
+          <ul class="sl-bars" id="cat-list"></ul>
+
+          <h3 class="sl-sub-title" data-i18n="sl.status.title">คำสั่งซื้อตามสถานะ</h3>
+          <ul class="sl-status" id="status-list"></ul>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/js/admin-layout.js"></script>
+  <script type="module" src="/js/pages/admin-sales.js"></script>
+</body>
+</html>
