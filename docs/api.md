@@ -109,7 +109,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/products` | แอดมิน | R3 | รายการสินค้าทุกสถานะ (available / hidden / draft) กรอง `status` ได้ |
 | GET | `/admin/products/:id` | แอดมิน | R3 | สินค้า 1 ชิ้นทุกสถานะ + `has_orders` |
 | POST | `/products` | แอดมิน | R3 | เพิ่มสินค้า |
-| PUT | `/products/:id` | แอดมิน | R3 | แก้ไขสินค้า (ส่งครบทุกช่อง) |
+| PUT | `/products/:id` | แอดมิน | R3 | แก้ไขสินค้า (ส่งครบทุกช่อง ยกเว้นสต็อก) |
 | DELETE | `/products/:id` | แอดมิน | R3 | ลบสินค้า (เคยขายแล้ว → ซ่อนแทน) |
 | POST | `/products/:id/images` | แอดมิน | R3 | อัปโหลดรูปสินค้า (ส่งไฟล์เป็น body) เก็บใน Supabase |
 | DELETE | `/products/:id/images/:seq` | แอดมิน | R3 | ลบรูปสินค้า |
@@ -647,7 +647,7 @@ query เหมือน `GET /products` ทุกตัว และเพิ�
 
 #### `POST /products` และ `PUT /products/:id`
 
-body เดียวกัน (PUT ต้องส่งครบทุกช่อง) · POST ตอบ 201 · PUT ตอบ 200 · ได้สินค้าแบบเดียวกับ `GET /admin/products/:id`
+body เดียวกัน (PUT ต้องส่งครบทุกช่อง **ยกเว้น `stock_quantity`**) · POST ตอบ 201 · PUT ตอบ 200 · ได้สินค้าแบบเดียวกับ `GET /admin/products/:id`
 
 ```json
 {
@@ -672,12 +672,13 @@ body เดียวกัน (PUT ต้องส่งครบทุกช่
 | `status` | `available`, `hidden`, `draft` |
 | `condition` | `new`, `like_new`, `excellent`, `good`, `fair`, `poor` |
 | `price` | ตัวเลข ≥ 0 ทศนิยมไม่เกิน 2 ตำแหน่ง |
-| `stock_quantity` | จำนวนเต็ม ≥ 0 |
+| `stock_quantity` | **POST เท่านั้น** (สต็อกตั้งต้น) จำนวนเต็ม ≥ 0 · PUT ส่งมาก็ไม่สนใจ |
 | `attributes` | ได้เฉพาะ `year`, `size`, `material`, `original_box` (`with_cert` / `yes` / `no`), `grading_company` (`none` / `PSA` / `BGS` / `CGC` / `other`), `grade` · ค่าเป็นข้อความไม่เกิน 100 ตัว · ค่าว่างไม่เก็บ |
 
 - ผิดตอบ 400 `VALIDATION_ERROR` พร้อม `details: [{ field, issue }]` (field ตรงกับชื่อช่องในฟอร์ม)
 - `created_by` = แอดมินที่ล็อกอินอยู่ (BR-04)
-- สต็อกเปลี่ยนบันทึก `stock_movement` ให้เอง: เพิ่มสินค้า → `restock` · แก้จำนวน → `adjust` (ส่วนต่าง) · `balance_after` = จำนวนใหม่
+- เพิ่มสินค้าที่มีสต็อกตั้งต้น → บันทึก `stock_movement` ประเภท `restock` ให้เอง
+- **PUT ไม่เปลี่ยนสต็อก** — เปลี่ยนได้ทาง `POST /products/:id/stock` เท่านั้น (ดูหัวข้อ "สต็อก (แอดมิน)") เพราะฟอร์มแก้ไขส่งยอดที่โหลดไว้ตอนเปิดกลับมา ถ้าระหว่างนั้นมีคนเติมของหรือลูกค้าซื้อ ยอดจะถูกทับ
 - ชื่อ / คำอธิบาย / หมวด / ซีรีส์เปลี่ยน → ล้าง `embedding` เป็น `NULL` แล้วคำนวณใหม่เบื้องหลังถ้าโมเดลของ R4 โหลดอยู่ (ไม่อย่างนั้นสคริปต์ `backfill-embeddings.js` จะเติมให้)
 - รูปสินค้าแยกเป็น API ของตัวเอง ดูหัวข้อ "รูปสินค้า (แอดมิน)"
 

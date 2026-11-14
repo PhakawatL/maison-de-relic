@@ -183,7 +183,7 @@ test('POST ราคาทศนิยมเกิน 2 ตำแหน่ง / 
 
 // ---------- แก้ไข ----------
 
-test('PUT /products/:id แก้ทั้งก้อน + ปรับสต็อกบันทึก adjust + log', async () => {
+test('PUT /products/:id แก้ทั้งก้อน + log · ไม่แตะสต็อก (stock_quantity ที่ส่งมาไม่สนใจ)', async () => {
   const created = (await fx.api('POST', '/products', { as: 'staff', body: validBody() })).body.data;
   const res = await fx.api('PUT', `/products/${created.product_id}`, {
     as: 'boss',
@@ -203,17 +203,41 @@ test('PUT /products/:id แก้ทั้งก้อน + ปรับสต�
   assert.equal(d.price, 1899.5);
   assert.equal(d.series, null);
   assert.deepEqual(d.attributes, { grading_company: 'PSA', grade: '10' });
+  assert.equal(d.stock_quantity, 2); // ยังเป็นยอดตั้งต้น ไม่ใช่ 5 ที่ส่งมา
 
-  assert.deepEqual(await movementsOf(created.product_id), [
-    { movement_type: 'restock', qty_change: 2, balance_after: 2 },
-    { movement_type: 'adjust', qty_change: 3, balance_after: 5 },
-  ]);
+  assert.deepEqual(await movementsOf(created.product_id), [{ movement_type: 'restock', qty_change: 2, balance_after: 2 }]);
   const [log] = await fx.logsOf(u.boss);
   assert.equal(log.action_type, 'update_product');
 
-  // สต็อกไม่เปลี่ยน → ไม่มีแถวใหม่
-  await fx.api('PUT', `/products/${created.product_id}`, { as: 'boss', body: validBody({ stock_quantity: 5 }) });
-  assert.equal((await movementsOf(created.product_id)).length, 2);
+  // ไม่ส่ง stock_quantity เลยก็ได้ (หน้าแอดมินไม่ส่งแล้ว) · ส่งค่าแปลก ๆ ก็ไม่ error เพราะไม่ได้ใช้
+  const { stock_quantity: _omit, ...noStock } = validBody({ title: `Gundam no stock ${TAG}` });
+  assert.equal((await fx.api('PUT', `/products/${created.product_id}`, { as: 'boss', body: noStock })).status, 200);
+  assert.equal((await fx.api('PUT', `/products/${created.product_id}`, { as: 'boss', body: validBody({ stock_quantity: -9 }) })).status, 200);
+  assert.equal((await movementsOf(created.product_id)).length, 1);
+});
+
+test('bug #65: เปิดฟอร์มค้างไว้ ระหว่างนั้นคนอื่นเติมสต็อก → กดบันทึกแล้วสต็อกไม่ถูกทับ', async () => {
+  const created = (await fx.api('POST', '/products', { as: 'staff', body: validBody({ stock_quantity: 4 }) })).body.data;
+  // แอดมิน A เปิดหน้าแก้ไข (ได้สต็อก 4)
+  const opened = (await fx.api('GET', `/admin/products/${created.product_id}`, { as: 'staff' })).body.data;
+  assert.equal(opened.stock_quantity, 4);
+  // แอดมิน B เติม +5 → 9
+  const restock = await fx.api('POST', `/products/${created.product_id}/stock`, {
+    as: 'boss', body: { type: 'restock', quantity: 5, note: 'ของล็อตใหม่' },
+  });
+  assert.equal(restock.body.data.after, 9);
+  // A แก้แค่ราคา แล้วส่งค่าที่โหลดไว้ตอนเปิด (รวมสต็อก 4 แบบหน้าเว็บเวอร์ชันเก่า) กลับไป
+  const saved = await fx.api('PUT', `/products/${created.product_id}`, {
+    as: 'staff',
+    body: validBody({ price: 1999, stock_quantity: opened.stock_quantity }),
+  });
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.data.price, 1999);
+  assert.equal(saved.body.data.stock_quantity, 9);
+  assert.deepEqual(
+    (await movementsOf(created.product_id)).map((m) => m.movement_type),
+    ['restock', 'restock'] // ไม่มีแถว adjust −5
+  );
 });
 
 test('PUT ชื่อเปลี่ยน → ล้าง embedding (ให้ R4 คำนวณใหม่) · ราคาเปลี่ยนอย่างเดียวไม่ล้าง', async () => {
