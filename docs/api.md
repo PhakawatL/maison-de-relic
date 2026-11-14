@@ -116,6 +116,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | PUT | `/products/:id/images/:seq/cover` | แอดมิน | R3 | ตั้งเป็นรูปปก |
 | POST | `/products/:id/stock` | แอดมิน | R3 | เติม / ตัดของเสีย / ปรับยอดสต็อก |
 | GET | `/products/:id/stock-movements` | แอดมิน | R3 | ประวัติสต็อกของสินค้า |
+| GET | `/admin/sales-summary` | แอดมิน | R3 | สรุปยอดขาย รายวัน สินค้าขายดี ยอดตามหมวด/สถานะ เทียบช่วงก่อนหน้า |
 | GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
@@ -806,6 +807,46 @@ await withTransaction(async (client) => {
 ```
 
 `/series` ได้รูปเดียวกัน แต่ใช้ `series_id` แทน `category_id`
+
+## สรุปยอดขาย (R3)
+
+### `GET /admin/sales-summary?from=&to=&top=`
+
+แอดมินทุกระดับ · หน้าเว็บ `/admin/sales`
+
+| query | ค่า |
+|---|---|
+| `from`, `to` | `YYYY-MM-DD` นับตามเวลาไทย (Asia/Bangkok) รวมทั้งสองวัน · ไม่ส่ง → 30 วันล่าสุดถึงวันนี้ · ยาวสุด 366 วัน |
+| `top` | จำนวนสินค้าขายดี 1–20 (ค่าเริ่มต้น 5) |
+
+นับยอดขาย = คำสั่งซื้อที่ **ไม่ใช่** `cancelled` ตาม `placed_at` · คำสั่งซื้อ `refunded` ยังนับยอดขาย แล้วหักใน `refunds`
+`refunds` = `refund_request` สถานะ `refunded` ตามวันที่โอนคืน (`resolved_at`) · `previous` = ช่วงก่อนหน้าที่ยาวเท่ากัน
+
+```json
+{
+  "data": {
+    "range": { "from": "2026-10-15", "to": "2026-11-13", "days": 30 },
+    "previous_range": { "from": "2026-09-15", "to": "2026-10-14" },
+    "totals": { "gross": 39000, "refunds": 300, "net": 38700, "orders": 12, "units": 20,
+                "customers": 8, "avg_order": 3250, "refund_count": 1 },
+    "previous": { "gross": 31000, "...": "รูปเดียวกับ totals" },
+    "daily": [ { "date": "2026-10-15", "orders": 0, "gross": 0 } ],
+    "top_products": [ { "product_id": 7, "title": "...", "cover_image_url": "...", "status": "available",
+                        "units": 3, "orders": 2, "revenue": 3000 } ],
+    "categories": [ { "category_id": 2, "name": "ฟิกเกอร์", "slug": "figures", "units": 6, "revenue": 3000, "share": 76.9 } ],
+    "by_status": [ { "status": "delivered", "orders": 5, "amount": 16000 } ]
+  }
+}
+```
+
+- `daily` มีครบทุกวันในช่วง (วันที่ไม่มียอดเป็น 0) ใช้วาดกราฟได้เลย
+- `share` = เปอร์เซ็นต์ของยอดเงินหมวดนั้น (ทศนิยม 1 ตำแหน่ง)
+- `by_status` รวม `cancelled` ด้วย ไว้ดูว่ายกเลิกไปเท่าไร
+
+| error | เมื่อไร |
+|---|---|
+| 400 `VALIDATION_ERROR` | วันที่ผิดรูปแบบ / ไม่มีจริง / `from` หลัง `to` / เกิน 366 วัน / `top` นอก 1–20 (`details[0].field` บอกช่อง) |
+| 401 / 403 | ไม่ได้ล็อกอิน / ไม่ใช่แอดมิน |
 
 ---
 
