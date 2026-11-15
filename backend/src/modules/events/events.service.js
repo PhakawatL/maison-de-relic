@@ -12,9 +12,9 @@ const EVENT_TYPES = ['view', 'click', 'wishlist', 'add_to_cart', 'purchase'];
  * userId = null ได้ (ผู้ใช้ยังไม่ล็อกอิน) → ระบบแนะนำยังรู้พฤติกรรมผ่าน sessionId
  * ไม่พบสินค้า → 404 PRODUCT_NOT_FOUND
  */
-async function record({ productId, eventType, sessionId, userId = null }) {
+async function record({ productId, eventType, sessionId, userId = null }, transactionClient = null) {
   // ใช้ transaction เพราะ event "view" แก้ 2 ตาราง (user_event + product.view_count) ต้องสำเร็จพร้อมกัน
-  return withTransaction(async (client) => {
+  const write = async (client) => {
     // เช็กก่อนว่ามีสินค้านี้ไหม (ถ้าไม่เช็ก INSERT จะพังที่ foreign key แล้วได้ 500 แทน 404)
     // ไม่ดู status: สินค้าที่เพิ่งถูกซ่อนก็ยังบันทึกได้ (เช่นกดหัวใจไว้ก่อนแอดมินซ่อน)
     const found = await client.query('SELECT 1 FROM product WHERE product_id = $1', [productId]);
@@ -39,7 +39,9 @@ async function record({ productId, eventType, sessionId, userId = null }) {
       event_type: row.event_type,
       created_at: row.created_at,
     };
-  });
+  };
+  // Internal callers may join their existing transaction. Never accept this client from HTTP input.
+  return transactionClient ? write(transactionClient) : withTransaction(write);
 }
 
 module.exports = { record, EVENT_TYPES };

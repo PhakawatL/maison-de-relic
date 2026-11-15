@@ -191,6 +191,26 @@ function replay(el, className) {
 // =========================================================
 // ค้นหา: ทุกทางมาจบที่ฟังก์ชันนี้ (กดค้นหา, ใช้ตัวกรอง, แสดงทั้งหมด, เปลี่ยนหน้า, กด back, เปิดหน้า)
 // =========================================================
+// มีคำค้น → ค้นตามความหมายเสมอ (semantic แบบผสม: ชื่อตรงขึ้นก่อน จึงยังค้นด้วยชื่อได้ตามใบโครงงาน)
+// ไม่มีคำค้น ("แสดงทั้งหมด" หรือเลือกแค่ตัวกรอง) → ไม่มีอะไรให้เทียบความหมาย → รายการทั้งร้านแบบแบ่งหน้าของ R3
+const isSemantic = (params) => Boolean(params.q);
+
+// เรียงผลจากความหมายตามราคา เมื่อผู้ใช้เลือกเอง · ค่าเริ่มต้น (newest) = เรียงตามความใกล้ที่ API ส่งมา
+const PRICE_SORT = {
+  price_asc: (a, b) => a.price - b.price,
+  price_desc: (a, b) => b.price - a.price,
+};
+
+// GET /api/search/semantic (R4) — ค้นตามความหมายแบบผสม แล้วตัวกรองกรองผลอีกชั้น (ใน SQL ฝั่ง API)
+// ส่งเฉพาะตัวกรองที่ API นี้รับ (inStock / page ไม่ใช้: แสดงเฉพาะของที่มีอยู่แล้ว · ไม่แบ่งหน้า)
+// API ตอบแค่ { data } → ทำ meta ให้มีหน้าเดียว render() และปุ่มเปลี่ยนหน้าเดิมใช้ได้เลย (ปุ่มเปลี่ยนหน้าซ่อนเอง)
+async function semanticSearch(params) {
+  const { q, category, condition, minPrice, maxPrice, sort } = params;
+  const { data } = await api.get('/search/semantic', { q, category, condition, minPrice, maxPrice });
+  if (PRICE_SORT[sort]) data.sort(PRICE_SORT[sort]);
+  return { data, meta: { page: 1, pageSize: Math.max(data.length, 1), total: data.length } };
+}
+
 let searchRequest = 0; // นับรอบการค้นหา กดค้นหาซ้ำเร็ว ๆ แล้วคำตอบเก่ามาช้า จะได้ไม่ทับผลใหม่
 
 async function search(params, { pushUrl = true } = {}) {
@@ -200,8 +220,11 @@ async function search(params, { pushUrl = true } = {}) {
   results.setAttribute('aria-busy', 'true'); // บอกโปรแกรมอ่านหน้าจอว่ากำลังโหลด + CSS ทำให้ผลเดิมจางลง
   countEl.textContent = t('search.loading');
   try {
+    // มีคำค้น → semantic search (R4) · ไม่มีคำค้น → รายการทั้งร้านของ R3 (ตัวกรอง + แบ่งหน้า)
     // api.js ข้ามค่าที่ว่างให้เอง · pageSize ใส่เพิ่มทุกครั้ง
-    const res = await api.get('/products', { ...params, pageSize: PAGE_SIZE });
+    const res = isSemantic(params)
+      ? await semanticSearch(params)
+      : await api.get('/products', { ...params, pageSize: PAGE_SIZE });
     if (myRequest !== searchRequest) return; // มีการค้นหาใหม่กว่าแล้ว ทิ้งผลนี้
     last = { params, items: res.data, meta: res.meta };
     render();
@@ -248,6 +271,12 @@ let countRequest = 0; // นับรอบการถาม กันคำต
 
 async function updateApplyCount() {
   const myRequest = ++countRequest;
+  // มีคำค้น (ค้นตามความหมาย): ไม่นับล่วงหน้า เพราะแต่ละครั้งต้องให้โมเดลคิด (API จำกัด 30 ครั้ง/นาที)
+  // เปลี่ยนตัวกรองถี่ ๆ จะเปลืองและชนลิมิต → ปุ่มขึ้นแค่ "ใช้ตัวกรอง"
+  if (isSemantic(formToParams())) {
+    applyBtn.textContent = t('search.applyFilters');
+    return;
+  }
   try {
     const res = await api.get('/products', { ...formToParams(), pageSize: 1 });
     if (myRequest !== countRequest) return; // ระหว่างรอ ผู้ใช้เปลี่ยนตัวกรองอีกแล้ว → ทิ้งคำตอบนี้

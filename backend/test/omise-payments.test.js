@@ -390,6 +390,14 @@ for(const method of ['promptpay','truemoney'])test('full HTTP flow '+method+': l
   const events=(await db.query('SELECT event_type,payload FROM r5_event_outbox WHERE user_id=$1',[a.u])).rows;
   assert.equal(events.find(e=>e.event_type==='purchase').payload.session_id,'r5_contract_session');
   assert.equal(events.filter(e=>e.event_type==='purchase').length,1);assert.equal(events.filter(e=>e.event_type==='add_to_cart').length,3);
+  const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+  const dispatcher=createDispatcher({scopeUserId:Number(a.u),allowTestEvents:true});
+  for(let i=0;i<4;i++)assert.equal((await dispatcher.dispatchOne()).status,'delivered');
+  assert.equal((await dispatcher.dispatchOne()).status,'empty');
+  assert.equal((await db.query("SELECT * FROM user_event WHERE user_id=$1 AND event_type='purchase'",[a.u])).rows.length,1);
+  assert.equal((await db.query("SELECT * FROM user_event WHERE user_id=$1 AND event_type='add_to_cart'",[a.u])).rows.length,3);
+  await payments.webhook({key:'charge.complete',data:charge});
+  assert.equal((await dispatcher.dispatchOne()).status,'empty');
  }finally{await new Promise(r=>server.close(r));}
 });
 

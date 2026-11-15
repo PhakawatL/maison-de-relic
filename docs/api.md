@@ -2,9 +2,9 @@
 
 ทุกคนต้องเขียน API ตามข้อตกลงนี้ หน้าเว็บจะได้เรียกผ่าน `frontend/js/api.js` ตัวเดียวได้ทั้งหมด
 
-## R5 — สถานะปัจจุบัน 5 พฤศจิกายน 2026
+## R5 — สถานะปัจจุบัน 7 พฤศจิกายน 2026
 
-ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `1ad3a21` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
+ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `9a5ada6` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
 
 | ส่วน | สถานะที่ใช้จริงในโค้ด |
 |---|---|
@@ -13,7 +13,7 @@
 | Order / จัดส่ง | มีประวัติ รายละเอียด Admin Orders เลขพัสดุ และยืนยันรับสินค้า พร้อม status log / admin audit |
 | รีวิว / คืนเงิน | รวม R1 แล้ว; Order Detail ใช้ eligibility API และลิงก์ด้วย `order_item_id` ไป `/write-review` / `/refunds` |
 | R3 Inventory | ยังไม่มี `inventory.service.js`; R5 มี adapter รองรับ `deductStock(client, line)` แต่ต้องเชื่อมของ R3 ก่อนซื้อจริงครบเส้นทาง ตอบ 503 `INVENTORY_NOT_READY` ก่อนสร้าง payable charge เมื่อ service ไม่พร้อม |
-| R4 Events | มี outbox, session และ per-product adapter; ยังไม่มี Events API / transport / worker ที่เปิดใช้จริง ต้องยืนยัน trusted identity และ receiver deduplication ก่อนเชื่อม |
+| R4 Events | รวม API ของ R4 แล้ว และ R5 ใช้ service ภายในฐานข้อมูลเดียวกันผ่าน local outbox worker; event และ acknowledgment commit พร้อมกัน จึงไม่ต้องใช้ HTTP dedup/token สำหรับเส้นทางนี้ ดูหัวข้อ Local Events ท้ายเอกสาร; public HTTP API ยังไม่มี deduplication |
 
 ### ตรวจ flow คืนเงินฝั่งแอดมิน
 
@@ -168,6 +168,9 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/orders/:id/receipt` | ✓ เจ้าของ ยืนยันอีเมลแล้ว | R5 | ยืนยันรับสินค้า delivered → completed |
 | POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
 | GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
+| GET | `/recommend/related/:productId` | - | R4 | สินค้าที่เกี่ยวข้อง 8 ชิ้นที่ความหมายใกล้ที่สุด (embedding) |
+| GET | `/recommend/for-you` | login | R4 | แนะนำสำหรับคุณ จากประวัติ event (ไม่มีประวัติ → ยอดนิยม) |
+| GET | `/search/semantic?q=` | - | R4 | ค้นตามความหมายแบบผสม (ชื่อตรงก่อน + ความหมายใกล้) + ตัวกรอง |
 | | | | | |
 
 ---
@@ -1705,7 +1708,6 @@ Isolated R1 activity integration adds order target codes/search and links /admin
   `docker compose exec api node scripts/demo-activity.js` (ไม่รันเองตอน `docker compose up` · รันได้ครั้งเดียว · ล้างด้วย `npm run db:reset`)
   ได้ลูกค้าตัวอย่าง 8 คน (`demo_ploy` … `demo_ton` รหัสผ่าน `Demo@1234`) พร้อมคำสั่งซื้อ รีวิว wishlist และ `user_event`
   ผลสุ่มเหมือนกันทุกเครื่อง · ไม่ตัดสต็อก · รายละเอียดอยู่หัวไฟล์ `backend/scripts/demo-activity.js`
-- ภายหลัง R4 จะเพิ่ม `GET /recommend/related/:productId` (สินค้าที่เกี่ยวข้อง) และ `GET /recommend/for-you` (ต้องล็อกอิน) ที่ใช้ `product.embedding`
 R1 activity integration in the primary branch now includes order target codes/search and links /admin/orders?id=<id>, with TH/EN labels, after the main merge through PR #52. The earlier isolated patch is only a local backup, not a pending integration step.
 
 ### R5 → R4 Events — ข้อเสนอรอ R4 ยืนยัน (7 พ.ย. 2026)
@@ -1726,3 +1728,94 @@ R1 activity integration in the primary branch now includes order target codes/se
 ### R5 — รวม main 7 พ.ย. 2026
 
 รวม upstream ถึง `9a5ada6` (PR #53–58) ใน working tree R5 แล้ว: Search/Detail, Events/Recommendation, Header และ Embedding/Docker. ใช้ Gallery/breadcrumb/specs ของ R4 พร้อม mount Cart ของ R5 โดยรักษาจำนวน/ผลการเพิ่มเมื่อสลับภาษา; ใช้ Header ของ R2 และคงเมนู Cart/Orders. Events API มีในแอปแล้ว แต่ outbox R5 ยังไม่เปิด dispatch เพราะ contract deduplication/trusted identity ยังรอยืนยัน. Inventory ยังไม่มี implementation. ข้อความก่อนหน้านี้ที่ระบุว่ายังไม่ merge เป็นบันทึกตามวันที่ตรวจ ไม่ใช่สถานะหลังรวมครั้งนี้.
+
+### `GET /recommend/related/:productId?limit=8` (ไม่ต้องล็อกอิน)
+
+สินค้าที่ "ความหมายใกล้" สินค้านี้ที่สุด ใช้ใต้หน้า Detail (แถว "สินค้าที่เกี่ยวข้อง")
+
+- เทียบเวกเตอร์ `product.embedding` ด้วย `<=>` ของ pgvector (cosine distance · ใกล้สุดก่อน) ไม่เรียกโมเดลตอนค้น จึงเร็ว
+- ตัดตัวเอง · เฉพาะของที่ขายได้ (`available` และ `stock_quantity > 0`) · ข้ามชิ้นที่ยังไม่มีเวกเตอร์
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- รหัสสินค้าไม่ใช่จำนวนเต็มบวก → `400 INVALID_ID` · ไม่มีสินค้า / ไม่ได้วางขาย → `404 PRODUCT_NOT_FOUND`
+- สินค้าตั้งต้นยังไม่มีเวกเตอร์ → `200` พร้อม `data: []` (หน้าเว็บซ่อนแถวนี้ ไม่ใช่ error)
+- แต่ละชิ้นรูปข้อมูลเหมือน `GET /products` และมี `similarity` (0–1 · 1 = ความหมายเหมือนกัน · = 1 − cosine distance)
+
+```json
+{ "data": [ { "product_id": 46, "title": "Volkswagen Type 2 — ...", "price": 2400, "category": { ... },
+              "similarity": 0.54 } ] }
+```
+
+### `GET /recommend/for-you?limit=8` (ต้องล็อกอิน)
+
+แนะนำสำหรับคุณ — แถวบนสุดของหน้าแรก (เฉพาะคนที่ล็อกอินและมีประวัติ)
+
+```
+1. 30 event ล่าสุดของผู้ใช้ (user_event) → คะแนนความสนใจต่อสินค้า
+   view 1 · click 2 · wishlist 3 · add_to_cart 4 · purchase 6
+2. แต่ละชิ้นที่สนใจ หาของที่ใกล้ (<=> บน product.embedding · ไม่เรียกโมเดล)
+3. ผลัดกันหยิบทีละชิ้น เริ่มจากความสนใจที่คะแนนมากสุด (item-to-item)
+4. ตัดชิ้นที่เคยเห็นใน 30 event และของที่ซื้อแล้ว (ไม่นับออเดอร์ cancelled / refunded)
+```
+
+- **ทำไมไม่เฉลี่ยเวกเตอร์:** ทดลองกับลูกค้าตัวอย่างแล้ว ค่าเฉลี่ยถูกดึงไปทางกลุ่มการ์ดทุกคน ความสนใจรองหายไป (centroid problem) · แยกทีละชิ้นได้ครบทุกแนวที่ผู้ใช้สนใจ
+- ผู้ใช้มาจาก token เท่านั้น · ไม่ล็อกอิน / token ใช้ไม่ได้ → `401` · ไม่ต้องยืนยันอีเมล (อ่านอย่างเดียว)
+- `limit` 1–24 (ค่าเริ่มต้น 8) · ผิดรูปแบบ → `400 VALIDATION_ERROR`
+- ไม่มีประวัติ (cold start) / ไม่เหลือของให้แนะนำ → ได้ยอดนิยมแทน และ `meta.personalized = false` (หน้าแรกจึงซ่อนแถวนี้ ไม่ให้ซ้ำกับแถวยอดนิยม)
+- แต่ละชิ้นรูปข้อมูลเหมือน `GET /products` + `similarity` + `because` (ชิ้นที่ผู้ใช้สนใจซึ่งทำให้แนะนำชิ้นนี้)
+
+```json
+{ "data": [ { "product_id": 18, "title": "RMS Titanic — ...", "category": { ... }, "similarity": 0.517,
+              "because": { "product_id": 22, "title": "Cuba Sailing Ship Stamps — 3 ดวง" } } ],
+  "meta": { "personalized": true } }
+```
+
+- ลองบนเครื่อง: รัน `scripts/demo-activity.js` แล้วล็อกอินเป็น `demo_mint` / `Demo@1234`
+
+## ค้นหาตามความหมาย (R4)
+
+### `GET /search/semantic?q=กันดั้ม` (ไม่ต้องล็อกอิน · จำกัด 30 ครั้ง/นาที/IP)
+
+ช่องค้นหาในหน้า Search ใช้ตัวนี้**ทุกครั้งที่มีคำค้น** (ชื่อตรงขึ้นก่อน จึงค้นด้วยชื่อได้เหมือนเดิม) · ไม่มีคำค้น ("แสดงทั้งหมด" / เลือกแค่ตัวกรอง) → หน้า Search ใช้ `GET /products` แบบแบ่งหน้า
+
+```
+1. dict คำทับศัพท์ (src/modules/search/synonyms.js): "กันดั้ม" → "Gundam" · "แสตมป์" → "stamp"
+2. แปลงคำค้นเป็นเวกเตอร์ (โมเดลเดียวกับ embedding ของสินค้า)
+3. กรองตามตัวกรอง (WHERE) → เรียง: ชื่อตรงคำค้นก่อน → แล้วตามความใกล้ (<=>)
+4. เกณฑ์ตัด: เก็บชิ้นที่ similarity ≥ max(0.35, คะแนนอันดับ 1 − 0.20) + ชิ้นที่ชื่อตรง (เก็บเสมอ)
+```
+
+- **ทำไมผสม:** ความหมายล้วนเก่งกับคำบรรยาย ("เหรียญเงิน" "รถเหล็ก") แต่พลาดกับชื่อเฉพาะสั้น ๆ และคำทับศัพท์ไทย
+- **ทำไมมีเกณฑ์ตัด:** ค้นตามความหมาย ทุกชิ้นมีคะแนน ไม่มีคำว่าไม่ตรง · ขั้นต่ำ 0.35 = ไม่มีของเกี่ยวก็ตอบ `[]` ("นาฬิกา") · ห่างจากที่ 1 ไม่เกิน 0.20 = มีของตรงชัดไม่เอาของห่าง ๆ มาปน · ค่าได้จากทดลองคำค้นจริง 12 คำ (`MIN_SIMILARITY`, `MAX_GAP` ใน search.service.js)
+- query: `q` (บังคับ ≤ 100 ตัว) · ตัวกรองชื่อเดียวกับ `GET /products`: `category` (id หรือ slug), `condition`, `minPrice`, `maxPrice` · `limit` เพดาน 1–50 (ค่าเริ่มต้น 50)
+- ไม่ใช้ `inStock` / `sort` / `page`: แสดงเฉพาะของที่ขายได้ · API เรียงตามความใกล้เสมอ (หน้า Search เรียงตามราคาเองเมื่อผู้ใช้เลือก) · ไม่แบ่งหน้า
+- ผิดรูปแบบ → `400 VALIDATION_ERROR` บอกทุกช่องพร้อมกัน (ตรวจก่อนเรียกโมเดล)
+- แต่ละชิ้นรูปข้อมูลเหมือน `GET /products` + `match` (`name` = ชื่อตรง · `meaning` = ความหมายใกล้) + `similarity` (0–1 · `null` = สินค้ายังไม่มีเวกเตอร์แต่ชื่อตรง)
+- **ทางสำรอง (ค้นด้วยชื่อต้องใช้ได้เสมอ):** โมเดลยังโหลดไม่เสร็จ (เครื่องใหม่ต้องดาวน์โหลด 118 MB) หรือโหลดไม่ได้ (เข้า huggingface.co ไม่ได้) → ไม่ตอบ 500 · ค้นจาก**ชื่อ**อย่างเดียว (ผ่าน dict + ตัวกรองเหมือนเดิม) ทุกชิ้น `match: "name"`, `similarity: null` · server เริ่มโหลดโมเดลไว้เบื้องหลังตั้งแต่เปิด · โหลดพังเว้น 1 นาทีค่อยลองใหม่
+- `meta.mode`: `semantic` = ผสมชื่อ + ความหมาย · `name` = ทางสำรอง
+
+```json
+{ "data": [ { "product_id": 12, "title": "Gundam Exia — ประกอบแล้ว", "category": { ... },
+              "match": "name", "similarity": 0.719 } ],
+  "meta": { "mode": "semantic" } }
+```
+### R5 — Local Events integration (7 พ.ย. 2026)
+
+สถานะนี้แทนข้อเสนอ HTTP transport / worker disabled ของ R5 ในหัวข้อก่อนหน้า สำหรับ deployment ปัจจุบัน R4 และ R5 ใช้แอปและ PostgreSQL เดียวกัน จึงเชื่อม service ภายในแทนการเรียก trackEvent จาก Browser ซ้ำ
+
+- `r5-local-events.createDispatcher()` ล็อก outbox ด้วย `FOR UPDATE SKIP LOCKED` เรียก `events.service.record(body, transactionClient)` และบันทึก delivered ใน transaction เดียวกัน การเพิ่ม optional client เป็น interface ภายในเท่านั้น; HTTP ของ R4 ยังใช้ transaction ของตนเองตามเดิม ไม่รับ client หรือ user_id จาก Browser
+- userId มาจาก outbox ที่ Cart/Order service สร้างจากผู้ใช้ที่ผ่าน Auth แล้ว ส่วน session ใช้รูปแบบเดียวกับ R1; ส่งหนึ่ง event ต่อสินค้าไม่ซ้ำใน purchase ไม่ส่งราคา/ที่อยู่/โทรศัพท์/token เข้า user_event
+- ถ้า product ใดเขียนไม่สำเร็จ จะ rollback event ทุกสินค้าใน outbox แถวนั้นและนัด retry 30 วินาที การปิด process/rollback ทำให้ทั้ง event และ acknowledgment ไม่ commit; concurrent workers/replay จึงไม่เพิ่ม event ซ้ำสำหรับ outbox เดิม ไม่ต้องเพิ่ม dedup key ให้ public HTTP API แต่ห้ามเปิด HTTP transport และ local worker ส่งคิวเดียวกันพร้อมกัน
+- `server.js` เริ่ม worker ทุก 1 วินาที สูงสุด 25 outbox rows ต่อรอบ ไม่มีรอบซ้อน รอรายการที่กำลังทำก่อนปิด pool เมื่อ shutdown; test ที่ import app อย่างเดียวไม่เริ่ม worker
+- add_to_cart ส่งหลัง Cart commit; purchase ส่งหลัง verified payment และ Order commit เท่านั้น Preview/failed payment ไม่สร้าง purchase; callback ซ้ำไม่สร้าง outbox ซ้ำ การเพิ่มสินค้าจริงแยกกันเป็นคนละ event ตามเดิม
+- Omise Test purchase ยังคงเก็บคิวแต่ไม่ส่งเข้าข้อมูลแนะนำจริงตามค่าเริ่มต้น; `allowTestEvents:true` ใช้เฉพาะ constructor ใน fixtures เพื่อพิสูจน์เส้นทางครบ ไม่มี env/HTTP switch เปิดโหมดนี้
+- Public `POST /events` และ `trackEvent` ของ R4/R1 ยังทำงานเหมือนเดิมสำหรับ view/click/wishlist; R5 ไม่เรียกซ้ำสำหรับ add_to_cart/purchase ข้อเสนอ Idempotency-Key/trusted internal HTTP ก่อนหน้าเป็นทางเลือกหากแยกบริการในอนาคต ไม่ใช่ blocker ของ local service นี้แล้ว
+- เวลารัน tests บน DB เดียวกับ API ควรพัก API/worker แล้วใช้ container ทดสอบชั่วคราวก่อนเปิด API คืน เพื่อไม่ให้ worker ปกติแย่ง fixtures การพักนี้ไม่ลบ database volume หรือเปลี่ยนข้อมูลผู้ใช้เดิม
+
+#### Events final review — 7 พ.ย. 2026
+
+ตรวจซ้ำเรื่อง concurrent dispatch, retry, SQL failure, acknowledgment failure และ rollback ก่อน commit: event กับ outbox acknowledgment ย้อนกลับพร้อมกัน ไม่เพิ่มแถวซ้ำเมื่อ retry. ปรับ shutdown ให้หยุด scheduling ของ worker ทันทีและกัน signal ซ้ำ ก่อนปิด pool หลัง HTTP/in-flight งานจบ ผล Backend ล่าสุด 282 ข้อ: ผ่าน 277 ข้าม 5 ล้มเหลว 0; ไม่เรียก Omise จริง. Test purchases ยังถูกแยกจากการส่งปกติ ไม่มี Browser producer ซ้ำสำหรับ event ของ R5.
+
+
+### R5 — รวม main 9 พ.ย. 2026
+
+รวม upstream ถึง `f95aa8d` (Semantic Search / For You / Related) ใน working tree แล้ว คง Cart mount, R5 routes และ local Events worker พร้อม R4 model warm-up. งาน Events เดิมที่ยังไม่ commit ถูกคืนจากสำรอง ไม่ได้เปลี่ยนเป็น Browser producer. Inventory ของ R3 ยังต้องตรวจตาม implementation ก่อนทดสอบการซื้อจริง.

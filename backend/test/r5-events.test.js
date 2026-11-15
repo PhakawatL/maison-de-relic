@@ -91,3 +91,78 @@ test('cart stores browser session without trusting browser prices or quantities'
  const u=await user(),p=await product();await createCart().mutate(u,'add',p,1,undefined,{sessionId:'same_as_r1'});
  assert.equal((await rows(u))[0].payload.session_id,'same_as_r1');assert.equal((await rows(u))[0].payload.unit_price,100);
 });
+
+test('local R4 delivery uses trusted user/session, concurrent workers and replay produce one event',async()=>{
+ const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+ const u=await user(),p=await product();await createCart().mutate(u,'add',p,1,undefined,{sessionId:'r5_local_session'});
+ const worker=createDispatcher({scopeUserId:u});
+ const results=await Promise.all([worker.dispatchOne(),worker.dispatchOne()]);
+ assert.equal(results.filter(r=>r.status==='delivered').length,1);
+ assert.equal((await worker.dispatchOne()).status,'empty');
+ const actual=(await db.query('SELECT user_id,product_id,event_type,session_id FROM user_event WHERE user_id=$1',[u])).rows;
+ assert.deepEqual(actual.map(r=>[Number(r.user_id),Number(r.product_id),r.event_type,r.session_id]),[[u,p,'add_to_cart','r5_local_session']]);
+});
+
+test('local purchase delivery rolls back every product on SQL failure and retries without duplicates',async()=>{
+ const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+ const r4=require('../src/modules/events/events.service');
+ const u=await user(),p=await product(),p2=await product();
+ const e={key:'purchase:'+randomUUID(),type:'purchase',userId:u,payload:{items:[{product_id:p},{product_id:p2},{product_id:p}],session_id:'local_purchase'}};
+ await enqueue(createEvents(),e);let fail=true;
+ const worker=createDispatcher({scopeUserId:u,record:async(body,client)=>{
+  if(body.productId===p2&&fail)await client.query('SELECT r5_missing_test_function()');
+  return r4.record(body,client);
+ }});
+ assert.equal((await worker.dispatchOne()).status,'retry');
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,0);
+ assert.equal((await rows(u))[0].delivered_at,null);
+ fail=false;await db.query('UPDATE r5_event_outbox SET next_attempt_at=NOW() WHERE user_id=$1',[u]);
+ assert.equal((await worker.dispatchOne()).status,'delivered');
+ assert.equal((await worker.dispatchOne()).status,'empty');
+ assert.deepEqual((await db.query('SELECT product_id FROM user_event WHERE user_id=$1 ORDER BY product_id',[u])).rows.map(r=>Number(r.product_id)),[p,p2]);
+});
+
+test('local dispatcher excludes Omise Test purchases by default; explicit fixture option delivers',async()=>{
+ const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+ const u=await user(),p=await product();
+ await enqueue(createEvents(),{key:'purchase:'+randomUUID(),type:'purchase',userId:u,payload:{test_mode:true,items:[{product_id:p}]}});
+ assert.equal((await createDispatcher({scopeUserId:u}).dispatchOne()).status,'empty');
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,0);
+ assert.equal((await createDispatcher({scopeUserId:u,allowTestEvents:true}).dispatchOne()).status,'delivered');
+});
+
+test('worker drains bounded batches, avoids overlap and waits for in-flight delivery on shutdown',async()=>{
+ const {startWorker}=require('../src/modules/orders/r5-local-events');
+ let release,calls=0;const waiting=new Promise(r=>release=r);
+ const stop=startWorker({dispatcher:{async dispatchOne(){calls++;await waiting;return {status:'delivered'};}},intervalMs:5});
+ await new Promise(r=>setTimeout(r,20));assert.equal(calls,1);
+ let stopped=false;const ending=stop().then(()=>stopped=true);
+ await new Promise(r=>setTimeout(r,5));assert.equal(stopped,false);
+ release();await ending;assert.equal(stopped,true);assert.equal(calls,1);
+});
+
+test('local event acknowledgment failure rolls back inserts before retry',async()=>{
+ const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+ const u=await user(),p=await product();await createCart().mutate(u,'add',p,1);
+ let fail=true;
+ const faultyDb={withTransaction:fn=>db.withTransaction(client=>fn({query:(sql,args)=>
+  fail&&sql.includes('SET delivered_at=NOW()')?Promise.reject(Error('ack write failed')):client.query(sql,args)}))};
+ const worker=createDispatcher({db:faultyDb,scopeUserId:u});
+ assert.equal((await worker.dispatchOne()).status,'retry');
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,0);
+ assert.equal((await rows(u))[0].delivered_at,null);
+ fail=false;await db.query('UPDATE r5_event_outbox SET next_attempt_at=NOW() WHERE user_id=$1',[u]);
+ assert.equal((await worker.dispatchOne()).status,'delivered');
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,1);
+});
+
+test('failure before transaction commit leaves no R4 event or delivered acknowledgment',async()=>{
+ const {createDispatcher}=require('../src/modules/orders/r5-local-events');
+ const u=await user(),p=await product();await createCart().mutate(u,'add',p,1);
+ const abortDb={withTransaction:fn=>db.withTransaction(async client=>{await fn(client);throw Error('abort before commit');})};
+ await assert.rejects(()=>createDispatcher({db:abortDb,scopeUserId:u}).dispatchOne());
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,0);
+ assert.equal((await rows(u))[0].delivered_at,null);
+ assert.equal((await createDispatcher({scopeUserId:u}).dispatchOne()).status,'delivered');
+ assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,1);
+});

@@ -9,6 +9,10 @@ const MODEL = 'Xenova/paraphrase-multilingual-MiniLM-L12-v2';
 // เก็บ "งานโหลดโมเดล" ไว้ตัวเดียวทั้งเซิร์ฟเวอร์ (lazy singleton)
 // lazy = ยังไม่โหลดจนกว่าจะมีคนเรียกใช้ครั้งแรก · singleton = โหลดครั้งเดียวแล้วใช้ซ้ำ
 let embedderPromise = null;
+let ready = false; // true = โหลดโมเดลเสร็จแล้ว ใช้ได้ทันทีไม่ต้องรอ
+let lastFailedAt = 0; // เวลาที่โหลดพังครั้งล่าสุด (ไว้เว้นช่วงก่อนลองใหม่)
+
+const RETRY_AFTER_MS = 60_000; // โหลดพังแล้ว เว้น 1 นาทีค่อยลองใหม่ (ไม่ยิงไป huggingface ทุกครั้งที่มีคนค้น)
 
 function getEmbedder() {
   if (!embedderPromise) {
@@ -17,14 +21,31 @@ function getEmbedder() {
       const { pipeline, env } = await import('@huggingface/transformers');
       // ค่าเริ่มต้นเก็บโมเดลใน node_modules ซึ่งในกล่อง Docker เขียนไม่ได้ → ย้ายมาไว้ที่ backend/.model-cache
       env.cacheDir = path.join(__dirname, '..', '..', '..', '.model-cache');
-      // dtype 'q8' = รุ่นย่อขนาด (ราว 120 MB แทน 470 MB) · ขั้นหลังจะลองเทียบกับรุ่นเต็มว่าภาษาไทยแย่ลงไหม
-      return pipeline('feature-extraction', MODEL, { dtype: 'q8' });
+      // dtype 'q8' = รุ่นย่อขนาด (ราว 120 MB แทน 470 MB) · ผลภาษาไทยแทบเท่ารุ่นเต็ม
+      const embed = await pipeline('feature-extraction', MODEL, { dtype: 'q8' });
+      ready = true;
+      return embed;
     })().catch((err) => {
-      embedderPromise = null; // โหลดพัง (เช่นเน็ตหลุด) → ล้างทิ้ง ครั้งหน้าจะได้ลองโหลดใหม่
+      embedderPromise = null; // โหลดพัง (เช่นเน็ตหลุด / เข้า huggingface ไม่ได้) → ล้างทิ้ง ครั้งหน้าจะได้ลองโหลดใหม่
+      lastFailedAt = Date.now();
       throw err;
     });
   }
   return embedderPromise;
+}
+
+// โหลดเสร็จแล้วหรือยัง · semantic search ใช้เช็กก่อน: ยังไม่พร้อม → ค้นจากชื่อแทน ไม่ให้ผู้ใช้รอ 1–3 นาที
+function isModelReady() {
+  return ready;
+}
+
+// เริ่มโหลดโมเดลไว้เบื้องหลัง (ไม่รอ) — เรียกตอน server เปิด และตอนมีคนค้นแต่โมเดลยังไม่พร้อม
+// โหลดพังแค่ log ไว้ ไม่ทำให้ server ล้ม · เพิ่งพังไม่ถึง 1 นาที → ยังไม่ลองใหม่
+function warmUpModel() {
+  if (ready || embedderPromise || Date.now() - lastFailedAt < RETRY_AFTER_MS) return;
+  getEmbedder()
+    .then(() => console.log('[embedding] โหลดโมเดลเสร็จ semantic search พร้อมใช้'))
+    .catch((err) => console.warn(`[embedding] โหลดโมเดลไม่ได้ (ค้นจากชื่อแทนไปก่อน): ${err.message}`));
 }
 
 // แปลงข้อความ 1 ชิ้น → array ตัวเลข 384 ตัว
@@ -69,4 +90,4 @@ async function embedProduct(productId) {
   return true;
 }
 
-module.exports = { embedText, embedProduct, productText };
+module.exports = { embedText, embedProduct, productText, isModelReady, warmUpModel };

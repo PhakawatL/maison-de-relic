@@ -167,12 +167,25 @@
       </div>
     </section>
 
-    <!-- ---------- ของสะสมที่แนะนำ ---------- -->
+    <!-- ---------- แนะนำสำหรับคุณ (R4 · GET /api/recommend/for-you) ----------
+         ซ่อนไว้ก่อน home.js เปิดให้เฉพาะคนที่ล็อกอินและมีประวัติ (personalized)
+         ผู้ใช้ใหม่ API คืนยอดนิยมแทน → ไม่โชว์ ไม่งั้นซ้ำกับแถวยอดนิยมด้านล่าง -->
+    <section class="container shelf" id="for-you-shelf" aria-labelledby="foryou-title" hidden>
+      <div class="shelf-head" data-reveal>
+        <div>
+          <p class="kicker" data-i18n="home.forYouKicker">เลือกจากสิ่งที่คุณเคยสนใจ</p>
+          <h2 id="foryou-title" data-i18n="home.forYouTitle">แนะนำสำหรับคุณ</h2>
+        </div>
+      </div>
+      <div class="product-grid" id="forYou" aria-live="polite"></div>
+    </section>
+
+    <!-- ---------- ยอดนิยม (GET /api/recommend/popular) ---------- -->
     <section class="container shelf" aria-labelledby="rec-title">
       <div class="shelf-head" data-reveal>
         <div>
-          <p class="kicker" data-i18n="home.recKicker">01 · คัดมาให้</p>
-          <h2 id="rec-title" data-i18n="home.recTitle">ของสะสมที่แนะนำ</h2>
+          <p class="kicker" data-i18n="home.recKicker">01 · คนชอบมากที่สุด</p>
+          <h2 id="rec-title" data-i18n="home.recTitle">ยอดนิยม</h2>
         </div>
         <a class="link-arrow" href="/search?sort=newest"><span data-i18n="home.viewAll">ดูทั้งหมด</span><svg aria-hidden="true"><use href="#i-arrow"></use></svg></a>
       </div>
