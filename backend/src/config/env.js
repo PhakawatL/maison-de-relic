@@ -17,6 +17,11 @@ function parseTrustProxy(value) {
 }
 
 const env = {
+  omise: {
+    publicKey: (process.env.OMISE_PUBLIC_KEY || '').trim(),
+    secretKey: (process.env.OMISE_SECRET_KEY || '').trim(),
+    webhookSecret: (process.env.OMISE_WEBHOOK_SECRET || '').trim(),
+  },
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
   port: Number(process.env.PORT) || 3000,

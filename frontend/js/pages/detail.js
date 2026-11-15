@@ -5,6 +5,7 @@ import { escapeHtml } from '../utils.js';
 import { t, has, applyI18n, onLangChange } from '../i18n.js';
 import { heartButton, setupHeartButtons } from '../wishlist-button.js'; // ปุ่มหัวใจ wishlist (R1)
 import { mountProductReviews } from '../product-reviews.js'; // ส่วนรีวิว + ลิงก์รายงานสินค้า (R1)
+import { mountProductCart } from './product-cart.js';
 import { trackEvent } from '../events.js'; // บันทึกพฤติกรรมไว้ทำระบบแนะนำ (ส่งไป POST /api/events ของ R4)
 
 applyI18n(); // แปลข้อความที่มี data-i18n ในหน้า (คำแปลอยู่ที่ js/locales/th.js และ en.js)
@@ -133,6 +134,7 @@ function renderProduct(p) {
     ? `<dd class="stock-ok">${t('detail.inStock', { n: p.stock_quantity })}</dd>`
     : `<dd class="stock-out">${t('detail.outOfStock')}</dd>`;
 
+  const existingCart = box.querySelector('#product-cart');
   box.innerHTML = `
     <nav class="detail-crumbs card-enter" style="--i:0" aria-label="${t('detail.breadcrumb')}">
       <ol>
@@ -159,15 +161,7 @@ function renderProduct(p) {
           ${stock}
         </div>
       </dl>
-      <div class="detail-actions">
-        <!-- ปุ่มตะกร้า: R5 เป็นเจ้าของระบบตะกร้า ตอนนี้ยังไม่มี API จึงปิดปุ่มไว้ก่อน
-             R5 มาต่อได้โดยหา .detail-cart-btn แล้วอ่าน data-product-id (หลังใส่ตะกร้าสำเร็จให้เรียก trackEvent('add_to_cart', id)) -->
-        <button type="button" class="btn-dark detail-cart-btn" data-product-id="${Number(p.product_id)}" disabled
-                title="${p.in_stock ? t('detail.cartSoon') : t('detail.outOfStock')}">
-          ${p.in_stock ? t('detail.addToCart') : t('detail.outOfStock')}
-        </button>
-        ${p.in_stock ? `<small>${t('detail.cartSoon')}</small>` : ''}
-      </div>
+      <div id="product-cart"></div>
       <section class="detail-desc">
         <h2>${t('detail.description')}</h2>
         <p>${p.description ? escapeHtml(p.description) : t('detail.noDescription')}</p>
@@ -179,6 +173,9 @@ function renderProduct(p) {
   // ปุ่มหัวใจถูกวาดใหม่ทุกครั้ง (รวมตอนสลับภาษา) จึงต้องเรียกทุกครั้ง ให้มันระบายหัวใจตามว่าอยู่ใน wishlist ไหม
   // (R1 เขียนไว้ว่าเรียกซ้ำได้ · ผูกคลิกกับ box แค่ครั้งแรก)
   setupHeartButtons(box);
+  const cart = box.querySelector('#product-cart');
+  if (existingCart) cart.replaceWith(existingCart);
+  else mountProductCart(cart, p, {showSummary:false});
 }
 
 /* ---------- วาด error ---------- */

@@ -2,6 +2,38 @@
 
 ทุกคนต้องเขียน API ตามข้อตกลงนี้ หน้าเว็บจะได้เรียกผ่าน `frontend/js/api.js` ตัวเดียวได้ทั้งหมด
 
+## R5 — สถานะปัจจุบัน 15 พฤศจิกายน 2026
+
+ผลก่อนส่ง PR (หลังเพิ่ม CLI/ปุ่ม Test/flow Checkout ล่าสุด): Backend ปกติ 366 ผ่าน / 1 ข้าม / 1 ล้มเหลวใน Search R4 ที่สมมติว่ามี Charizard พร้อมขายสองชิ้น แต่ seed product 467 stock=0 หลัง Demo; ไม่แก้ stock เพื่อให้ผ่าน. รันด้วย CI=true ตาม Actions: 353 ผ่าน / 15 ข้าม / 0 ล้มเหลว. Frontend 39 ผ่าน. ตัวเลขในบันทึกแต่ละ Step ด้านล่างเป็นผลในเวลานั้น ไม่ใช่ full-suite ล่าสุด และยังไม่อ้างว่า GitHub CI ผ่าน
+
+ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `79c4a57` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
+
+| ส่วน | สถานะที่ใช้จริงในโค้ด |
+|---|---|
+| Checkout | Omise **Test** PromptPay / TrueMoney ผ่าน `/orders/payment-attempts`; ไม่รองรับบัตรหรือ Live keys |
+| สั่งซื้อแบบจำลองเดิม | HTTP `POST /orders` ตอบ 409 `PAYMENT_PROVIDER_REQUIRED`; service เดิมเก็บไว้ทดสอบ ไม่ใช่เส้นทางซื้อในเว็บ |
+| Order / จัดส่ง | มีประวัติ รายละเอียด Admin Orders เลขพัสดุ และยืนยันรับสินค้า พร้อม status log / admin audit |
+| รีวิว / คืนเงิน | รวม R1 แล้ว; Order Detail ใช้ eligibility API และลิงก์ด้วย `order_item_id` ไป `/write-review` / `/refunds` |
+| R3 Inventory | เชื่อมแล้ว: R5 `deductStock(client,line)` แปลงเป็น R3 `applyStockChange(client,{productId,type:'sale',change:-quantity,orderItemId,actorId})` ใช้ transaction เดียวกับ Order/Payment ไม่มี stock fallback; ยังตอบ 503 INVENTORY_NOT_READY หาก service หายหรือ export ผิด |
+| R4 Events | รวม API ของ R4 แล้ว และ R5 ใช้ service ภายในฐานข้อมูลเดียวกันผ่าน local outbox worker; event และ acknowledgment commit พร้อมกัน จึงไม่ต้องใช้ HTTP dedup/token สำหรับเส้นทางนี้ ดูหัวข้อ Local Events ท้ายเอกสาร; public HTTP API ยังไม่มี deduplication |
+| R3 Sales | อ่าน Order/OrderItem/Refund จริงผ่าน `/admin/sales-summary`; gross รวมค่าส่ง หัก refund ที่ปิดแล้วเพื่อเป็น net; ตรวจข้อมูล QA ครบ Step 4 แล้ว |
+
+ผลตรวจล่าสุด Step 1–5 วันที่ 15 พ.ย.: เชื่อม Inventory จริง, ซื้อด้วย Omise Test ภายนอกทั้งสองวิธี, จัดส่ง/รับสินค้า/Review/Refund ของ R1 และ Sales/Events ผ่านแล้ว. Backend 359 ผ่าน / 1 ข้าม / 0 ล้มเหลว; Frontend 37 ผ่าน. Omise Test purchase ถูกกันจากข้อมูลแนะนำตามค่าเริ่มต้น; การคืนเงินยังเป็นการบันทึกจำลอง ไม่ใช่ provider refund. ยังไม่ได้ตรวจ public webhook delivery ผ่านอินเทอร์เน็ตหรือ Live payment และยังไม่ส่งงานขึ้น GitHub
+
+สำหรับสาธิต PromptPay บนเครื่อง: หน้า QR มีปุ่ม Test สำเร็จ/ไม่สำเร็จเมื่อ server คืน `test_controls: true`, เป็น Test pending และยังไม่หมดอายุ. เรียก `POST /orders/payment-attempts/:attemptId/test-result` body `{result: 'paid' | 'failed'}` ผ่าน Bearer Auth + verified account. Server ตรวจเจ้าของ, Test charge, metadata/amount/method แล้วเรียก Omise Test control และ retrieve ผลกลับอย่างอิสระ ก่อน apply/finalize ด้วยเส้นทางปกติ ไม่เชื่อผลจาก browser. ปิด endpoint และไม่แสดงปุ่มเมื่อ NODE_ENV=production; TrueMoney ใช้หน้า Test authorization เดิม. เพิ่ม service tests ผ่าน 3 ข้อ (รวมอยู่ใน payment suite 30 ผ่าน) และ Frontend 38 ผ่าน. บันทึกเดิมด้านล่างที่ระบุว่าไม่มี HTTP Test control เป็นประวัติก่อนผู้ใช้ขอเพิ่มปุ่มนี้
+
+CLI สำรองสำหรับ `customer`: `docker compose exec -T api node scripts/omise-test-payment.js status customer` และ `docker compose exec -T api node scripts/omise-test-payment.js paid ATTEMPT_ID customer` (หรือ `failed`). แทน ATTEMPT_ID ด้วย payment reference UUID จริง ไม่ต้องใช้ CLI เมื่อมีปุ่มบน QR แล้ว. CLI focused tests ผ่าน 5 ข้อ; full-suite totals ข้างบนเป็นผลก่อนเพิ่ม CLI/ปุ่ม Test
+
+### ตรวจ flow คืนเงินฝั่งแอดมิน
+
+R1 ใช้ `POST /refund-requests` และ `PATCH /admin/refund-requests/:id` ไม่ใช่ Omise Refund API:
+
+- `approve` ต้องระบุ `restock_decision`: `return` เพิ่มสต็อกและบันทึก return movement ทันทีที่อนุมัติ; `write_off` ไม่เพิ่มสต็อก การอนุมัติจึงควรเกิดหลังตรวจรับสินค้าคืนแล้ว
+- `reject` ปิดคำขอและคืนจำนวนที่ขอได้; `refund` ใช้ได้เฉพาะ approved เป็นการบันทึกว่าโอนคืนแล้วตามระบบ R1 **ไม่เรียก Omise และไม่โอนเงินจริง**
+- คืนบางส่วนยังคงสถานะ order/payment เดิม; คืนครบจำนวนของทุกรายการจึงเปลี่ยนทั้ง order และ payment เป็น `refunded` พร้อม `order_status_log` ทุกการพิจารณามี admin audit
+- ยอดคำขอ = ราคาต่อชิ้น ณ วันที่ซื้อ × จำนวนที่ขอคืน ไม่รวมค่าจัดส่ง การยืนยันรับสินค้าไม่เลื่อนช่วงคืนเงิน 7 วันซึ่งนับจาก delivered log
+- ตรวจ API วันที่ 5 พ.ย. 2026: `refunds.test.js` และ `omise-payments.test.js` รวม **39 ผ่าน / 0 ข้าม / 0 ล้มเหลว** รวม R5 paid order → delivered/completed → คืนบางส่วน/ครบจำนวน, return/write_off, สิทธิ์ลูกค้า, ทำซ้ำได้ 409, สต็อก/ledger/audit และสถานะที่ลูกค้าอ่านกลับ Gateway และ Inventory ใช้ constructor-injected test doubles; ฐานข้อมูลและ Refund API ใช้จริง สร้าง/ล้างเฉพาะ fixtures ไม่เรียก provider ภายนอก และไม่ใช่ผลตรวจหน้าจอแอดมินรอบใหม่
+
 ## ที่อยู่
 
 | ที่ไหน | Base URL |
@@ -141,6 +173,19 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/refund-requests/:id` | แอดมิน | R1 | คำขอ 1 รายการพร้อมคำสั่งซื้อ ลูกค้า สต็อก |
 | PATCH | `/admin/refund-requests/:id` | แอดมิน | R1 | อนุมัติ / ไม่อนุมัติ / โอนเงินคืนแล้ว |
 | GET | `/admin/action-logs` | owner | R1 | ประวัติการทำงานของผู้ดูแลทั้งร้าน ค้นหา/กรองผู้ดูแล การกระทำ ประเภท |
+| GET | `/cart` | ✓ | R5 | ตะกร้าของผู้ใช้และสต็อกล่าสุด |
+| POST | `/cart/items` | ✓ ยืนยันอีเมลแล้ว | R5 | เพิ่มสินค้าเข้าตะกร้า |
+| PATCH | `/cart/items/:productId` | ✓ ยืนยันอีเมลแล้ว | R5 | ตั้งจำนวนสินค้า |
+| DELETE | `/cart/items/:productId` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบรายการสินค้า |
+| POST | `/cart/item-removals` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบหลายรายการ |
+| POST | `/orders/quotes` | ✓ ยืนยันอีเมลแล้ว | R5 | ตรวจราคา สต็อก ที่อยู่ และยอดก่อนซื้อ |
+| POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | ปิดเส้นทางจำลอง: 409 PAYMENT_PROVIDER_REQUIRED; ใช้ `/orders/payment-attempts` |
+| GET | `/orders/:id` | ✓ | R5 | รายละเอียดออเดอร์ของตัวเอง |
+| GET | `/orders` | ✓ | R5 | ประวัติออเดอร์ของตัวเอง กรองสถานะและแบ่งหน้า |
+| GET | `/admin/orders` | ✓ แอดมิน | R5 | รายการออเดอร์ของร้าน ค้นหา กรองและแบ่งหน้า |
+| GET | `/admin/orders/:id` | ✓ แอดมิน | R5 | รายละเอียดออเดอร์เพื่อจัดส่ง |
+| PATCH | `/admin/orders/:id/fulfillment` | ✓ แอดมิน | R5 | บันทึกสถานะจัดส่งและเลขพัสดุ |
+| POST | `/orders/:id/receipt` | ✓ เจ้าของ ยืนยันอีเมลแล้ว | R5 | ยืนยันรับสินค้า delivered → completed |
 | POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
 | GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
 | GET | `/recommend/related/:productId` | - | R4 | สินค้าที่เกี่ยวข้อง 8 ชิ้นที่ความหมายใกล้ที่สุด (embedding) |
@@ -1208,6 +1253,637 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
 | `purchase` | R5 | จ่ายเงินสำเร็จ — เรียกทีละสินค้าในคำสั่งซื้อ |
 | `view` / `click` | R4 (ถ้าระบบแนะนำต้องใช้) | เปิดหน้า Detail / กดการ์ดจากผลค้นหาหรือสินค้าแนะนำ |
 
+ตอนนี้ `EVENTS_ENABLED = false` ใน `frontend/js/config.js` (หน้าเว็บยังไม่ส่ง) — **R4 เปลี่ยนเป็น `true` ใน PR เดียวกับ API**
+
+
+## ตะกร้าสินค้า (R5 · Step 2)
+
+ทุก endpoint ต้องล็อกอินผ่าน R2 `requireAuth` และทุก mutation ต้องผ่าน `requireVerified`.
+หาก middleware ของ R2 ยังไม่ถูกนำเข้ามา ระบบตอบ 503 `AUTH_NOT_READY` โดยไม่เปิดทางข้ามการยืนยันตัวตน.
+
+| Method | URL | Body | สำเร็จ |
+|---|---|---|---|
+| GET | `/cart` | — | 200 `{ data: { items: [...] } }` |
+| POST | `/cart/items` | `{ product_id, quantity }` | 201 ตะกร้าล่าสุด; บวกจำนวนเมื่อมีสินค้าแล้ว |
+| PATCH | `/cart/items/:productId` | `{ quantity }` | 200 ตะกร้าล่าสุด; ตั้งจำนวนใหม่ |
+| DELETE | `/cart/items/:productId` | — | 204 |
+| POST | `/cart/item-removals` | `{ product_ids: [...] }` | 204; 1–100 รายการต่อคำขอ |
+
+แต่ละ item มี `product_id`, `title`, `price` (number), `cover_image_url`, `category_name`,
+`quantity`, `stock_quantity`, `status`, `available`, `quantity_valid`.
+`quantity_valid` เป็น false เมื่อสต็อกลดต่ำกว่าจำนวนเดิมหรือสินค้าไม่พร้อมขาย.
+GET ไม่เปลี่ยนจำนวนเดิมให้อัตโนมัติ ผู้ใช้ต้องแก้จำนวนก่อนเลือกซื้อ.
+
+- จำนวนต้องเป็น integer 1–2147483647 และไม่เกินสต็อก; เกินตอบ 409 `OUT_OF_STOCK` พร้อม `details.stock_quantity`.
+- สินค้าไม่มี/ซ่อน/ร่าง: 404 `PRODUCT_NOT_FOUND`; แก้หรือลบรายการที่ไม่มี: 404 `CART_ITEM_NOT_FOUND`.
+- ระบุเจ้าของจาก `req.user.user_id` เท่านั้น ไม่รับ user/cart ID จาก client.
+- การเขียนล็อกตะกร้าใน transaction เพื่อไม่ให้คำขอของผู้ใช้เดียวกันเขียนทับกัน.
+- Cart ไม่จองหรือตัดสต็อก; Checkout ต้องตรวจสต็อกซ้ำและตัดผ่าน R3.
+- checkbox เป็น state หน้าเว็บ เริ่มเลือกทุกรายการที่ซื้อได้; รายการสต็อกไม่พอเลือกไม่ได้.
+- ยอดคำนวณเฉพาะที่เลือก: ส่งธรรมดา 40 บาท ฟรีเมื่อยอดสินค้า >= 1500 บาท ไม่มีส่วนลด.
+- `/cart` ใช้หน้าเดียวสำหรับตะกร้ามีสินค้า/ว่าง รองรับ TH/EN และธีมกลาง.
+- ปุ่มชำระเงินเก็บ `mdr_checkout_product_ids` ใน sessionStorage แล้วไป `/checkout` (Step 3).
+
+### ข้อค้างก่อน integration
+
+รอ R2 Auth เข้าสู่ branch และ R3 seed สินค้าเพื่อทดสอบกับบัญชีจริงครบเส้นทาง.
+Order Waiting/ยกเลิกออเดอร์ยังไม่สรุป ไม่อยู่ใน Step 2.
+
+## Checkout / Order ขั้นต้น (R5 · Step 3)
+
+### R5 integration contract — ตรวจตาม implementation 28 ต.ค. 2026
+
+อัปเดต UI/รายการ: `GET /orders` คืน `shipping_method`, `carrier`, `tracking_no`
+เพิ่มจากเดิมเพื่อแสดงในประวัติ พร้อม item_count และ total_quantity.
+`GET /admin/orders` รองรับช่องค้นหาแยก `order_id` (เลขหรือ ORD-0001, ตรงตัว),
+`recipient` และ `tracking_no` (ค้นหาบางส่วน ไม่สนตัวพิมพ์ใหญ่เล็ก).
+เมื่อกรอกหลายช่องใช้เงื่อนไข AND. ทุกช่องไม่เกิน 100 ตัวอักษร; query ซ้ำ/รูปแบบผิดตอบ 400.
+`q` เดิมยังรองรับสำหรับ URL เก่า แต่หน้า UI ใหม่ใช้สามช่องแยก.
+
+ส่วนนี้อธิบายโค้ด R5 ที่มีใน working tree ไม่ได้หมายความว่าทีมยืนยัน contract
+หรือ merge ขึ้น main แล้ว. API ทุกเส้นใช้ prefix `/api` (ไม่ใช่ `/api/v1`).
+ส่ง `Authorization: Bearer <token>`; ห้ามรับ user_id จาก body เพื่อแทนเจ้าของ token.
+
+| ผู้ใช้ข้อมูล | Interface ที่มีแล้ว | ขอบเขต/สิ่งที่ต้องตกลง |
+|---|---|---|
+| R1 Refund/Review | `GET /orders/:id` และ API R1 `/reviews`, `/refund-requests` | เจ้าของออเดอร์เท่านั้น; คืน Order พร้อม `items`, `payment`, `status_history`; R1 ใช้ `order_item_id` ตรวจสิทธิ์/eligibility และรับคำขอแล้ว ไม่มี API OrderItem แยก |
+| R3 รายงานยอดขาย | `GET /admin/sales-summary` ของ R3 และ Order/OrderItem/Refund ใน DB | ต้องเป็น admin; gross รวมค่าส่ง ไม่นับ cancelled; refunded ยังอยู่ใน gross แล้วหักยอดคำขอที่ปิดเป็น refunded ตาม resolved_at; units เป็นจำนวนก่อนคืน |
+| R3 Inventory | adapter ใน `orders.integrations.js` | เชื่อม applyStockChange ของ R3 แล้ว 15 พ.ย.; signature deductStock ด้านล่างคงเป็น boundary ภายใน R5 |
+| R4 Events | server outbox → local worker → `events.service.record(input, client)` | เชื่อมแล้ว ใช้ trusted user/session และ transaction เดียวสำหรับ event/ack; หนึ่ง event ต่อสินค้าที่ไม่ซ้ำใน purchase ไม่ส่งจาก browser ซ้ำ; Omise Test purchase ถูกข้ามตามค่าเริ่มต้น |
+
+**Order/OrderItem read contract:** รายละเอียดคืน `{data: order}` โดยมี
+`order_id`, `current_status`, `placed_at`, `subtotal`, `shipping_fee`, `grand_total`,
+`shipping_method`, `carrier`, `tracking_no`, `shipping_address`, `items`, `payment`,
+`fulfillment_version`, `status_history`. `items` มี `order_item_id`, `product_id`,
+`quantity`, `unit_price_at_purchase`, `title_snapshot`, `cover_image_url`.
+เงินเป็นตัวเลขหน่วยบาท; subtotal/shipping_fee ของข้อมูลเก่าอาจเป็น null.
+shipping_address เป็น snapshot ชื่อ `ship_*`; ไม่ควรเปิดเผยข้อมูลนี้ในรายงานสาธารณะ.
+`payment` เป็น null ได้; ถ้ามีประกอบด้วย `amount`, `method`, `status`, `paid_at`, `simulated`.
+ผิดเจ้าของ/ไม่พบตอบ 404; ไม่ล็อกอิน 401; admin endpoint ไม่มีสิทธิ์ตอบ 403.
+Refund/Review ต้องตรวจสิทธิ์ฝั่ง server อีกครั้ง ไม่เชื่อสถานะจาก browser.
+
+**R3 inventory contract — เชื่อมแล้ว 15 พ.ย. 2026:** โมดูล `backend/src/modules/inventory/inventory.service.js`
+export `async applyStockChange(client, { productId, type, change, actorId, orderItemId, note })`.
+R5 คง boundary `deductStock(client, {product_id, quantity, order_item_id, created_by})` ภายใน และแปลงชื่อ field, `type: 'sale'`, `change: -quantity` ผ่าน `orders.integrations.createStockAdapter()` ซึ่ง
+ตรวจ export และข้อมูลก่อนส่งต่อ. IDs รับ safe positive integer/string จาก PostgreSQL
+แล้วส่งให้ R3 เป็น number; quantity ต้องเป็น positive integer number.
+ข้อมูลจาก caller ผิดตอบ 500 INVENTORY_CONTRACT_ERROR โดยไม่เรียก R3;
+error จาก R3 ส่งต่อเดิมเพื่อ rollback; R3 คืน null → PRODUCT_NOT_FOUND และ INSUFFICIENT_STOCK คง error เดิม. ผลสำเร็จไม่ใช้คำนวณยอดใน R5
+ทดสอบด้วย constructor injection เท่านั้น ไม่มี env/HTTP flag เปิด mock บนระบบจริง.
+ใช้ PostgreSQL client ที่ R5 ส่งให้; ห้าม BEGIN/COMMIT transaction แยกเอง.
+R5 ตรวจสินค้า available/stock ภายใต้ product locks ก่อนสร้างออเดอร์; R3 ลด stock แบบ atomic พร้อมเพิ่ม sale movement
+ลง `stock_movement` ใน transaction เดียวกัน. หากล้มเหลวให้ rollback ทั้งออเดอร์
+`created_by` คือ user_id ของผู้ซื้อ ไม่ใช่ admin โดยอัตโนมัติ.
+ก่อนสร้าง payable QR R5 ตรวจว่ามี export นี้แล้ว; ถ้าไม่มีตอบ 503 INVENTORY_NOT_READY.
+ยังไม่มี reservation ระหว่างรอ QR: จ่ายสำเร็จแต่ finalize ไม่ได้จะเป็น needs_review
+และห้ามจ่ายซ้ำ. การกัน/คืน stock และ idempotency ของ movement ต้องตกลงเพิ่มก่อน Live.
+
+**ผลตรวจการเตรียม integration — 1 พ.ย. 2026:** ใช้ PostgreSQL จริงกับ Inventory
+และ gateway doubles เฉพาะ test server: ทดสอบ quote → pending → successful →
+Order/OrderItem/Payment/StockMovement/status log → ลบเฉพาะจำนวนสินค้าที่ซื้อจาก cart.
+ตรวจ HTTP ownership, sync/webhook พร้อมกัน, duplicate retry, สองผู้ซื้อชิ้นสุดท้าย,
+และตัด stock รายการที่สองพัง (rollback ทั้งงานออเดอร์ คง needs_review).
+เมื่อแก้สาเหตุแล้ว sync charge เดิมสร้างออเดอร์ได้ครั้งเดียว ไม่สร้าง charge ใหม่.
+นี่ไม่ใช่ผลทดสอบ Omise ภายนอกหรือ Inventory implementation ของ R3;
+หน้า Checkout ปกติยังคงปิดการสร้าง QR เมื่อ R3 ไม่พร้อม.
+
+**R4 event contract — ใช้งานปัจจุบัน:** `add_to_cart` เข้า outbox ใน transaction เพิ่มสินค้าเท่านั้น
+(product_id, quantity ที่เพิ่ม, unit_price); `purchase` เข้า outbox หลัง server ยืนยันจ่ายและ
+สร้างออเดอร์สำเร็จ (order_id, currency THB, value, items, test_mode).
+Local worker แปลงเป็นหนึ่ง event ต่อ product_id ที่ไม่ซ้ำ ส่ง eventType/productId/sessionId/userId เข้า R4 record ด้วย transaction client เดิม; event และ acknowledgment commit พร้อมกัน
+ห้ามส่ง purchase จากการเห็น QR/กดปุ่มจ่าย หรือจาก Preview.
+value ใน outbox รวม shipping แต่ R4 record ไม่รับราคา/จำนวน/order_id. Events ล้มเหลวต้องไม่ทำให้จ่ายซ้ำ; Omise Test purchase ไม่ส่งตามค่าเริ่มต้น. หัวข้อ preparation ที่ลงวันที่เก่าต่อจากนี้เป็นประวัติ ไม่ใช่ blocker ปัจจุบัน
+
+#### R5 Events preparation — 1 พ.ย. 2026
+
+- `005_r5_event_outbox.sql` เพิ่ม `r5_event_outbox` ของ R5 แยกจากตาราง/API ของ R4.
+- Cart add สำเร็จจะบันทึก `add_to_cart:<uuid>` ใน transaction เดียวกับการเพิ่ม;
+  quantity คือจำนวนที่เพิ่มครั้งนั้น ไม่ใช่ยอดรวมในตะกร้า และ unit_price มาจาก server.
+  การ set quantity/remove และ Preview ไม่ส่ง event นี้.
+- หลังยืนยัน provider successful และสร้าง Order/Items/Payment แล้ว บันทึก
+  `purchase:<order_id>`; unique key ป้องกัน webhook/sync/retry สร้าง purchase ซ้ำ.
+  pending/failed/expired/needs_review หรือ backend simulated payment ไม่บันทึก purchase.
+- purchase payload ปัจจุบันเป็นข้อเสนอ: order_id, currency THB, value=grand_total
+  (รวมค่าส่ง), shipping_fee, test_mode, items[{product_id,quantity,unit_price}].
+  Omise Test มี test_mode=true ต้องแยกจากยอดขายจริง; รอ R4 ยืนยัน field/value/consent.
+- ไม่ใส่ชื่อ ที่อยู่ โทรศัพท์ อีเมล token หรือ payment keys ใน payload.
+  user_id เก็บเป็น FK ภายในคิวเพื่อ ownership/cleanup ยังไม่ส่งใน envelope.
+- `r5-events.createEvents({transport})` รับตัวส่งเฉพาะตอนประกอบ service;
+  `dispatchOne()` คืน disabled เมื่อยังไม่มี transport. ไม่มี route/cron/flag เปิดส่งจริง.
+  ขั้นเชื่อม R4 ต้องเพิ่ม transport ที่ยืนยัน endpoint/auth/schema แล้วและกำหนด scheduler.
+- Transport รับ `{event_key,event_type,payload,occurred_at}` กับ `{signal}`;
+  ต้องคืน `{accepted:true}` เมื่อ receiver รับสำเร็จเท่านั้น. ค่าอื่น/throw/timeout
+  เก็บไว้ retry 30 วินาทีถัดไป. Default timeout 2 วินาที; ส่ง key เดิมทุกครั้ง.
+- ใช้ row lock + SKIP LOCKED กัน worker แย่ง event; delivered_at กันส่งซ้ำในรอบปกติ.
+  ถ้าตัวรับรับแล้วแต่คำตอบหาย อาจส่งซ้ำได้: R4 ต้อง deduplicate event_key.
+  ไม่อ้าง exactly-once delivery. Retry นี้คือ retry ส่ง event ไม่ใช่ retry เพิ่ม Cart;
+  API Cart add ยังไม่มี request-level idempotency จึงห้าม auto-retry การเพิ่มสินค้า.
+- ไม่มี network call ใน transaction ซื้อ/ตะกร้า. Queue insert ล้มเหลวใช้ savepoint
+  rollback เฉพาะ event แล้วให้ business commit ต่อ; event นั้นอาจสูญหาย โดยเตือนเพียง
+  `R5_EVENT_ENQUEUE_FAILED` ไม่ log เนื้อหา error. Retention/reconciliation ต้องตกลงก่อน Live.
+- ทดสอบด้วย mock receiver และ PostgreSQL จริงเท่านั้น ยังไม่ได้เรียก API R4.
+
+**ข้อจำกัดปัจจุบัน:** ไม่มี automatic refund/void PromptPay, ไม่มี API ยกเลิกออเดอร์,
+ไม่มี sales aggregate และไม่มีการส่ง Events จริง. ปุ่ม Refund ในหน้าจริงเชื่อม R1 eligibility แล้ว; ปุ่มใน Preview ปิดไว้ไม่ส่ง ID จำลอง.
+สถานะ Order ใช้ paid → packing → shipped → delivered → completed;
+cancelled/refunded อ่านได้แต่ไม่มี mutation flow. Waiting ใช้ payment attempt แยกจาก Order.
+
+### Waiting / Refund UI (17 ต.ค. 2026)
+
+- Waiting หมายถึง payment attempt ที่ยังไม่มี Order; ไม่เพิ่มสถานะ Order ใหม่.
+- Checkout แสดงเวลาคงเหลือของ QR 15 นาที; ครบเวลาแล้วซ่อน QR แต่ยัง sync
+  กับ Omise ต่อ ไม่เปลี่ยนเป็น expired หรือ cancelled จากนาฬิกาฝั่งเว็บ.
+- กลับตะกร้าไม่ใช่การยกเลิก; กลับ Checkout จะกู้ attempt เดิมจาก API.
+- เริ่มใหม่ได้เมื่อ provider ยืนยัน failed/expired และต้องตรวจ quote ใหม่.
+- ยังไม่มี stock reservation จึงไม่คืน stock ตอน attempt หมดอายุ.
+- Order Detail แสดงส่วนขอคืนเงินแบบ disabled สำหรับ payment succeeded ที่ไม่ใช่
+  cancelled/refunded. นี่ไม่ใช่การตรวจ eligibility และไม่มีการส่งคำขอ.
+  รอ R1 ส่งหน้า/API พร้อมกฎ eligibility และสถานะ request ก่อนเปิดใช้งาน.
+- ไม่มีปุ่ม void PromptPay หรือ automatic refund; needs_review ต้องให้เจ้าหน้าที่
+  ตรวจสอบหลักฐานชำระเงินและออเดอร์ ไม่ให้ลูกค้าจ่ายซ้ำ.
+
+### Omise Test PromptPay — สถานะล่าสุด 16 ต.ค. 2026
+
+- ยืนยันขอบเขตกับผู้ใช้: พร้อมเพย์ QR ก่อน ยังไม่ทำบัตร/Live mode.
+- root `.env` ใช้ `OMISE_PUBLIC_KEY` และ `OMISE_SECRET_KEY` แบบ Test; Compose ส่งให้ API.
+  Secret อยู่ server เท่านั้น; ไม่ส่งให้หน้าเว็บ ไม่บันทึกใน Git หรือ log.
+- migration `004_r5_omise_payments.sql` เพิ่มตาราง `checkout_payment_attempt`;
+  QR pending ไม่ใช่ Order waiting และไม่เปลี่ยนสถานะออเดอร์ที่ทีมยังไม่ตกลง.
+- **ข้อจำกัดปัจจุบัน:** R3 inventory ยังไม่มี implementation. Checkout จึงตอบ
+  `503 INVENTORY_NOT_READY` **ก่อน** สร้าง QR. ห้ามเปิดทางจ่ายโดยข้ามการตัดสต็อก.
+- เชื่อม Omise API จริงใน Test mode และทดสอบสร้าง QR ยอด 20 บาทสำเร็จแล้ว;
+  ตั้งรายการทดสอบนั้นเป็น failed และ GET ตรวจผลสำเร็จ. ไม่มีการจ่ายเงินจริง.
+
+ทุก URL ในตารางอยู่ใต้ `/api`; ส่ง Bearer token. สร้างและ sync ต้องยืนยันอีเมล.
+
+| Method | URL | ผลลัพธ์ |
+|---|---|---|
+| POST | `/orders/payment-attempts` | `{data: attempt}`; body เหมือน quote พร้อม `quote_hash`, `checkout_key` UUID v4; `payment_method=promptpay` เท่านั้น |
+| GET | `/orders/payment-attempts/active` | `{data: attempt \| null}` กู้รายการค้างของเจ้าของ แม้ sessionStorage หาย |
+| GET | `/orders/payment-attempts/:attemptId` | อ่านสถานะเจ้าของเท่านั้น; คนอื่น 404 |
+| POST | `/orders/payment-attempts/:attemptId/sync` | body `{}`; GET charge จาก Omise แล้วตรวจผล; ตรวจห่างอย่างน้อย 4 วินาที |
+| POST | `/payments/omise/webhook` | รับ `charge.complete`, ตรวจ charge ซ้ำจาก Omise; สำเร็จ 204 |
+
+`attempt`: `attempt_id`, `status`, `test_mode:true`, `amount` บาท, `currency:thb`,
+`qr_url`, `expires_at`, `charge_id`, `order_id`. ไม่มี Secret หรือข้อมูลที่อยู่ใน response.
+สถานะ: `initializing`, `unknown`, `pending`, `successful`, `failed`, `expired`, `needs_review`.
+
+การสร้างชำระเงิน:
+
+1. Backend ตรวจยอด/เจ้าของ/ที่อยู่/stock adapter แล้วบันทึก snapshot และ attempt ก่อนเรียก Omise.
+2. POST charge ใช้ยอดสตางค์จาก server, `source[type]=promptpay`, `ref_id=attempt_id`
+   และ metadata `checkout_attempt=attempt_id`; QR อายุ 15 นาที. ยอด 20–150,000 บาท.
+3. คำขอซ้ำ key/body เดิมคืน attempt เดิม; key เดิม body ต่างตอบ 409.
+   หนึ่งผู้ใช้มีรายการเปิดได้หนึ่งรายการ เพื่อป้องกันสองแท็บสร้าง QR ซ้ำ.
+4. หาก network/response ไม่แน่นอน เก็บ `unknown` และ **ไม่ retry สร้าง charge อัตโนมัติ**.
+   เก็บรายการเดิมไว้ แม้เลยเวลาหมดอายุ จนตรวจผลจาก provider ได้.
+5. sync/webhook เชื่อถือเฉพาะ GET charge จากบัญชีเรา, `livemode=false`, amount/currency,
+   method, metadata/attempt, charge ID และ `paid=true` เมื่อ successful ตรงกันทั้งหมด.
+6. สำเร็จแล้วสร้าง Order/Items/Payment/StockMovement/Log ใน transaction เดียว.
+   ใช้ราคา/ที่อยู่ snapshot ตอนสร้าง QR และลดตะกร้าเฉพาะจำนวนที่ซื้อ;
+   จำนวนที่เพิ่มระหว่างรอ QR ไม่ถูกลบทิ้ง. Payment method `omise_test_promptpay`.
+7. หาก provider successful แต่สต็อกหมดหรือสร้างออเดอร์ไม่สำเร็จ: rollback เฉพาะงานออเดอร์,
+   คงหลักฐาน charge ในสถานะ `needs_review`, ห้ามจ่ายซ้ำ และให้เจ้าหน้าที่ตรวจสอบ.
+   **ยังไม่มีการจองสต็อกตลอดช่วงรอ QR**; ต้องตกลง reservation กับ R3 ก่อน Live.
+   ไม่มี automatic refund เพราะ PromptPay ไม่รองรับ refund/void ผ่าน Omise ตามเอกสาร.
+
+Webhook/localhost และกู้รายการไม่ทราบผล:
+
+- เครื่อง local ใช้ปุ่มตรวจผล/อัปเดตทุก 6 วินาทีเฉพาะแท็บที่เปิดอยู่; ไม่ต้องเปิด tunnel.
+- deploy ภายหลังลงทะเบียน HTTPS endpoint `/api/payments/omise/webhook` ใน Omise Dashboard.
+  หากตั้ง `OMISE_WEBHOOK_SECRET` ให้ใช้ **Base64 signing secret แยกจาก API Secret**;
+  ตรวจ HMAC SHA-256 บน timestamp + `.` + raw body และเวลาคลาดเคลื่อนไม่เกิน 5 นาที.
+  หากยังไม่มี signing secret ยังคง GET charge เพื่อตรวจข้อมูลทุกครั้งก่อนเปลี่ยนสถานะ.
+- กรณีสร้าง charge สำเร็จแต่ response หายและ localhost ไม่ได้รับ webhook:
+  หา charge ใน Test Dashboard ด้วย metadata `checkout_attempt` ตรงกับรหัสอ้างอิง.
+  เจ้าของรายการเรียก sync ด้วย `{ "charge_id": "chrg_test_..." }` เพื่อผูกกลับ;
+  server จะ GET และตรวจข้อมูลทั้งหมดก่อนบันทึก ห้ามแก้ DB เป็น successful ด้วยมือ.
+- `needs_review`: แก้สาเหตุ fulfillment แล้ว sync เดิมอีกครั้งเพื่อ retry transaction;
+  ไม่สร้าง charge ใหม่. ยังไม่มีหน้าจอ Admin สำหรับ reconciliation โดยเฉพาะ.
+- Test Dashboard เลือก charge → Actions → Successful/Failed; **ห้ามสแกนด้วยแอปธนาคาร**.
+
+ตรวจการเชื่อมต่อแบบ opt-in: `docker compose exec -T api node scripts/omise-smoke.js`
+สร้าง Test charge 20 บาทหนึ่งรายการ แล้ว mark failed และ GET ตรวจผล; ไม่สร้างออเดอร์.
+ชุดทดสอบปกติใช้ provider/stock doubles ไม่เรียก Omise ภายนอก และไม่ถือว่าได้ทดสอบ R3 จริง.
+
+เอกสารอ้างอิง: [PromptPay](https://docs.omise.co/promptpay),
+[Charge/ref_id](https://docs.omise.co/charges-api), [Webhook](https://docs.omise.co/api-webhooks).
+
+**อัปเดต 16 ต.ค. 2026:** Checkout ปกติเชื่อม Omise Test PromptPay แล้วตามหัวข้อท้ายเอกสาร
+ส่วน flow จำลอง Step 3 ด้านล่างเก็บเป็นประวัติและ service tests; HTTP `POST /orders` ปิดแล้ว
+หน้า `?preview=1` ยังคงจำลองในเบราว์เซอร์ ไม่เรียก Omise. ยังไม่รองรับ Live payment หรือบัตร.
+Auth ใช้ R2; Quotes/Create ต้องยืนยันอีเมลแล้ว; อ่าน Order ต้องล็อกอินและเป็นเจ้าของ.
+ขอบเขต Step 3 เดิมยังไม่รวมยืนยันรับของ/Admin Orders; โค้ดปัจจุบันมีทั้งสองส่วนแล้ว ส่วน Waiting/ยกเลิกและ Events transport ยังไม่เปิดใช้.
+
+| Method | URL | สำเร็จ |
+|---|---|---|
+| POST | `/orders/quotes` | 200 `{ data: quote }` |
+| POST | `/orders` | 409 `PAYMENT_PROVIDER_REQUIRED` — ใช้ payment-attempts แทน |
+| GET | `/orders/:id` | 200 `{ data: order }`; ไม่ใช่ของผู้ใช้ตอบ 404 |
+
+### ตรวจยอดก่อนสั่งซื้อ
+
+```json
+{
+  "product_ids": [12, 13],
+  "address_id": 1,
+  "shipping_method": "standard",
+  "payment_method": "promptpay"
+}
+```
+
+- `product_ids`: integer บวก 1–100 รายการ ต้องอยู่ในตะกร้าของผู้ใช้; normalize ไม่ซ้ำและเรียง ID.
+- `shipping_method`: `standard` (40 บาท, ฟรีเมื่อยอดสินค้า >=1500) หรือ `express` (80 บาทเสมอ).
+- `payment_method`: `bank_transfer`, `promptpay`, `card` ทั้งหมดจำลอง.
+- Backend อ่านราคา/จำนวน/สต็อกจากฐานข้อมูลและตรวจเจ้าของที่อยู่ ไม่รับยอดจาก client.
+- ตอบ `items`, `shipping_address` (ship_* snapshot), `shipping_method`, `payment_method`,
+  `subtotal`, `shipping_fee`, `grand_total` เป็นตัวเลขบาท และ `quote_hash` SHA-256.
+- คิดเงินเป็นจำนวนเต็มสตางค์ก่อนแปลงกลับเป็นบาท; ไม่มีส่วนลด.
+
+### ยืนยันสั่งซื้อแบบจำลองเดิม (service tests เท่านั้น; HTTP ปิดแล้ว)
+
+ส่ง body เดิมพร้อม `quote_hash` จาก quote ล่าสุด, `checkout_key` UUID v4 และ
+`simulation_result`: `succeeded` หรือ `failed`.
+
+```json
+{
+  "product_ids": [12, 13],
+  "address_id": 1,
+  "shipping_method": "standard",
+  "payment_method": "promptpay",
+  "quote_hash": "<64 lowercase hex characters from quote>",
+  "checkout_key": "<UUID v4 generated for this attempt>",
+  "simulation_result": "succeeded"
+}
+```
+
+สร้าง Order + OrderItems + Payment + sale StockMovement ผ่าน R3 + initial OrderStatusLog
+และลบเฉพาะรายการที่ซื้อจากตะกร้าใน `withTransaction` เดียวกัน.
+ล็อก cart ตามผู้ใช้ และล็อก product ตาม ID เรียงลำดับก่อนยืนยันยอด/ตัดสต็อก.
+จ่ายสำเร็จเริ่ม `current_status = paid`, Payment `status = succeeded`,
+`method = simulated_<payment_method>`; ไม่สร้างสถานะ Waiting ที่ยังไม่ตกลง.
+จ่ายจำลองไม่สำเร็จตอบ 409 และ rollback ทั้งชุด ไม่สร้างออเดอร์เปล่าหรือหักสต็อก.
+
+`checkout_key` ผูกกับผู้ใช้และ fingerprint ของ request. ส่ง key/body เดิมพร้อมกันหรือ retry
+ได้ออเดอร์เดิมโดยไม่จ่าย/ตัดสต็อกซ้ำ; key เดิมกับ body อื่นตอบ 409.
+หน้าจอเก็บคำขอที่ยังไม่ทราบผลใน sessionStorage แยกตาม user_id และ retry ด้วย key เดิม.
+หาก refresh หลังเครือข่ายขาด ให้กดตรวจผลคำขอเดิมก่อนเริ่มคำขอใหม่.
+
+| Error | ความหมาย |
+|---|---|
+| 400 `VALIDATION_ERROR` / `INVALID_TOTAL` | รูปแบบข้อมูลหรือยอดเกินขอบเขต NUMERIC(12,2) |
+| 404 `ADDRESS_NOT_FOUND` / `ORDER_NOT_FOUND` | ไม่มีข้อมูลหรือไม่ใช่เจ้าของ |
+| 409 `CART_EMPTY` / `CART_CHANGED` | รายการที่เลือกไม่ตรงกับตะกร้าปัจจุบัน |
+| 409 `OUT_OF_STOCK` | สินค้าซ่อน/ไม่พร้อมขาย/จำนวนเกินสต็อก |
+| 409 `QUOTE_CHANGED` | ราคา ชื่อ จำนวน หรือ snapshot ที่อยู่เปลี่ยน ต้องตรวจยอดและยืนยันใหม่ |
+| 409 `PAYMENT_SIMULATED_FAILED` | จ่ายจำลองไม่สำเร็จ ไม่มีผลข้างเคียง |
+| 409 `IDEMPOTENCY_CONFLICT` | ใช้ key เดิมกับ request อื่น |
+| 503 `AUTH_NOT_READY` / `ADDRESS_NOT_READY` / `INVENTORY_NOT_READY` | dependency ยังไม่พร้อม ปิดการซื้อไว้ |
+
+### Response Order ขั้นต้น
+
+`order_id`, `current_status`, `placed_at`, `subtotal`, `shipping_fee`, `grand_total`,
+`shipping_method`, `carrier`, `tracking_no`, `shipping_address`,
+`items: [{order_item_id, product_id, quantity, unit_price_at_purchase, title_snapshot, cover_image_url}]`,
+`payment: {amount, method, status, paid_at, simulated}`.
+ชื่อ ราคา และที่อยู่เป็น snapshot; รูปดึงจาก product ปัจจุบัน.
+ออเดอร์เก่าก่อน migration ที่ไม่มี subtotal/ค่าส่งแสดง `null` ไม่แต่งประวัติย้อนหลัง.
+
+### Migration และจุดเชื่อมเพื่อน
+
+- เพิ่ม `003_r5_checkout.sql` (เว้น 002 ให้ R2): subtotal, shipping_fee, shipping_method,
+  checkout_key, checkout_request_hash และ unique/check constraints. ไม่แก้ 001.
+- R2: ใช้ `addresses.service.getForUser(userId,addressId,client)` และ `toShippingSnapshot(address)`.
+- **R3 ยังไม่มี implementation ใน branch นี้**. `orders.integrations.js` เป็น boundary รอการตกลง;
+  contract ที่เสนอคือ `inventory.service.deductStock(client, {product_id, quantity, order_item_id, created_by})`.
+  ต้องตรวจและหักสต็อกแบบ atomic พร้อมบันทึก sale movement ใน client เดียวกัน; ถ้าของไม่พอต้อง throw.
+  **ชื่อ export/signature นี้ยังไม่ใช่ contract ที่ R3 ยืนยัน ต้องปรับ adapter ก่อน integration.**
+- ไม่มี fallback ที่เขียน stock ใน R5 เมื่อ dependency หาย จึงยังซื้อผ่าน API จริงไม่ได้จนเชื่อมครบ.
+- เทสต์ Checkout ใช้ stock/address contract doubles กับ PostgreSQL จริงเพื่อตรวจ R5 transaction,
+  rollback, ownership และ concurrency ไม่ใช่การยืนยัน implementation ของ R2/R3.
+
+### Preview สำหรับตรวจหน้าจอ
+
+`/cart?preview=1` -> เลือกสินค้า -> `/checkout?preview=1` -> `/order-detail?preview=1`.
+เปิด Checkout Preview โดยตรงจะมีสินค้าตัวอย่าง 4 รายการตาม Design.
+เลือกที่อยู่ตัวอย่าง ส่งธรรมดา/ด่วน และจำลองสำเร็จ/ไม่สำเร็จได้.
+Preview ใช้ sessionStorage คนละ key กับข้อมูลจริง ไม่เรียก Cart/Orders/Address API
+และไม่สร้างข้อมูลในฐานข้อมูล. ใบสรุปมีป้าย PREVIEW และยังไม่แสดงเลขขนส่งสมมุติ.
+
+## ประวัติการซื้อและรายละเอียด (R5 · Step 4)
+
+### `GET /orders`
+
+ต้องล็อกอิน (ไม่บังคับ verified สำหรับการอ่าน). ระบุเจ้าของจาก `req.user.user_id` เท่านั้น.
+
+| Query | ค่า |
+|---|---|
+| `status` | ไม่ส่ง = ทั้งหมด; หรือ `paid`, `packing`, `shipped`, `delivered`, `completed`, `cancelled`, `refunded` |
+| `status=shipping` | กลุ่มที่กำลังส่ง: รวม `shipped` และ `delivered` |
+| `page` | integer 1–1000000; ค่าเริ่มต้น 1 |
+| `pageSize` | integer 1–50; ค่าเริ่มต้น API 20; หน้าเว็บ 10 |
+
+query ที่เป็น array/object, เลขทศนิยม, exponent, สถานะที่ไม่มีใน schema หรือค่าพ้นขอบเขต
+ตอบ 400 `VALIDATION_ERROR`. ไม่รับ user ID จาก client และไม่อ่านออเดอร์บัญชีอื่น.
+เรียง `placed_at DESC, order_id DESC`; count/page อ่านใน transaction แบบ repeatable-read read-only.
+
+```json
+{
+  "data": [{
+    "order_id": 12,
+    "current_status": "packing",
+    "placed_at": "2026-09-12T07:20:00.000Z",
+    "grand_total": 240,
+    "item_count": 2,
+    "total_quantity": 2,
+    "first_item": {
+      "product_id": 3,
+      "title_snapshot": "ชื่อสินค้า ณ เวลาซื้อ",
+      "quantity": 1,
+      "cover_image_url": "/assets/products/example.jpg"
+    }
+  }],
+  "meta": { "page": 1, "pageSize": 20, "total": 1 }
+}
+```
+
+แถวประวัติเป็นหนึ่งแถวต่อ Order. แสดงสินค้ารายการแรกและจำนวนรายการที่เหลือ แต่ราคาแถว
+ใช้ grand_total ของทั้ง Order ไม่ใช่ราคาของสินค้าชิ้นแรก. ไม่ส่งที่อยู่หรือข้อมูลส่วนตัวในรายการ.
+ตาราง product เปลี่ยนชื่อ/ราคา/เป็น hidden ภายหลังไม่เปลี่ยนชื่อหรือยอดประวัติซื้อ.
+ภาพสินค้าเป็น URL ปัจจุบัน ไม่ใช่ snapshot.
+หน้าเกินจำนวนหรือไม่มีผลลัพธ์ตอบ data ว่างโดยคง meta.total ที่ถูกต้อง.
+
+### `GET /orders/:id` เพิ่มใน Step 4
+
+เพิ่ม `status_history: [{from_status, to_status, changed_at}]` เรียงเวลาแล้วตาม log ID.
+ไม่ส่ง note ภายในหรือ changed_by ของแอดมิน. รายละเอียดและประวัติอ่านจาก snapshot เดียวกัน;
+ไม่พบ/คนละเจ้าของยังตอบ 404 `ORDER_NOT_FOUND`.
+หน้ารายละเอียดแสดงสถานะจริงรวม cancelled/refunded; Step 5 เพิ่มปุ่มยืนยันรับสินค้าเฉพาะ delivered.
+แสดง Payment ตามสถานะที่บันทึก (succeeded/failed/refunded) ไม่เขียนว่าสำเร็จเสมอ.
+กรณีไม่มี Payment หรือไม่มี breakdown เก่าจะแจ้งว่าข้อมูลไม่ครบ ไม่แต่งราคา/ค่าส่งขึ้นเอง.
+Timeline เป็นประวัติสถานะระบบร้าน ไม่ใช่ API ติดตามตำแหน่งจากบริษัทขนส่ง.
+
+### หน้าเว็บและ Preview
+
+- `/orders`: ประวัติจริง ต้องล็อกอิน; เพิ่มเมนูประวัติเมื่อมี token ตาม header ปัจจุบัน.
+- `/orders?preview=1`: ประวัติตัวอย่าง กรองสถานะ กดรายละเอียดได้ และรวมใบสรุป Checkout Preview
+  ล่าสุดใน tab เดียวกันถ้ามี. ตัวอย่างเหล่านี้ไม่ใช่ออเดอร์ในฐานข้อมูล.
+- `/orders?preview=empty`: หน้าประวัติว่างตาม Design 25b.
+- ทดสอบแบ่งหน้าได้ด้วย `pageSize=2`; filter/page อยู่ใน URL และรองรับ Back/Forward.
+- `/order-detail?id=PREVIEW-1002&preview=1`: ตัวอย่างรายละเอียดที่เลือกจาก History.
+- แท็บ paid ใช้ข้อความชำระเงินแล้วแทน waiting ที่ schema ยังไม่รองรับ.
+- cancelled/refunded แสดงข้อมูลที่อ่านได้เท่านั้น; ยังไม่มี flow ยกเลิก คืนเงิน หรือคืนสต็อก.
+- รองรับ TH/EN ธีมกลาง มือถือ สถานะ loading/error/ไม่พบผลลัพธ์ และปุ่มลองใหม่.
+- Step 4 ไม่เปลี่ยน schema; งาน Step 5 อธิบายในหัวข้อถัดไป.
+- รวม Auth ของ R2 แล้วและตรวจอ่าน Cart/Orders ผ่านการล็อกอินจริงได้; Preview ไม่ข้ามสิทธิ์ API.
+
+## Admin Orders และยืนยันรับสินค้า (R5 · Step 5)
+
+สถานะงาน: 🟡 รวม Auth/Address ของ R2 แล้ว ตรวจสิทธิ์อ่านเบื้องต้นได้ แต่ยังรอ Inventory/Events และตรวจเส้นทางซื้อจริงครบชุด.
+ไม่มี migration ใหม่ ไม่มี payment gateway หรือ carrier API ในขั้นนี้.
+
+### สิทธิ์และข้อมูล
+
+ทุก `/admin/orders` endpoint ผ่าน `requireAuth` ของ R2 (boundary เดิมที่ใช้ Cart).
+จากนั้นตรวจในฐานข้อมูลว่า `user.is_active=true` และมีแถวใน `admin` ตามสัญญา R2 (BR-30).
+ไม่ใช้ `user.role` ตัดสินสิทธิ์ เพราะอาจไม่ตรงกับ admin membership.
+สิทธิ์ไม่อิง token payload หรือการซ่อนเมนูหน้าเว็บเพียงอย่างเดียว.
+Service ตรวจสิทธิ์ซ้ำใน transaction. Auth middleware ของ R2 ถูกนำเข้ามาพร้อม main แล้ว.
+หากใช้ module บนฐานเก่าที่ไม่มี middleware boundary จะตอบ 503 `AUTH_NOT_READY` โดยไม่เปิดสิทธิ์ชั่วคราว.
+อ่านชื่อผู้รับ/ที่อยู่/โทรศัพท์เท่าที่ต้องใช้จัดส่ง; ไม่ส่ง password/token/email หรือข้อมูลบัญชีอื่น.
+
+### `GET /admin/orders`
+
+- Query `status`, `page`, `pageSize` ใช้กฎเดียวกับประวัติของลูกค้า; ค่าเริ่มต้น 1 / 20.
+- `q`: ข้อความไม่เกิน 100 ตัวอักษร ไม่มี control character; ค้น substring ในเลข order_id,
+  ชื่อผู้รับ snapshot หรือเลขพัสดุ. ค้นรหัสจริงด้วยส่วนตัวเลข เช่น `12` ไม่ใช่ `ORD-0012`.
+- เรียง `placed_at DESC, order_id DESC`; count/page ใช้ snapshot เดียวกัน.
+- `{data:[{order_id,current_status,placed_at,grand_total,ship_name,carrier,tracking_no,item_count}],
+  meta:{page,pageSize,total}}`.
+- รายการนี้รวมทุกบัญชี เฉพาะแอดมินเท่านั้น; แยกจาก `GET /orders` ที่มี owner scope.
+
+### `GET /admin/orders/:id`
+
+ส่ง `{data:order}` รูปแบบเดียวกับรายละเอียดลูกค้า รวมสินค้า/ยอด/Payment/ที่อยู่/ประวัติสถานะ.
+รายละเอียดทั้งฝั่งลูกค้าและแอดมินเพิ่ม `fulfillment_version` เป็น log ID สูงสุดหรือ 0 ถ้าไม่มี log.
+History ยังคงไม่ส่ง note ภายในหรือ changed_by.
+
+### `PATCH /admin/orders/:id/fulfillment`
+
+```json
+{
+  "expected_status": "packing",
+  "expected_version": 123,
+  "status": "shipped",
+  "carrier": "ชื่อบริษัทขนส่ง",
+  "tracking_no": "TRACK-12345"
+}
+```
+
+- ใช้ version ที่เพิ่งอ่านจากรายละเอียด ไม่ใช้จำนวนแถว history เดาเอง.
+- รับเฉพาะฟิลด์ในตัวอย่าง; status/expected_status ต้องเป็น paid/packing/shipped/delivered;
+  expected_version เป็น safe integer >= 0. ไม่รับแก้ยอด ที่อยู่ user_id หรือ Payment.
+- เปลี่ยนได้ทีละขั้น `paid → packing → shipped → delivered` เท่านั้น.
+- `packing → packing` และ `shipped → shipped` ใช้แก้ carrier/tracking; ข้อมูลไม่เปลี่ยนไม่เพิ่ม log.
+- carrier/tracking_no เป็น string ไม่เกิน 100 ตัวอักษร ไม่มี control character; trim ช่องว่าง.
+  ไม่ส่ง = คงค่าเดิม; string ว่าง = NULL. ต้องมีทั้งคู่เมื่อเปลี่ยนเป็น shipped/delivered.
+- ต้องมี Payment.status=succeeded ก่อนทำ fulfillment.
+- Lock Order และ Payment; ตรวจ expected_status/expected_version เพื่อป้องกันการบันทึกทับ
+  ทั้งการเปลี่ยนสถานะและการแก้เลขพัสดุพร้อมกัน. UPDATE และ INSERT order_status_log
+  (changed_by=admin ID) อยู่ transaction เดียวกัน.
+- สำเร็จ 200 `{data:order}`. สถานะ/ข้อมูลเก่า 409 `ORDER_CHANGED`, ข้ามขั้น/ย้อนขั้น
+  409 `INVALID_ORDER_TRANSITION`, Payment ไม่สำเร็จ 409 `ORDER_NOT_PAID`, ขาดข้อมูลพัสดุ
+  400 `TRACKING_REQUIRED`, ไม่พบ 404 `ORDER_NOT_FOUND`, ไม่มีสิทธิ์ 403 `FORBIDDEN`.
+- ยังไม่เปิด cancelled/refunded หรือแก้สต็อก; ไม่เปลี่ยน completed โดยแอดมิน.
+- delivered คือการบันทึกด้วยมือของแอดมิน ไม่ใช่การยืนยันอัตโนมัติจากบริษัทขนส่ง.
+
+### `POST /orders/:id/receipt`
+
+Body `{}`; เจ้าของออเดอร์ที่ผ่าน Auth และ verified เท่านั้น. Lock Order พร้อม owner condition.
+`delivered → completed`; update กับ status log อยู่ transaction เดียวกัน (changed_by=NULL,
+เพราะ foreign key ของ changed_by อ้างตาราง admin; note ระบุว่าลูกค้ายืนยันรับ).
+ทำซ้ำเมื่อ completed ตอบออเดอร์เดิม 200 ไม่เพิ่ม log. สถานะอื่นตอบ
+409 `INVALID_ORDER_TRANSITION`; คนละเจ้าของ/ไม่พบตอบ 404. ไม่มีการแก้ Payment/สต็อก.
+
+### หน้าเว็บและ Design
+
+- `/admin/orders`: ต้องล็อกอินและผ่านสิทธิ์จริงจาก API; มี loading/login/forbidden/error/empty.
+- `/admin/orders?preview=1`: ข้อมูลสมมติ กดรายละเอียดและลองบันทึกสถานะ/เลขพัสดุได้.
+- `/admin/orders?preview=empty`: ตัวอย่างรายการว่าง.
+- `/admin/orders?preview=1&id=PREVIEW-1001`: ตัวอย่างออเดอร์กำลังแพ็ก.
+- Preview ไม่มี API request; บันทึกเฉพาะ sessionStorage `mdr_preview_fulfillment` แยกจากข้อมูลจริง.
+  ประวัติและรายละเอียด Preview อ่าน override เดียวกันในแท็บเดียวกัน. เปิดแท็บแยกไม่ซิงก์.
+  ปุ่มเริ่มตัวอย่างใหม่ล้างเฉพาะ fulfillment override ไม่ล้าง token/ตะกร้า/ฐานข้อมูล.
+- ลูกค้ามีปุ่มยืนยันรับสินค้าเฉพาะ delivered พร้อมกดยืนยันซ้ำก่อนส่งคำขอ; completed แสดงข้อความจบงาน.
+- เมื่อบันทึกผิดพลาด/ไม่ทราบผล ให้โหลดข้อมูลล่าสุดก่อนลองใหม่ ไม่ส่งคำขอซ้ำอัตโนมัติ.
+- ยังไม่มี Admin Orders frame โดยตรงในหน้า 02 Wireframe. ใช้ sidebar/table/toolbar จาก
+  05-Admin-Product-List (`11:152`) เป็นแนวทาง และใช้ component เดิมของโปรเจกต์.
+  รายละเอียด/ขั้นรับสินค้าดู 24d (`53:859`) และ 24e (`53:946`); ไม่เพิ่ม flow Review/Refund ของ R1.
+- รองรับ TH/EN และธีมกลาง. เมนู Admin ใน header ยังใช้ token-based visibility เดิมของโปรเจกต์;
+  API เป็นตัวบังคับสิทธิ์จริง รอรวม role-aware navigation กับ R2.
+
+ตรวจล่าสุด 16 ต.ค. 2026: Backend ผ่าน 56 tests รวม fulfillment 14, Cart 6 และ API auth boundary 1.
+Frontend helper/translation/asset tests ผ่าน 10 tests ด้วย
+`node --test frontend/test/r5-contract.test.mjs` (ใช้ Node 24 บนเครื่อง ไม่ต้องติดตั้ง package).
+รวม 66 tests. เทสต์ Service ใช้ PostgreSQL จริงกับ fixture แยกแล้วล้างตาม ID ของตัวเอง;
+ยังไม่ใช่การทดสอบ HTTP ที่ล็อกอินผ่าน Auth ของ R2 ครบเส้นทาง.
+
+#### ปรับ Pagination หน้า Admin Orders
+
+- แสดงช่วงรายการและจำนวนหน้าชัดเจน เช่น แสดง 1–3 จาก 7 คำสั่งซื้อ · หน้า 1/3.
+- มีปุ่มเลขหน้า พร้อมก่อนหน้า/ถัดไป (ปิดใช้งานเมื่อสุดทาง); จำนวนหน้ามากใช้เครื่องหมาย ….
+- เลือกจำนวนต่อหน้า 3/5/10/20/50 ได้; เปลี่ยนจำนวนหรือค้นหาใหม่กลับหน้า 1.
+- ค่าเริ่มต้นหน้า Preview = 3 เพื่อดูหลายหน้าได้จากตัวอย่าง 7 ออเดอร์; หน้าจริง = 20.
+- pageSize อยู่ใน URL และส่งให้ API; รับ integer 1–50 ตาม contract เดิม.
+- คงตัวกรอง/คำค้นหา/pageSize เมื่อเปลี่ยนหน้า เข้า detail และกลับรายการ.
+
+### ผลตรวจก่อนรวม main 16 ตุลาคม 2026
+
+- Local HEAD `77e84d9`, fetched `origin/main` `6aa8b39`: ฐาน local ตามหลัง 13 commits.
+  Fetch อัปเดต remote refs เท่านั้น ยังไม่ merge/pull เข้า working tree.
+- R2 Auth/Address PR #39 รวม main แล้ว; frontend role guard และเมนูตามบัญชีพร้อมใช้ upstream.
+  ดังนั้นส่วนนี้พร้อมเริ่ม Integration หลังรวม main ไม่ได้รอเพื่อนเขียนใหม่.
+- R3 Admin Products/Catalog PR #40, R4 Team/Header PR #36 และ R2 mobile fix #41 รวม main แล้ว.
+  ต้องปรับ Admin Orders ให้ใช้ admin-layout กลาง และเพิ่มลิงก์ Order/Cart ลงเมนูใหม่เมื่อรวม main.
+- R3 inventory และ R4 events บน main ยังมีเพียง `.gitkeep`; ยังไม่มี adapter ให้เชื่อมจริง.
+- R2 seed staff PR #42 ยังเปิดอยู่. ไม่จำเป็นต้องรอ PR นี้เพื่อเริ่มใช้ Auth/Address.
+- ทดสอบ Preview บนมือถือ 360px/390px และ desktop 1440px; เส้นทางเลือกสินค้าถึงยืนยันรับ
+  รวมค่าจัดส่งธรรมดา/ด่วน ผลจ่ายจำลองสำเร็จ/ล้มเหลว กรอง/แบ่งหน้า หน้าว่าง และ login guard.
+- พบ header กลางฐานเก่าล้นจอเมื่อภาษาไทย (ประมาณ 418px ที่ viewport 360/390px).
+  เนื้อหา main ของ R5 ไม่ล้น; อังกฤษไม่พบการล้นดังกล่าว. ใช้ header responsive ของ R2/R4
+  จาก main และตรวจซ้ำตอน Integration ไม่เพิ่ม CSS ทับ header ของเพื่อนในหน้า R5.
+- แก้ Checkout ให้ไม่ส่งคำสั่งซื้อหากบันทึก checkout retry key ไม่ได้; ใช้ error เดิมของระบบ.
+  ปรับข้อความ login ให้ตรงกับ Checkout/Orders/Admin และข้อความสำเร็จให้เปลี่ยน TH/EN ได้.
+- Payment ยังจำลอง; Omise, Waiting, ยกเลิก/คืนเงิน, carrier API และ Events ยังไม่พร้อมใช้งานจริง.
+- งาน 2–5 จึงยังเป็น 🟡 แม้ automated tests ของ R5 จะผ่านแล้ว.
+
+### หลังรวม main 16 ตุลาคม 2026
+
+- Branch `feat/r5-cart` อัปเดต HEAD เป็น `6aa8b39` ตรงกับ `origin/main`; งาน R5 ยังเป็น working changes ไม่ commit/push.
+- สำรองไฟล์แก้ไข 48 ไฟล์ไว้นอก repo และคง safety stash ก่อนรวมไว้. แก้ conflict เฉพาะ docs/layout/locales โดยเก็บทั้งสองฝั่ง.
+- R5 service/controller/SQL/preview logic คงเดิม; HTML ของ R5 5 หน้าเพิ่มเฉพาะ font link Bodoni Moda ให้ตรงกับการโหลดฟอนต์แบบใหม่ของ main.
+- Header ใช้ role-aware menu ของ R2 พร้อม Cart icon, Customer Orders และ Admin Orders ของ R5.
+- Rebuild dependencies ของ R2, migrate 002 และ seed บัญชี/ที่อยู่สำเร็จ โดยคง database volume เดิมและไม่ reset ข้อมูล.
+- Backend หลังรวม: 127 tests ทั้งหมด ผ่าน 126 ข้าม 1 (กรณี missing Auth ไม่เข้าเงื่อนไขแล้ว) ล้มเหลว 0.
+  Frontend tests ผ่าน 10/10.
+- HTTP จริง: ล็อกอิน customer แล้ว GET Cart/Orders/Addresses ตอบ 200; Admin Orders ตอบ 403.
+  ล็อกอิน staff แล้ว GET Admin Orders ตอบ 200. ไม่ได้ใช้ token ปลอมหรือข้าม middleware.
+- Preview Cart/History ยังทำงาน; header ภาษาไทยจอ 360px ไม่ล้นแล้วหลังใช้ CSS ใหม่จาก main.
+- Inventory/Events/Omise ยังไม่เชื่อม; ยังไม่ถือว่าเส้นทางสั่งซื้อจริงพร้อมใช้งานครบชุด.
+
+### Admin layout และ Cart HTTP — 17 ตุลาคม 2026
+
+#### ตรวจงานที่เดินต่อได้โดยไม่รอทีม
+
+- Fetch ล่าสุด: `origin/main=a01ff0d` เพิ่ม seed บัญชี staff ทีมผ่าน PR #42 เท่านั้น;
+  local HEAD ยังคง `6aa8b39` ไม่ merge/ไม่ทับ working changes.
+  Inventory/Events ยังเป็น `.gitkeep`; Products routes ยังมีเฉพาะ GET.
+- ผลชุดทดสอบหลังแก้ Detail/Cart และ Admin UI: Backend ผ่าน 146 ข้าม 1 ล้มเหลว 0;
+  Frontend ผ่าน 18 รวม product-cart component ใหม่ 5 ข้อ (login redirect, sold out,
+  จำนวน/validation, double click, response uncertain, TH/EN success).
+- แก้ข้อความเพิ่มตะกร้าสำเร็จ/validation ให้แปลใหม่เมื่อสลับภาษา.
+- ตรวจ UI 6 หน้า: Detail จริง, Cart/Checkout/Orders/Order Detail/Admin Orders Preview;
+  จอ 360 และ 1440px, TH/EN, light/dark รวม 48 กรณี ไม่พบหน้าล้นแนวนอน.
+  ตาราง Admin เลื่อนภายในกรอบเมื่อพื้นที่แคบ. การตรวจ Preview ไม่แทน integration ของ Inventory.
+- คงสินค้าทดสอบ 3 รายการใน local DB ให้ผู้ใช้ลอง: `[TEST R5] Labubu Macaron` 590 บาท stock 10,
+  `Collector Card` 125.50 stock 3, `Model Limited Stock` 1499 stock 1.
+  ทุกชื่อมี `[TEST R5]` และ attributes `r5_demo=true`, ไม่มีการสร้าง charge/order.
+- สร้าง fixture นี้ซ้ำได้ด้วย `docker compose exec -T api node scripts/r5-demo-products.js`.
+  เป็นคำสั่ง opt-in สำหรับ local dev เท่านั้น ไม่รวมใน seed อัตโนมัติ; รันซ้ำไม่เพิ่มซ้ำ
+  และไม่ reset สต็อก/ราคาที่มีอยู่. ทดสอบด้วย `customer` ผ่านหน้า Search/Detail/Cart.
+
+- Admin Orders ใช้ `admin-layout.js` + `admin.css` กลาง เช่นเดียวกับ Admin Products:
+  แถบบน, เมนูซ้าย, สลับภาษา/ธีม, ชื่อบัญชี และ logout. เพิ่มลิงก์ Orders ในเมนูกลาง.
+- เอา sidebar/header ของ Orders ที่ทำแยกไว้เดิมออก; ปรับสี component R5 ตาม token ของ Admin.
+- เฉพาะ `/admin/orders?preview=1` และ `?preview=empty` แสดง fixture ได้โดยไม่ล็อกอิน;
+  ไม่เรียก API. หน้าจริงใช้ `requireAdminPage` เดิม และ API ยังบังคับ Auth/Admin จริง.
+- ตรวจในเบราว์เซอร์: layout กลางแสดงครบ, เปลี่ยนหน้า 2/3, เปิด detail แล้วกลับมายัง
+  page/pageSize เดิมได้; หน้าจริงที่ไม่ล็อกอินไป `/login?next=%2Fadmin%2Forders`.
+- เพิ่ม `backend/test/cart-http.test.js` 6 กรณีผ่านการล็อกอิน username/password จริงของ R2:
+  เพิ่ม/รวมจำนวน, เพิ่มลด, stock overflow, validation, hidden product, unverified account,
+  ownership, ลบเดี่ยว/หลายรายการ, concurrent additions, stock เปลี่ยน และตะกร้าว่าง.
+  ใช้บัญชี/สินค้าใน PostgreSQL ที่สร้างเฉพาะรอบทดสอบ ล้างตาม ID หลังจบ;
+  ไม่ใช้ Auth/Cart mocks และไม่แก้ตะกร้าหรือสินค้าของผู้ใช้เดิม.
+- Cart HTTP ไม่สร้าง order/charge และไม่ตัดหรือจองสต็อก. Checkout ยังรอ Inventory ของ R3.
+
+### ตรวจจัดส่งจนลูกค้ายืนยันรับจริง — 17 ตุลาคม 2026
+
+#### จุดเชื่อม Detail → Cart ที่แก้เพิ่มเติม
+
+- พบหน้า Detail เดิมแสดงเฉพาะชื่อ ยังไม่มีปุ่ม Cart แม้ Cart HTTP tests ผ่าน.
+  เพิ่ม `product-cart.js` เป็นส่วนควบคุม R5 ที่ mount จาก Detail ของ R4:
+  ราคา/stock, จำนวน, เพิ่มลงตะกร้า, เปิดตะกร้า, login redirect, TH/EN และ error.
+- ใช้ `api.post('/cart/items', {product_id,quantity})`; ปิดกดซ้ำระหว่างส่ง,
+  หาก response ไม่แน่นอนให้ตรวจตะกร้าก่อนเพิ่มซ้ำ. ไม่มีการเพิ่มสินค้าตัวอย่างเข้า API.
+- ตรวจผ่าน UI จริงด้วย customer: เปิดสินค้าชั่วคราวราคา 125.50 เลือก 2 ชิ้น,
+  กดเพิ่มสำเร็จ เปิด `/cart` เห็นจำนวน 2 ยอดสินค้า 251.00; ล้าง fixture หลังจบ.
+- สินค้าตัวอย่างที่ Home แสดงเมื่อ catalog ว่างไม่มีแถว product จริง จึงซื้อไม่ได้;
+  ต้องเพิ่มสินค้าสถานะ available และ stock > 0 ผ่าน Admin Products ก่อนลองซื้อเอง.
+
+- เพิ่ม `backend/test/fulfillment-http.test.js` ผ่าน 3 กลุ่ม: ล็อกอินผ่าน R2 จริง,
+  `paid → packing → shipped → delivered → completed`, อ่านเลขพัสดุ/ประวัติ,
+  retry receipt ไม่เพิ่ม log, สิทธิ์เจ้าของ/แอดมิน, ห้ามรับก่อน delivered,
+  ห้ามข้ามสถานะ, stale version และห้ามจัดส่งเมื่อ payment ไม่สำเร็จ.
+- ตรวจผ่านเบราว์เซอร์หน้าจริง ไม่มี `preview`: บัญชี seed `staff` กดแพ็ก,
+  ใส่บริษัทขนส่ง/เลขพัสดุ, จัดส่ง, ถึงปลายทาง; logout แล้ว `customer` ล็อกอิน,
+  เห็นข้อมูลตรงกัน กดยืนยันรับสองขั้นสำเร็จ. รีเฟรชแล้วยัง completed และ History แสดงรับของแล้ว.
+- ตรวจ DB ยืนยัน status `completed` และ log ครบ 5 ขั้น. ล้างออเดอร์/สินค้าชั่วคราวแล้ว
+  โดยคงบัญชี seed และข้อมูลเดิมไว้. ไม่มี charge ใหม่หรือการตัด stock ในการตรวจครั้งนี้.
+- ผลรวมล่าสุด Backend 147 tests: ผ่าน 146 ข้าม 1 ล้มเหลว 0; Frontend ผ่าน 13/13.
+- ขอบเขตนี้เริ่มจากออเดอร์ paid ที่สร้างเป็น fixture ไม่ได้เกิดจาก Checkout/Omise;
+  การทดสอบซื้อถึงรับสินค้าครบเส้นทางยังรอ Inventory ของ R3.
+
+
+### R5 — TrueMoney Wallet (Omise Test)
+
+Checkout now offers only PromptPay and TrueMoney Wallet. Existing historical card/bank-transfer records remain readable.
+
+- POST /api/orders/quotes: payment_method accepts promptpay or truemoney. The selected method is bound into quote_hash.
+- POST /api/orders/payment-attempts: same checkout fields; truemoney additionally requires phone_number (string, exactly ten digits starting with 0). Browser-supplied amounts and return URLs are ignored. The phone is sent to Omise and retained in the private attempt snapshot; it is not emitted in analytics events or public order responses.
+- TrueMoney limit: THB 20–100,000; PromptPay remains THB 20–150,000. Inventory readiness is checked before any payable charge.
+- Attempt responses add payment_method and authorize_url. authorize_url is present only for a pending wallet charge, with HTTPS pay.omise.co allowed. qr_url is null for TrueMoney.
+- The server creates the source and charge in one Omise request using source[type]=truemoney and source[phone_number]. Return URL is APP_URL + /checkout?payment_attempt=<server-attempt-uuid> (configure APP_URL for the actual frontend). The identifier carries no paid status; GET/sync enforce ownership and verify the provider.
+- On return, restore the authenticated user's existing attempt and retrieve its charge through the server. Redirect parameters never establish payment success. Webhook and sync share source/amount/currency/metadata/Test-mode checks and idempotent finalization.
+- Successful orders store payment.method=omise_test_truemoney. Failed/expired attempts preserve cart and create no order. Existing needs_review recovery applies.
+- Test provider connection without creating an order: docker compose exec -T api node scripts/omise-smoke.js --truemoney. Creates THB20 using the official example phone, validates authorization URL, marks the charge failed and independently retrieves it. This does not prove completed Checkout integration.
+- Checkout preview remains local simulation and does not contact Omise.
+
+Reference: https://docs.omise.co/truemoney-wallet . Live activation requires requesting TrueMoney access from Omise; no Live keys are accepted by this implementation.
+
+
+### R5 — Payment recovery and integration verification (2026-11-01)
+
+- TrueMoney return identifies the server-created attempt via payment_attempt. Checkout validates the UUID, authenticates, reads the owned attempt and syncs it before treating it as paid. Query-string status/order_id are never trusted. Completed attempts can be restored even after the original tab/session storage is gone.
+- The login next URL preserves this return identifier. A terminal-payment restart drops the old return query and opens /checkout. Browser back/forward cache restoration restarts countdown and checks the same attempt.
+- Delayed pending notifications cannot reopen failed/expired attempts. Successful verified payments retain existing idempotent order creation, source/metadata/amount checks, stock transaction rollback and needs_review recovery.
+- Automated full HTTP flows cover both methods: real authentication, Cart add/update/selection, quote, provider attempt, verified result, customer history/detail, admin packing/shipping/delivery, owner receipt, duplicate callbacks, exact stock movement and queued events. Only gateway and Inventory are injected contract doubles; no mock runtime mode is exposed to users.
+- Final app integration still requires R3 Inventory and R4 event transport. No stock is reserved while a payment is pending; two paid customers competing for the last item yield one order and one needs_review. Uncertain creation without a known charge ID remains blocked from recharging until staff reconciles the Omise charge through the existing sync API.
+
+
+### R5 — Order Detail links to R1 review/refund
+
+- For delivered/completed orders with succeeded payment, the customer page reads GET /reviews/reviewable and GET /refund-requests/refundable through the shared API wrapper.
+- Buttons are attached to each purchased item, using order_item_id: /write-review?item=<id> and /refunds?item=<id>. Only IDs returned as eligible by R1 are enabled; refund requires refundable_qty > 0. The R1 APIs remain authoritative for ownership, duplicate reviews, quantities and the seven-day window at submission time.
+- Missing/failed eligibility API does not enable buttons. Healthy review/refund responses can still be used independently; the page offers a reload for unavailable eligibility. Preview buttons are disabled examples and never send fake IDs to R1.
+- R5 fulfillment writes the delivered transition to order_status_log in the same transaction. Receipt writes delivered -> completed separately; it does not reset the refund window.
+- Cross-module integration tests in omise-payments.test.js verify real R1 APIs against R5 paid orders with constructor-injected provider/Inventory doubles. R1 modules are now merged locally and these tests pass, including admin partial/full refund, stock movements, audit and payment/order status.
+
+
+### R5 — Events / admin audit integration readiness (2026-11-02)
+
+**Browser context:** POST /cart/items, POST /orders/quotes and POST /orders/payment-attempts accept optional session_id (1–100 ASCII letters/digits/underscore/hyphen; absent/null allowed for older clients). Invalid values return 400 INVALID_SESSION before mutation. R5 reads/writes the same mdr_session {id,last} format and 30-minute idle window as R1 events.js. Browser storage failure uses memory for the current page. Session is analytics context, never authorization.
+
+**Single producer:** Cart add and verified purchase enqueue events on the server. R5 does not also call trackEvent in the browser. Updates/removals, failed mutations, preview, failed payments and duplicate completion do not create extra business events. Existing outbox rows remain readable; missing session context gets a stable opaque event-derived fallback.
+
+**R4 adapter:** createEvents({r4Transport,receiverDeduplicates:true}) prepares bodies exactly {product_id,event_type,session_id}, one per unique product. Quantity/price/order/user identifiers do not enter this public body. r4Transport(body,{signal,idempotencyKey,userId}) is constructor-injected; it must resolve status 201 or 204 and pass user identity through an agreed trusted channel. Do not save/replay browser Bearer tokens in the outbox. Stable idempotency key is parent event key + product ID; receiver must honor it (e.g. a dedup header agreed with R4). The contract/helper from merged PR #51 does not yet specify this or server identity propagation; it does not provide the Events API implementation.
+
+Migration 007 stores delivered_product_ids so partial success retries only unacknowledged products. Lost HTTP acknowledgement can still cause a retry of the same key; only receiver deduplication closes that gap. Per-call timeout is two seconds, AbortSignal forwarded. Payloads/raw transport errors/keys are not logged. Omise Test purchase events are excluded by default; allowTestEvents is explicit constructor-only test plumbing.
+
+No real R4 transport, worker, environment switch or HTTP activation endpoint is enabled. Without an agreed dedup receiver, per-product dispatch returns contract_pending and sends nothing. The original internal envelope transport is preserved for existing adapter tests.
+
+**Admin audit:** status and tracking changes call the R1 logAdminAction helper using the exact fulfillment transaction client when that module is present. Before R1 merge, an R5 adapter inserts the same parameterized shared admin_action_log schema. Both are mandatory: audit failure rolls back order/status/tracking writes. action_type is update_order_status or update_order_tracking, target_type=order, target_id=order ID. Notes contain only order code and transition, not addresses, names, phone numbers or tracking contents. Rejected/stale requests, unchanged tracking and customer receipt add no admin action. Receipt still has its separate order_status_log entry.
+
+Isolated R1 activity integration adds order target codes/search and links /admin/orders?id=<id>, with TH/EN labels. The R1 shared-file extension is preserved separately in .local/r5/r1-order-audit-extension.patch pending the normal main merge; it is not copied into primary R1 paths before merge.
 `EVENTS_ENABLED = true` ใน `frontend/js/config.js` แล้ว (หน้าเว็บส่งจริง) — ปิดชั่วคราวได้โดยเปลี่ยนเป็น `false`
 
 ## สินค้าแนะนำ (R4)
@@ -1251,6 +1927,26 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
   `docker compose exec api node scripts/demo-activity.js` (ไม่รันเองตอน `docker compose up` · รันได้ครั้งเดียว · ล้างด้วย `npm run db:reset`)
   ได้ลูกค้าตัวอย่าง 8 คน (`demo_ploy` … `demo_ton` รหัสผ่าน `Demo@1234`) พร้อมคำสั่งซื้อ รีวิว wishlist และ `user_event`
   ผลสุ่มเหมือนกันทุกเครื่อง · ไม่ตัดสต็อก · รายละเอียดอยู่หัวไฟล์ `backend/scripts/demo-activity.js`
+R1 activity integration in the primary branch now includes order target codes/search and links /admin/orders?id=<id>, with TH/EN labels, after the main merge through PR #52. The earlier isolated patch is only a local backup, not a pending integration step.
+
+### R5 → R4 Events — ข้อเสนอรอ R4 ยืนยัน (7 พ.ย. 2026)
+
+**สถานะที่ตรวจ:** fetched `origin/feat/r4-events-api` ถึง `eca5f61` มี `POST /api/events` และเปิด `EVENTS_ENABLED` แล้ว แต่ยังไม่รวมเข้า main/branch R5 ที่ตรวจ (`origin/main` ขณะตรวจครั้งนั้น = `1ad3a21`). API ปัจจุบันรับ `{product_id,event_type,session_id}` อ่านผู้ใช้จาก Bearer token แบบ optional และ INSERT ทุกคำขอ ยังไม่พบ deduplication หรือช่องทางรับ trusted user identity จาก outbox ฝั่ง Backend ข้อเสนอต่อไปนี้ **ยังไม่ใช่ความสามารถของ API ปัจจุบัน** และยังไม่เปิดส่งจริงจาก R5
+
+| เรื่องที่ต้องตกลง | ข้อเสนอของ R5 | สิ่งที่ขอให้ R4 ยืนยัน |
+|---|---|---|
+| ป้องกันส่งซ้ำ | ใช้ `Idempotency-Key` ใน header; key คงเดิมต่อ outbox event + product หนึ่งรายการ แม้ retry หรือคำตอบหาย ไม่เปลี่ยน public body | ชื่อ/ความยาว/ขอบเขต key และวิธีเก็บแบบ durable ที่กัน concurrent requests ได้; key เดิมและข้อมูลเดิมตอบสำเร็จโดยไม่ INSERT อีก, key เดิมแต่ข้อมูลต่างตอบ 409; กำหนดระยะเก็บให้ครอบคลุมช่วง retry |
+| ตัวตนผู้ใช้จาก Backend | เรียก service ภายในที่ตรวจสอบตัวตนแล้ว โดยส่ง `userId` เป็น trusted context จาก outbox; หากใช้ HTTP ต้องมีช่องทางยืนยัน service แยกจาก Browser และตกลงรูปแบบก่อน | เลือก in-process service หรือ authenticated internal HTTP และระบุการตรวจสิทธิ์; ห้ามเชื่อ `user_id` ที่ Browser ส่งเอง ห้ามเก็บ/ส่งซ้ำ Bearer token ของลูกค้าใน outbox และไม่ลด event ของลูกค้าที่รู้ตัวตนให้เป็น anonymous โดยเงียบ ๆ |
+| ผลตอบรับ | adapter R5 รับ HTTP 201 หรือ 204 เป็นการรับสำเร็จ; ส่งซ้ำที่ dedup แล้วให้ใช้ผลสำเร็จที่ตกลงกัน | ยืนยัน response ของรายการใหม่/รายการซ้ำ และให้ return หลัง event กับ dedup record commit แล้ว; กำหนด error/retry ให้ชัด |
+
+**ทางส่งเดียว:** `add_to_cart` เข้าคิวหลังเพิ่มตะกร้าสำเร็จ; `purchase` เข้าคิวหลัง Backend ตรวจ provider และสร้าง Order สำเร็จ ไม่ส่งจากการแสดง QR หรือ redirect กลับมาอย่างเดียว ส่งแยกต่อสินค้าไม่ซ้ำในออเดอร์ โดยไม่เรียก `trackEvent()` ฝั่ง Browser ซ้ำสำหรับสอง event นี้ Omise Test purchase ยังไม่เข้าข้อมูลแนะนำจริงตามค่าเริ่มต้น
+
+**เกณฑ์ก่อนเปิดใช้:** ทดสอบส่ง key เดิมซ้ำ/พร้อมกันแล้วมี event เดียว, คำตอบหายแล้ว retry ไม่เพิ่มแถว, ระบุผู้ใช้ถูกคนโดย Browser ปลอมไม่ได้ และส่งบางสินค้าสำเร็จแล้ว retry เฉพาะที่เหลือ เมื่อ R4 ยืนยัน contract จึงเชื่อม transport/worker และทดสอบร่วมกัน; ระหว่างนี้ R5 คงการส่งจริงปิดไว้
+
+
+### R5 — รวม main 7 พ.ย. 2026
+
+รวม upstream ถึง `9a5ada6` (PR #53–58) ใน working tree R5 แล้ว: Search/Detail, Events/Recommendation, Header และ Embedding/Docker. ใช้ Gallery/breadcrumb/specs ของ R4 พร้อม mount Cart ของ R5 โดยรักษาจำนวน/ผลการเพิ่มเมื่อสลับภาษา; ใช้ Header ของ R2 และคงเมนู Cart/Orders. Events API มีในแอปแล้ว แต่ outbox R5 ยังไม่เปิด dispatch เพราะ contract deduplication/trusted identity ยังรอยืนยัน. Inventory ยังไม่มี implementation. ข้อความก่อนหน้านี้ที่ระบุว่ายังไม่ merge เป็นบันทึกตามวันที่ตรวจ ไม่ใช่สถานะหลังรวมครั้งนี้.
 
 ### `GET /recommend/related/:productId?limit=8` (ไม่ต้องล็อกอิน)
 
@@ -1321,3 +2017,82 @@ trackEvent('add_to_cart', product.product_id); // ไม่ต้อง await �
               "match": "name", "similarity": 0.719 } ],
   "meta": { "mode": "semantic" } }
 ```
+### R5 — Local Events integration (7 พ.ย. 2026)
+
+สถานะนี้แทนข้อเสนอ HTTP transport / worker disabled ของ R5 ในหัวข้อก่อนหน้า สำหรับ deployment ปัจจุบัน R4 และ R5 ใช้แอปและ PostgreSQL เดียวกัน จึงเชื่อม service ภายในแทนการเรียก trackEvent จาก Browser ซ้ำ
+
+- `r5-local-events.createDispatcher()` ล็อก outbox ด้วย `FOR UPDATE SKIP LOCKED` เรียก `events.service.record(body, transactionClient)` และบันทึก delivered ใน transaction เดียวกัน การเพิ่ม optional client เป็น interface ภายในเท่านั้น; HTTP ของ R4 ยังใช้ transaction ของตนเองตามเดิม ไม่รับ client หรือ user_id จาก Browser
+- userId มาจาก outbox ที่ Cart/Order service สร้างจากผู้ใช้ที่ผ่าน Auth แล้ว ส่วน session ใช้รูปแบบเดียวกับ R1; ส่งหนึ่ง event ต่อสินค้าไม่ซ้ำใน purchase ไม่ส่งราคา/ที่อยู่/โทรศัพท์/token เข้า user_event
+- ถ้า product ใดเขียนไม่สำเร็จ จะ rollback event ทุกสินค้าใน outbox แถวนั้นและนัด retry 30 วินาที การปิด process/rollback ทำให้ทั้ง event และ acknowledgment ไม่ commit; concurrent workers/replay จึงไม่เพิ่ม event ซ้ำสำหรับ outbox เดิม ไม่ต้องเพิ่ม dedup key ให้ public HTTP API แต่ห้ามเปิด HTTP transport และ local worker ส่งคิวเดียวกันพร้อมกัน
+- `server.js` เริ่ม worker ทุก 1 วินาที สูงสุด 25 outbox rows ต่อรอบ ไม่มีรอบซ้อน รอรายการที่กำลังทำก่อนปิด pool เมื่อ shutdown; test ที่ import app อย่างเดียวไม่เริ่ม worker
+- add_to_cart ส่งหลัง Cart commit; purchase ส่งหลัง verified payment และ Order commit เท่านั้น Preview/failed payment ไม่สร้าง purchase; callback ซ้ำไม่สร้าง outbox ซ้ำ การเพิ่มสินค้าจริงแยกกันเป็นคนละ event ตามเดิม
+- Omise Test purchase ยังคงเก็บคิวแต่ไม่ส่งเข้าข้อมูลแนะนำจริงตามค่าเริ่มต้น; `allowTestEvents:true` ใช้เฉพาะ constructor ใน fixtures เพื่อพิสูจน์เส้นทางครบ ไม่มี env/HTTP switch เปิดโหมดนี้
+- Public `POST /events` และ `trackEvent` ของ R4/R1 ยังทำงานเหมือนเดิมสำหรับ view/click/wishlist; R5 ไม่เรียกซ้ำสำหรับ add_to_cart/purchase ข้อเสนอ Idempotency-Key/trusted internal HTTP ก่อนหน้าเป็นทางเลือกหากแยกบริการในอนาคต ไม่ใช่ blocker ของ local service นี้แล้ว
+- เวลารัน tests บน DB เดียวกับ API ควรพัก API/worker แล้วใช้ container ทดสอบชั่วคราวก่อนเปิด API คืน เพื่อไม่ให้ worker ปกติแย่ง fixtures การพักนี้ไม่ลบ database volume หรือเปลี่ยนข้อมูลผู้ใช้เดิม
+
+#### Events final review — 7 พ.ย. 2026
+
+ตรวจซ้ำเรื่อง concurrent dispatch, retry, SQL failure, acknowledgment failure และ rollback ก่อน commit: event กับ outbox acknowledgment ย้อนกลับพร้อมกัน ไม่เพิ่มแถวซ้ำเมื่อ retry. ปรับ shutdown ให้หยุด scheduling ของ worker ทันทีและกัน signal ซ้ำ ก่อนปิด pool หลัง HTTP/in-flight งานจบ ผล Backend ล่าสุด 282 ข้อ: ผ่าน 277 ข้าม 5 ล้มเหลว 0; ไม่เรียก Omise จริง. Test purchases ยังถูกแยกจากการส่งปกติ ไม่มี Browser producer ซ้ำสำหรับ event ของ R5.
+
+
+### R5 — รวม main 9 พ.ย. 2026
+
+รวม upstream ถึง `f95aa8d` (Semantic Search / For You / Related) ใน working tree แล้ว คง Cart mount, R5 routes และ local Events worker พร้อม R4 model warm-up. งาน Events เดิมที่ยังไม่ commit ถูกคืนจากสำรอง ไม่ได้เปลี่ยนเป็น Browser producer. Inventory ของ R3 ยังต้องตรวจตาม implementation ก่อนทดสอบการซื้อจริง.
+
+### R5 — รวม Inventory / Sales ของ R3 (15 พ.ย. 2026)
+
+รวม main ถึง `79c4a57` แล้ว มี Inventory `applyStockChange(client, {productId,type,change,actorId,orderItemId,note})` และ Sales Summary ของ R3 จริง ข้อความเก่าที่ระบุว่าไม่มี Inventory เป็นประวัติก่อนรวมครั้งนี้ อย่างไรก็ตาม adapter ของ R5 ยังรอ `deductStock(client,line)` จึงยังตอบ INVENTORY_NOT_READY และไม่เปิดการซื้อผ่าน provider จนปรับ boundary ให้ตรง R3 พร้อมตรวจ transaction/rollback และซื้อครบเส้นทาง ห้ามแก้ด้วย fallback ตัดสต็อกเอง เมนู Admin คงทั้ง Orders และ Sales; config คงทั้ง Omise และ Supabase. ผลหลังรวม Backend 356 ผ่าน / 1 ข้าม / 0 ล้มเหลว, Frontend 37 ผ่าน.
+
+### R5 — Step 1: Inventory จริง (15 พ.ย. 2026)
+
+อัปเดตแทนสถานะรอ adapter ในบันทึกก่อนหน้า: เชื่อม R3 service แล้วโดยไม่แก้โมดูล Inventory ของ R3
+
+| Input ภายใน R5 | Input ที่ส่ง R3 |
+|---|---|
+| product_id | productId เป็น number |
+| quantity จำนวนเต็มบวก | change = -quantity, type = sale |
+| order_item_id | orderItemId เป็น number |
+| created_by | actorId = user_id ผู้ซื้อ ไม่ใช่ admin โดยอัตโนมัติ |
+| client | PostgreSQL transaction client ตัวเดิม ไม่มี nested transaction/commit ใน adapter |
+
+R5 ตรวจ IDs/quantity ก่อนเรียก R3 และตรวจ available/stock ภายใต้ product locks ในขั้นสร้าง Order; R3 ล็อกและลดสต็อกพร้อมบันทึก StockMovement. R3 คืน null เมื่อไม่พบสินค้า → adapter throw PRODUCT_NOT_FOUND; INSUFFICIENT_STOCK/SQL errors ส่งต่อเพื่อ rollback. ถ้า paid fulfillment ล้มเหลว คง attempt เป็น needs_review และ retry charge เดิมหลังแก้สาเหตุ ไม่สร้าง charge ใหม่อัตโนมัติ
+
+checkout.test.js และ omise-payments.test.js เปลี่ยนจาก Inventory double มาใช้ production adapter + R3 service จริงแล้ว ยังคง Omise gateway double เพื่อไม่สร้าง charge ภายนอก เฉพาะ fault injection tests เท่านั้นที่จำลองข้อผิดพลาด ผล targeted 43 ผ่าน ไม่มีข้าม/ล้มเหลว ครอบคลุม two-buyers/last-item, duplicate sync/webhook, คืนค่าเมื่อ ledger insert ล้มเหลว, rollback หลายสินค้า และ retry ได้ sale movement เดียว. ยังไม่ถือว่าเสร็จ Step 2 ซึ่งต้องตรวจ Omise Test ผ่าน provider/หน้าเว็บจริงแยกต่างหาก
+
+ผล regression หลัง Step 1: Backend 360 ข้อ ผ่าน 359 / ข้าม 1 / ล้มเหลว 0 (กรณี missing Auth ถูกข้ามเพราะ Auth มีแล้ว). ไม่สร้าง charge กับ provider จริง.
+
+### R5 — Step 2: Checkout / Omise Test ภายนอกจริง (15 พ.ย. 2026)
+
+ผ่านเว็บหลักและ production API/R3 Inventory โดยไม่มี gateway/stock doubles ในรอบนี้ ใช้บัญชีและสินค้า QA แยก ไม่ใช้ Live keys/เงินจริง:
+
+| วิธี | failed | successful |
+|---|---|---|
+| PromptPay | สร้าง QR ฿80 จาก Omise จริง แล้วใช้ Test API mark_as_failed; ไม่สร้างออเดอร์ สต็อก/Cart คงเดิม | Test API mark_as_paid → server retrieve ผลและสร้าง ORD-1878 ฿80, ลดสินค้า 2 ชิ้นจาก 6 เป็น 4 พร้อม sale movement เดียว |
+| TrueMoney | เปิด Test authorization page ของ Omise กด failed แล้วกลับ return_uri → ไม่มีออเดอร์เพิ่ม สต็อก/Cart คงเดิม | สร้างรายการใหม่ เปิดหน้า Test กด paid แล้วกลับมา ORD-1879 ฿60, ลดสินค้า 1 ชิ้นจาก 6 เป็น 5 พร้อม sale movement เดียว |
+
+หลัง PromptPay สำเร็จ Cart ลบเฉพาะสินค้าที่เลือกซื้อและเหลือ TrueMoney; หลัง TrueMoney สำเร็จ Cart ว่าง. ยอดแต่ละออเดอร์รวมค่าจัดส่งธรรมดา ฿40 ตามราคา QA. ทั้ง 4 charge ตรวจกลับจาก Omise ว่า livemode=false, amount/metadata/status ตรง attempt และไม่มี pending เหลือ
+
+ตรวจ concurrent duplicate authenticated HTTP sync และ replay charge.complete ผ่าน service handler (ซึ่ง retrieve provider จริงอีกครั้ง): ยังคง 2 orders / 2 payments / 2 sale movements / 2 paid logs ไม่เพิ่มซ้ำ. เปิด return URL ของ TrueMoney ในแท็บใหม่โดยไม่มี sessionStorage เดิม → restore ไปออเดอร์เดิมได้. รอบนี้ไม่ได้ทดสอบ public webhook delivery จาก Omise ผ่านอินเทอร์เน็ตเข้ามาที่ localhost หรือ Live/OTP จริง; webhook signature boundary มี automated tests แยก
+
+ใช้ Omise Test controls ตาม https://docs.omise.co/charges-api และ https://docs.omise.co/truemoney-wallet . บัญชี QA และออเดอร์เก็บไว้สำหรับ Step 3; สินค้า QA ซ่อนจาก storefront หลังตรวจแล้ว มีข้อมูล Test สองออเดอร์ใน local DB จึงต้องแยกจากยอดขายธุรกิจจริงในการประเมินรายงาน ไม่ได้แก้ข้อมูลผู้ใช้เดิม ไม่ commit/push
+
+### R5 — Step 3: Fulfillment / Review / Refund ของ R1 (15 พ.ย. 2026)
+
+ตรวจด้วยออเดอร์ QA จาก Step 2: admin เปลี่ยน paid → packing → shipped → delivered ผ่าน API จริง และ customer ยืนยันรับเป็น completed. มี delivered log ครั้งเดียวต่อออเดอร์; R1 นับ deadline จาก log นี้ + 7 วัน และยืนยันรับไม่เริ่มนับใหม่. ตรวจสิทธิ์ข้ามบัญชีและการส่ง refund ก่อน delivered ถูกปฏิเสธ. ทดสอบผ่านเว็บจริงจาก Order Detail ไปเขียนรีวิว 5 ดาว และส่งคำขอคืนเงิน; admin อนุมัติ/ปิดคำขอผ่าน UI จริง
+
+| QA order | Refund | ผลที่ตรวจ |
+|---|---|---|
+| 1878 PromptPay | RF079 คืน 1 จาก 2 ชิ้น ฿20 แบบ return | stock 4 → 5 พร้อม return movement ครั้งเดียว; order completed / payment succeeded; อีก 1 ชิ้นยังขอคืนได้ |
+| 1879 TrueMoney | RF080 คืนครบ 1 ชิ้น ฿20 แบบ write_off | stock คง 5 ไม่มี return movement; order/payment refunded และมี refunded log ครั้งเดียว |
+
+กด approve/refund ซ้ำได้ 409 ไม่มีเพิ่มสต็อกหรือ status log; review ซ้ำได้ 409. การคืนเงินของ R1 ในรอบนี้เป็นบันทึกจำลองในแอป ไม่เรียก Omise Refund API ไม่โอนเงินจริง และไม่เปลี่ยน charge ที่ provider. ยอดคืนคิดเฉพาะสินค้า ไม่รวมค่าส่ง ตามกฎปัจจุบันของ R1. ตรวจ deadline 7 วันจากข้อมูลจริง แต่ไม่ได้รอจนหมดอายุ 7 วันในรอบ manual นี้. ไม่มี application fix เพิ่มใน Step 3 และยังไม่ commit/push
+
+### R5 — Step 4: ตรวจ Sales ของ R3 / Events ของ R4 (15 พ.ย. 2026)
+
+Sales Summary API จริงสำหรับวันที่ 15 พ.ย. (Asia/Bangkok) ตรงกับ SQL ตรวจแยก: QA 2 orders / 3 units / 1 customer, gross ฿140 รวมค่าส่ง ฿80, refunds ฿40, net ฿100, average order ฿70. รายวันตรงยอดรวม; admin อ่านได้ ลูกค้า 403 และไม่ล็อกอิน 401. นี่เป็นข้อมูลทดสอบใน local DB ไม่ใช่ยอดเงินจริง. R3 นับ refunded order ใน gross แล้วหัก refund แยก; units เป็นจำนวนขายก่อนคืน และยอดตามสินค้า/หมวดไม่รวมค่าส่ง
+
+ตรวจ purchase outbox มีหนึ่งรายการต่อออเดอร์สำเร็จ 1878/1879 และไม่มีจาก failed charge. Production dispatcher ข้าม Omise Test purchase ตามกฎเดิม. ตรวจ Cart service → outbox → R4 record จริงใน transaction ทดสอบ: add_to_cart 1 event พร้อม session เดิม และ purchase 2 events เมื่อเปิด allowTestEvents เฉพาะ fixture; dispatch ซ้ำได้ empty. Rollback transaction ทั้งชุดแล้ว ตรวจ user_event ไม่เพิ่ม, Cart QA ว่างและสินค้ายัง hidden เพื่อไม่ปนข้อมูลระบบแนะนำ
+
+ชุด sales.test.js / events.test.js / r5-events.test.js ผ่าน 30 ข้อ ไม่มีข้ามหรือล้มเหลว ครอบคลุม concurrent dispatch, retry, SQL/ack/commit rollback และสิทธิ์ Sales. เปิด API กลับแล้วและ API/DB/web healthy; ตรวจ integration ซ้ำผ่าน. Step 4 ไม่มี source fix เพิ่ม ไม่ commit/push และไม่ได้เพิ่มการทดสอบ public webhook delivery หรือคืนเงินจริง
+
+อัปเดต flow Checkout: เข้า Checkout จาก Cart ที่มีรายการเลือกแล้วต้องแสดงตัวเลือก PromptPay/TrueMoney ก่อน แม้มี active attempt; ยืนยันวิธีเดิมจะ resume charge เดิม ไม่สร้างซ้ำ. หากเลือกวิธีต่างจากรายการ pending เดิม ให้จบรายการเดิมก่อนและมีปุ่มเปิดรายการเดิม. Direct provider return และ recovery ที่ไม่มี Cart selection ยังคงกู้รายการเดิมได้. Frontend regression หลังแก้ flow ผ่าน 39 ข้อ

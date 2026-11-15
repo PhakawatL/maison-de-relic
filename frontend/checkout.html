@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title data-i18n="checkout.pageTitle">ชำระเงิน · Maison de Relic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Bodoni+Moda:opsz,wght@6..96,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/pages/cart.css"><link rel="stylesheet" href="/css/pages/checkout.css">
+</head><body><header id="site-header"></header>
+<main class="container cart-page checkout-page">
+<a id="checkout-back" class="checkout-back" href="/cart" data-i18n="checkout.back">← กลับไปตะกร้า</a>
+<h1 data-i18n="checkout.title">ชำระเงิน</h1>
+<aside id="checkout-preview" class="cart-preview" hidden><strong data-i18n="cart.previewTitle">โหมดตัวอย่าง</strong><p data-i18n="checkout.previewText">ข้อมูลตัวอย่าง ไม่มีการสั่งซื้อหรือชำระเงินจริง</p><a href="/cart?preview=1" data-i18n="checkout.previewBack">กลับไปตะกร้าตัวอย่าง</a> · <a href="/orders?preview=1" data-i18n="orders.viewHistory">ดูประวัติการซื้อ</a></aside>
+<div id="checkout-message" role="status" aria-live="polite" tabindex="-1"></div>
+<div id="checkout-content" aria-busy="true"></div>
+<noscript>กรุณาเปิด JavaScript เพื่อใช้งานหน้าชำระเงิน</noscript>
+</main><footer id="site-footer"></footer><script type="module" src="/js/layout.js"></script><script type="module" src="/js/pages/checkout.js"></script></body></html>

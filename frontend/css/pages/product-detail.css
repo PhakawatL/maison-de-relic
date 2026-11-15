@@ -1,0 +1,24 @@
+#product-detail { padding-block:16px 40px; }
+.detail-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:40px; align-items:start; }
+.detail-layout > * { min-width:0; }
+.detail-image-stage { aspect-ratio:1; display:grid; place-items:center; overflow:hidden; border:1px solid var(--color-border); border-radius:18px; background:var(--color-surface); }
+.detail-main-image { width:100%; height:100%; object-fit:contain; }
+.detail-main-image[hidden],[data-image-fallback][hidden] { display:none; }
+[data-image-fallback] { color:var(--color-muted); padding:24px; text-align:center; }
+.detail-thumbnails { display:flex; gap:10px; margin-top:14px; overflow-x:auto; padding:3px; }
+.detail-thumbnail { flex:0 0 76px; width:76px; height:76px; overflow:hidden; padding:4px; border:1px solid var(--color-border); border-radius:10px; background:var(--color-surface); cursor:pointer; }
+.detail-thumbnail[aria-pressed=true] { border:2px solid var(--color-primary); }
+.detail-thumbnail:focus-visible { outline:2px solid var(--color-primary); outline-offset:2px; }
+.detail-thumbnail img { width:100%; height:100%; object-fit:contain; }
+.detail-category { color:var(--color-muted); margin:0 0 10px; }
+.detail-summary h1 { margin:0 0 12px; font-size:clamp(25px,3vw,36px); line-height:1.4; overflow-wrap:anywhere; }
+.detail-code { color:var(--color-muted); font-size:13px; }
+.detail-facts,.detail-attributes { margin:20px 0 0; }
+.detail-facts > div,.detail-attributes > div { display:grid; grid-template-columns:140px minmax(0,1fr); gap:16px; padding:12px 0; border-bottom:1px solid var(--color-border); }
+.detail-facts dt,.detail-attributes dt { color:var(--color-muted); }
+.detail-facts dd,.detail-attributes dd { margin:0; overflow-wrap:anywhere; }
+.detail-summary .product-cart-panel { max-width:none; }
+.detail-description { margin-top:40px; padding:28px; background:var(--color-surface); border:1px solid var(--color-border); border-radius:16px; }
+.detail-description h2 { margin:0 0 16px; font-size:21px; }.detail-description h2:not(:first-child) { margin-top:28px; }
+.detail-description-text { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; margin:0; }
+@media(max-width:760px) { .detail-layout { grid-template-columns:1fr; gap:24px; }.detail-description { padding:20px; }.detail-facts > div,.detail-attributes > div { grid-template-columns:110px minmax(0,1fr); gap:12px; } }

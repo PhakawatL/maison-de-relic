@@ -49,6 +49,9 @@ services:
       MAIL_USER: ${MAIL_USER:-}
       MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      OMISE_PUBLIC_KEY: ${OMISE_PUBLIC_KEY:-}
+      OMISE_SECRET_KEY: ${OMISE_SECRET_KEY:-}
+      OMISE_WEBHOOK_SECRET: ${OMISE_WEBHOOK_SECRET:-}
       # รูปสินค้า (R3) — Supabase Storage ใส่ค่าใน .env ที่ root (ค่าจริงอยู่ใน Notion ของทีม) เว้นว่าง = อัปโหลดรูปไม่ได้ แต่ระบบอื่นใช้ได้ปกติ
       SUPABASE_URL: ${SUPABASE_URL:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}

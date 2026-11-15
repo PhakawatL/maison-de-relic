@@ -31,7 +31,7 @@ const NAV = [
 // (wishlist ของ R1 เป็นปุ่มไอคอนหัวใจทางขวาแทน ดู accountActions)
 // แล้วเพิ่มคำแปลของ key ใน js/locales/th.js และ en.js
 // (โปรไฟล์ไม่อยู่ในรายการนี้ — ชื่อผู้ใช้ทางขวาของ header คือลิงก์ไปหน้าโปรไฟล์)
-const CUSTOMER_NAV = [];
+const CUSTOMER_NAV = [{ href: '/orders', key: 'nav.orders' }];
 
 // แอดมินมีลิงก์เดียวไปหน้าแอดมิน (เมนูย่อยของแต่ละหน้าแอดมินอยู่ในแถบซ้ายของ admin-layout.js)
 // ไฮไลต์ทุกหน้าที่ขึ้นต้นด้วย /admin — ใส่สองลิงก์แล้วเมนูภาษาไทยยาวจนตกบรรทัด
@@ -43,6 +43,8 @@ const ICON_SUN = `<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="
 const ICON_USER = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>`;
 const ICON_HEART = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.3s-7.6-4.6-9.2-9.4C1.7 7.6 3.9 4.5 7.2 4.5c2 0 3.6 1.1 4.8 2.8 1.2-1.7 2.8-2.8 4.8-2.8 3.3 0 5.5 3.1 4.4 6.4-1.6 4.8-9.2 9.4-9.2 9.4z"/></svg>`;
 const ICON_MOON = `<svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.6A8.2 8.2 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6z"/></svg>`;
+
+const ICON_CART = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h2l2.5 12h11l2-8H6"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>`;
 
 function isActive(href) {
   const path = window.location.pathname.replace(/\.html$/, '').replace(/\/index$/, '/') || '/';
@@ -106,6 +108,9 @@ function renderHeader() {
         <button type="button" class="icon-btn theme-toggle" id="theme-toggle" aria-label="${themeLabel()}" title="${themeLabel()}">
           ${ICON_SUN}${ICON_MOON}
         </button>
+        <a class="icon-btn" href="/cart" aria-label="${t('nav.cart')}" title="${t('nav.cart')}"${isActive('/cart') ? ' aria-current="page"' : ''}>
+          ${ICON_CART}
+        </a>
         ${accountActions()}
       </div>
     </div>`;

@@ -1,0 +1,8 @@
+.product-cart-panel { max-width:560px; padding:24px; margin-top:24px; border:1px solid var(--color-border); border-radius:12px; background:var(--color-surface); }
+.product-cart-price { font-size:28px; font-weight:700; margin:0 0 12px; }
+.product-cart-form { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+.product-cart-form label { display:grid; gap:6px; }
+.product-cart-form input { width:88px; min-height:44px; padding:8px; color:var(--color-text); background:var(--color-bg); border:1px solid var(--color-border); border-radius:8px; font:inherit; }
+.product-cart-form .btn { min-height:44px; }
+.product-cart-form button:disabled { opacity:.5; cursor:not-allowed; }
+.product-cart-message:not(:empty) { margin-top:16px; }

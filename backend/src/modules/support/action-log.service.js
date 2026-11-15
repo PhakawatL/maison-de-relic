@@ -32,7 +32,7 @@ async function logAdminAction(db, { adminId, actionType, targetType, targetId = 
 // อ่าน log (หน้า /admin/activity ของ owner และประวัติในหน้ารายละเอียดคำขอ / เคส)
 // =====================================================================
 
-const refCode = { refund_request: 'RF', support_ticket: 'TK', product: 'P' };
+const refCode = { refund_request: 'RF', support_ticket: 'TK', product: 'P', order: 'ORD-' };
 
 /** ชื่อของสิ่งที่ถูกเปลี่ยน ให้คนอ่าน log รู้ว่าคืออะไรโดยไม่ต้องเปิดดูทีละอัน (ลบไปแล้ว = null) */
 const TARGET_NAME = `CASE l.target_type
@@ -60,7 +60,7 @@ function toLog(row) {
     target_type: row.target_type,
     target_id: targetId,
     // รหัสที่หน้าเว็บใช้ เช่น RF012, TK005, P012 (ประเภทอื่นไม่มีรหัส)
-    target_code: prefix && targetId !== null ? `${prefix}${String(targetId).padStart(3, '0')}` : null,
+    target_code: prefix && targetId !== null ? `${prefix}${String(targetId).padStart(row.target_type === 'order' ? 4 : 3, '0')}` : null,
     target_name: row.target_name ?? null,
     note: row.note,
     created_at: row.created_at,
@@ -83,9 +83,9 @@ async function list({ q, adminId, action, targetType, page, pageSize }) {
     return `$${params.length}`;
   };
   if (q) {
-    const code = /^(rf|tk|p)0*(\d{1,15})$/i.exec(q);
+    const code = /^(rf|tk|p|ord-)0*(\d{1,15})$/i.exec(q);
     if (code) {
-      const type = { rf: 'refund_request', tk: 'support_ticket', p: 'product' }[code[1].toLowerCase()];
+      const type = { rf: 'refund_request', tk: 'support_ticket', p: 'product', 'ord-': 'order' }[code[1].toLowerCase()];
       where.push(`l.target_type = ${add(type)} AND l.target_id = ${add(Number(code[2]))}`);
     } else {
       const ph = add(`%${q}%`);

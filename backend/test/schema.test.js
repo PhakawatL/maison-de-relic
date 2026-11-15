@@ -11,7 +11,7 @@ const EXPECTED_TABLES = [
   'category', 'series', 'product', 'product_image',
   'user_event', 'wishlist', 'cart', 'cart_item',
   'order', 'order_item', 'payment', 'order_status_log', 'refund_request', 'stock_movement',
-  'review', 'support_ticket', 'admin_action_log',
+  'review', 'support_ticket', 'admin_action_log', 'checkout_payment_attempt', 'r5_event_outbox',
 ];
 
 /**
@@ -53,7 +53,7 @@ async function createSampleProduct(client, overrides = {}) {
   return { adminId, ...product.rows[0] };
 }
 
-test('มีตารางครบ 22 ตารางตาม ERD', async () => {
+test('มีตารางตาม ERD และตารางรายการชำระเงิน R5 ครบ', async () => {
   const { rows } = await query(
     `SELECT table_name FROM information_schema.tables
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'

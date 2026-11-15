@@ -18,6 +18,9 @@ import { escapeHtml } from './utils.js';
 import { t, getLang, setLang, initLang, applyI18n, onLangChange } from './i18n.js';
 import { getTheme, initTheme, toggleTheme } from './theme.js';
 
+const ordersPreview = window.location.pathname.replace(/\.html$/, '') === '/admin/orders'
+  && ['1', 'empty'].includes(new URLSearchParams(window.location.search).get('preview'));
+
 let me = null; // ข้อมูลแอดมินที่ล็อกอินอยู่ (ได้มาหลังเรียก API เสร็จ)
 
 initLang();
@@ -27,6 +30,7 @@ initTheme();
 // ownerOnly: true = แสดงเฉพาะ owner (เมนูขึ้นหลังรู้ว่าใครล็อกอิน — API ก็กันสิทธิ์อีกชั้น)
 const ADMIN_NAV = [
   { href: '/admin/products', key: 'admin.nav.products', icon: 'box' },
+  { href: '/admin/orders', key: 'nav.adminOrders', icon: 'box' },
   { href: '/admin/sales', key: 'admin.nav.sales', icon: 'chart' },
   { href: '/admin/users', key: 'admin.nav.users', icon: 'users' },
   { href: '/admin/reports', key: 'admin.nav.reports', icon: 'flag' },
@@ -103,7 +107,7 @@ function renderSidenav() {
   el.setAttribute('aria-label', t('admin.navLabel'));
   el.innerHTML = ADMIN_NAV.filter((item) => !item.ownerOnly || me?.admin_role === 'owner').map(
     ({ href, key, icon: name }) =>
-      `<a href="${href}"${isActive(href) ? ' aria-current="page"' : ''}${href === '/' ? ' class="nav-back"' : ''}>${icon(name)}<span>${t(key)}</span></a>`
+      `<a href="${ordersPreview && href === '/admin/orders' ? href + '?preview=' + new URLSearchParams(window.location.search).get('preview') : href}"${isActive(href) ? ' aria-current="page"' : ''}${href === '/' ? ' class="nav-back"' : ''}>${icon(name)}<span>${t(key)}</span></a>`
   ).join('');
 }
 
@@ -126,7 +130,9 @@ applyI18n();
 
 // ถามว่าใครล็อกอินอยู่ ถ้าไม่ใช่แอดมิน requireAdminPage จะพาไปหน้า /login เอง
 // ถ้าเป็นแอดมิน วาดแถบบนใหม่เพื่อแสดงชื่อจริง
-requireAdminPage().then((user) => {
+// Only R5's explicit fixture view is public; its page controller makes no API calls.
+
+if (!ordersPreview) requireAdminPage().then((user) => {
   if (!user) return;
   me = user;
   renderTopbar();
