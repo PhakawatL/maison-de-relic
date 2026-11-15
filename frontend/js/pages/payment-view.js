@@ -14,6 +14,7 @@ export function paymentPanel(attempt, busy, now = Date.now()) {
     <p class="checkout-notice">${t('payment.testNotice')}</p><h2>${money(attempt.amount)}</h2>
     <p class="payment-state status-color" data-status="${status}" role="status">${t('payment.'+status)}</p>
     ${pending&&!elapsed&&attempt.qr_url?`<img class="payment-qr" src="${esc(attempt.qr_url)}" alt="${t('payment.qrAlt')}" referrerpolicy="no-referrer">`:''}
+    ${pending&&!elapsed&&attempt.test_mode===true&&attempt.test_controls===true&&attempt.payment_method==='promptpay'?`<fieldset class="checkout-card"><legend>${t('payment.testControls')}</legend><p class="checkout-note">${t('payment.testControlsNote')}</p><button class="cart-primary" type="button" data-payment-test="paid" ${busy?'disabled':''}>${t('payment.testPaid')}</button><button class="cart-text-button" type="button" data-payment-test="failed" ${busy?'disabled':''}>${t('payment.testFailed')}</button></fieldset>`:''}
     ${pending&&!elapsed&&attempt.authorize_url?`<p>${t('payment.walletRedirect')}</p><a class="cart-primary" href="${esc(attempt.authorize_url)}" referrerpolicy="no-referrer">${t('payment.authorize')}</a>`:''}
     <p>${t('payment.reference')}: ${esc(attempt.attempt_id)}</p>
     ${pending&&hasExpiry?`<p>${t('payment.expires')}: <time datetime="${esc(expires.toISOString())}">${esc(expires.toLocaleString(getLang()==='th'?'th-TH':'en-GB'))}</time></p><p class="payment-countdown">${t('payment.remaining')}: <strong>${clock}</strong></p>`:''}

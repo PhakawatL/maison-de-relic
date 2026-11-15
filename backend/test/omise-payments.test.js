@@ -14,20 +14,10 @@ const addresses = {
   },
   toShippingSnapshot: a => ({ship_name:a.recipient_name,ship_phone:a.phone,ship_line1:a.line1,ship_district:a.district,ship_province:a.province,ship_postcode:a.postcode}),
 };
-// Contract double only: verifies R5 orchestration using the same transaction client.
-// This does not claim to verify R3's not-yet-integrated inventory implementation.
+// Use the production R5 adapter and real R3 stock/ledger service.
 const {createStockAdapter}=require('../src/modules/orders/orders.integrations');
-const inventoryDouble = {
-  assertReady() {},
-  async deductStock(client, line) {
-    const result=await client.query(`UPDATE product SET stock_quantity=stock_quantity-$2
-      WHERE product_id=$1 AND status='available' AND stock_quantity >= $2 RETURNING stock_quantity`,[line.product_id,line.quantity]);
-    if(!result.rows.length)throw new Error('test stock failure');
-    await client.query(`INSERT INTO stock_movement(product_id,order_item_id,movement_type,qty_change,balance_after,created_by)
-      VALUES ($1,$2,'sale',$3,$4,$5)`,[line.product_id,line.order_item_id,-line.quantity,result.rows[0].stock_quantity,line.created_by]);
-  },
-};
-const stock=createStockAdapter({loadInventory:()=>inventoryDouble});
+const inventoryService=require('../src/modules/inventory/inventory.service');
+const stock=createStockAdapter();
 const service=createService({addresses,stock});
 const {createService:createPayments}=require('../src/modules/orders/payments.service');
 const {createGateway}=require('../src/modules/orders/omise.gateway');
@@ -211,9 +201,9 @@ test('paid failure on second deduction rolls back all order writes, then recover
  const a=await user(),p=await product(3),p2=await product(3),keep=await product(5);
  await add(a.cart,p);await add(a.cart,p2);await add(a.cart,keep);
  let fail=true,calls=0;
- const adapter=createStockAdapter({loadInventory:()=>({async deductStock(client,line){
+ const adapter=createStockAdapter({loadInventory:()=>({async applyStockChange(client,line){
    calls++;if(fail&&calls===2)throw new Error('fixture second-item failure');
-   return inventoryDouble.deductStock(client,line);
+   return inventoryService.applyStockChange(client,line);
  }})});
  const localOrders=createService({addresses,stock:adapter});
  const localPayments=createPayments({orders:localOrders,stock:adapter,gateway});
@@ -515,4 +505,27 @@ test('R5 paid order → R1 review/refund uses delivered log, ownership and exact
   const expired=await http(a,'POST','/refund-requests',{...refund,order_item_id:second.order_item_id});assert.equal(expired.status,409);assert.equal(expired.body.error.code,'REFUND_WINDOW_CLOSED');
   assert.equal((await http(a,'POST','/reviews',{...review,order_item_id:second.order_item_id})).status,201);
  }finally{await new Promise(r=>server.close(r));}
+});
+
+test('browser PromptPay Test controls verify provider, finalize with real Inventory and replay once',async()=>{
+ const a=await user(),p=await product(3);await add(a.cart,p);const req=await paymentRequest(a,[p]);
+ let calls=0;const localGateway={...gateway,async testResult(id,result){calls++;const charge=charges.get(id);charge.status=result==='paid'?'successful':'failed';charge.paid=result==='paid';}};
+ const demo=createPayments({orders:service,stock,gateway:localGateway,testControlsEnabled:true});
+ const pending=await demo.create(a.u,req);const paid=await demo.testResult(a.u,pending.attempt_id,'paid');assert.ok(paid.order_id);
+ assert.equal((await demo.testResult(a.u,pending.attempt_id,'paid')).order_id,paid.order_id);assert.equal(calls,1);assert.equal(await orderCount(a.u),1);
+ assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,2);
+});
+test('browser Test controls reject production, other owners, bad results, expired and Live mismatches',async()=>{
+ const a=await user(),b=await user(),p=await product();await add(a.cart,p);const req=await paymentRequest(a,[p]);let calls=0;
+ const localGateway={...gateway,async testResult(){calls++;}};const demo=createPayments({orders:service,stock,gateway:localGateway,testControlsEnabled:true});const pending=await demo.create(a.u,req);
+ await assert.rejects(()=>createPayments({testControlsEnabled:false}).testResult(a.u,pending.attempt_id,'paid'),e=>e.statusCode===404||e.code==='NOT_FOUND');
+ await assert.rejects(()=>demo.testResult(b.u,pending.attempt_id,'paid'),e=>e.code==='PAYMENT_NOT_FOUND');
+ await assert.rejects(()=>demo.testResult(a.u,pending.attempt_id,'success'),e=>e.code==='INVALID_TEST_RESULT');
+ charges.get(pending.charge_id).livemode=true;await assert.rejects(()=>demo.testResult(a.u,pending.attempt_id,'paid'),e=>e.code==='PAYMENT_MISMATCH');charges.get(pending.charge_id).livemode=false;
+ await db.query("UPDATE checkout_payment_attempt SET expires_at=NOW()-INTERVAL '1 minute' WHERE attempt_id=$1",[pending.attempt_id]);await assert.rejects(()=>demo.testResult(a.u,pending.attempt_id,'paid'),e=>e.code==='TEST_PAYMENT_UNAVAILABLE');assert.equal(calls,0);
+});
+test('browser Test failure does not create Order or deduct stock',async()=>{
+ const a=await user(),p=await product();await add(a.cart,p);const req=await paymentRequest(a,[p]);
+ const demo=createPayments({orders:service,stock,gateway:{...gateway,async testResult(id){charges.get(id).status='failed';}},testControlsEnabled:true});const pending=await demo.create(a.u,req);
+ assert.equal((await demo.testResult(a.u,pending.attempt_id,'failed')).status,'failed');assert.equal(await orderCount(a.u),0);assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,3);
 });

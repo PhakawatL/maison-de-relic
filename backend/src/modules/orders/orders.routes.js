@@ -8,6 +8,7 @@ function createRouter({ payments = require('./payments.controller') } = {}) {
   router.post('/payment-attempts', requireVerified, payments.create);
   router.get('/payment-attempts/:attemptId', payments.get);
   router.post('/payment-attempts/:attemptId/sync', requireVerified, payments.sync);
+  router.post('/payment-attempts/:attemptId/test-result', requireVerified, payments.testResult);
   router.post('/quotes', requireVerified, controller.quote);
   router.post('/', requireVerified, controller.create);
   router.get('/', controller.list);

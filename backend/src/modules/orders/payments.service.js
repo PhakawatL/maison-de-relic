@@ -3,12 +3,14 @@ const dbDefault = require('../../db/pool');
 const AppError = require('../../utils/AppError');
 const gatewayDefault = require('./omise.gateway');
 const ordersDefault = require('./orders.service');
+const { isProduction } = require('../../config/env');
 const { stock: stockDefault } = require('./orders.integrations');
 const { cents } = require('./checkout-pricing');
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const open = ['initializing','unknown','pending','needs_review'];
 function view(row) {
   return { attempt_id: row.attempt_id, status: row.status, test_mode: true,
+    test_controls: !isProduction && row.input_snapshot.payment_method === 'promptpay',
     amount: row.amount_cents / 100, currency: 'thb', qr_url: row.status === 'pending' ? row.qr_url : null,
     expires_at: row.expires_at, order_id: row.order_id ? Number(row.order_id) : null,
     charge_id: row.charge_id, payment_method: row.input_snapshot.payment_method,
@@ -23,7 +25,7 @@ function validateCharge(charge, row) {
       (charge.status === 'successful' && charge.paid !== true))
     throw AppError.conflict('PAYMENT_MISMATCH','ข้อมูลชำระเงินไม่ตรงกับรายการ กรุณาติดต่อเจ้าหน้าที่');
 }
-function createService({ db = dbDefault, gateway = gatewayDefault, orders = ordersDefault, stock = stockDefault } = {}) {
+function createService({ db = dbDefault, gateway = gatewayDefault, orders = ordersDefault, stock = stockDefault, testControlsEnabled = !isProduction } = {}) {
   async function find(userId, id, client = db, lock = false) {
     const result = await client.query(`SELECT * FROM checkout_payment_attempt WHERE attempt_id=$1 AND user_id=$2 ${lock?'FOR UPDATE':''}`, [id,userId]);
     if (!result.rows.length) throw AppError.notFound('PAYMENT_NOT_FOUND','ไม่พบรายการชำระเงินของคุณ');
@@ -121,6 +123,24 @@ function createService({ db = dbDefault, gateway = gatewayDefault, orders = orde
     const charge = await gateway.retrieve(event.data.id);
     await db.withTransaction(client => apply(result.rows[0].user_id,id,charge,client));
   }
-  return { create, get, sync, active, webhook };
+  async function testResult(userId, id, result) {
+    if (!testControlsEnabled) throw AppError.notFound('NOT_FOUND','ไม่พบหน้าที่ต้องการ');
+    if (!['paid','failed'].includes(result)) throw AppError.badRequest('INVALID_TEST_RESULT','ผลทดสอบไม่ถูกต้อง');
+    gateway.assertReady();
+    return db.withTransaction(async client => {
+      const row = await find(userId,id,client,true);
+      if (row.order_id) return view(row);
+      if (row.input_snapshot.payment_method !== 'promptpay' || row.status !== 'pending' || Date.parse(row.expires_at) <= Date.now())
+        throw AppError.conflict('TEST_PAYMENT_UNAVAILABLE','รายการนี้ไม่อยู่ระหว่างรอชำระหรือหมดอายุแล้ว');
+      const current = await gateway.retrieve(row.charge_id);
+      validateCharge(current,row);
+      if (current.status === 'pending') await gateway.testResult(row.charge_id,result);
+      // Never trust the button or the Test action response: independently retrieve and finalize normally.
+      const verified = await gateway.retrieve(row.charge_id);
+      validateCharge(verified,row);
+      return apply(userId,id,verified,client);
+    });
+  }
+  return { create, get, sync, active, webhook, testResult };
 }
 module.exports = { ...createService(), createService, validateCharge };

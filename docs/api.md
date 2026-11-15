@@ -2,9 +2,11 @@
 
 ทุกคนต้องเขียน API ตามข้อตกลงนี้ หน้าเว็บจะได้เรียกผ่าน `frontend/js/api.js` ตัวเดียวได้ทั้งหมด
 
-## R5 — สถานะปัจจุบัน 7 พฤศจิกายน 2026
+## R5 — สถานะปัจจุบัน 15 พฤศจิกายน 2026
 
-ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `9a5ada6` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
+ผลก่อนส่ง PR (หลังเพิ่ม CLI/ปุ่ม Test/flow Checkout ล่าสุด): Backend ปกติ 366 ผ่าน / 1 ข้าม / 1 ล้มเหลวใน Search R4 ที่สมมติว่ามี Charizard พร้อมขายสองชิ้น แต่ seed product 467 stock=0 หลัง Demo; ไม่แก้ stock เพื่อให้ผ่าน. รันด้วย CI=true ตาม Actions: 353 ผ่าน / 15 ข้าม / 0 ล้มเหลว. Frontend 39 ผ่าน. ตัวเลขในบันทึกแต่ละ Step ด้านล่างเป็นผลในเวลานั้น ไม่ใช่ full-suite ล่าสุด และยังไม่อ้างว่า GitHub CI ผ่าน
+
+ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `79c4a57` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
 
 | ส่วน | สถานะที่ใช้จริงในโค้ด |
 |---|---|
@@ -12,8 +14,15 @@
 | สั่งซื้อแบบจำลองเดิม | HTTP `POST /orders` ตอบ 409 `PAYMENT_PROVIDER_REQUIRED`; service เดิมเก็บไว้ทดสอบ ไม่ใช่เส้นทางซื้อในเว็บ |
 | Order / จัดส่ง | มีประวัติ รายละเอียด Admin Orders เลขพัสดุ และยืนยันรับสินค้า พร้อม status log / admin audit |
 | รีวิว / คืนเงิน | รวม R1 แล้ว; Order Detail ใช้ eligibility API และลิงก์ด้วย `order_item_id` ไป `/write-review` / `/refunds` |
-| R3 Inventory | ยังไม่มี `inventory.service.js`; R5 มี adapter รองรับ `deductStock(client, line)` แต่ต้องเชื่อมของ R3 ก่อนซื้อจริงครบเส้นทาง ตอบ 503 `INVENTORY_NOT_READY` ก่อนสร้าง payable charge เมื่อ service ไม่พร้อม |
+| R3 Inventory | เชื่อมแล้ว: R5 `deductStock(client,line)` แปลงเป็น R3 `applyStockChange(client,{productId,type:'sale',change:-quantity,orderItemId,actorId})` ใช้ transaction เดียวกับ Order/Payment ไม่มี stock fallback; ยังตอบ 503 INVENTORY_NOT_READY หาก service หายหรือ export ผิด |
 | R4 Events | รวม API ของ R4 แล้ว และ R5 ใช้ service ภายในฐานข้อมูลเดียวกันผ่าน local outbox worker; event และ acknowledgment commit พร้อมกัน จึงไม่ต้องใช้ HTTP dedup/token สำหรับเส้นทางนี้ ดูหัวข้อ Local Events ท้ายเอกสาร; public HTTP API ยังไม่มี deduplication |
+| R3 Sales | อ่าน Order/OrderItem/Refund จริงผ่าน `/admin/sales-summary`; gross รวมค่าส่ง หัก refund ที่ปิดแล้วเพื่อเป็น net; ตรวจข้อมูล QA ครบ Step 4 แล้ว |
+
+ผลตรวจล่าสุด Step 1–5 วันที่ 15 พ.ย.: เชื่อม Inventory จริง, ซื้อด้วย Omise Test ภายนอกทั้งสองวิธี, จัดส่ง/รับสินค้า/Review/Refund ของ R1 และ Sales/Events ผ่านแล้ว. Backend 359 ผ่าน / 1 ข้าม / 0 ล้มเหลว; Frontend 37 ผ่าน. Omise Test purchase ถูกกันจากข้อมูลแนะนำตามค่าเริ่มต้น; การคืนเงินยังเป็นการบันทึกจำลอง ไม่ใช่ provider refund. ยังไม่ได้ตรวจ public webhook delivery ผ่านอินเทอร์เน็ตหรือ Live payment และยังไม่ส่งงานขึ้น GitHub
+
+สำหรับสาธิต PromptPay บนเครื่อง: หน้า QR มีปุ่ม Test สำเร็จ/ไม่สำเร็จเมื่อ server คืน `test_controls: true`, เป็น Test pending และยังไม่หมดอายุ. เรียก `POST /orders/payment-attempts/:attemptId/test-result` body `{result: 'paid' | 'failed'}` ผ่าน Bearer Auth + verified account. Server ตรวจเจ้าของ, Test charge, metadata/amount/method แล้วเรียก Omise Test control และ retrieve ผลกลับอย่างอิสระ ก่อน apply/finalize ด้วยเส้นทางปกติ ไม่เชื่อผลจาก browser. ปิด endpoint และไม่แสดงปุ่มเมื่อ NODE_ENV=production; TrueMoney ใช้หน้า Test authorization เดิม. เพิ่ม service tests ผ่าน 3 ข้อ (รวมอยู่ใน payment suite 30 ผ่าน) และ Frontend 38 ผ่าน. บันทึกเดิมด้านล่างที่ระบุว่าไม่มี HTTP Test control เป็นประวัติก่อนผู้ใช้ขอเพิ่มปุ่มนี้
+
+CLI สำรองสำหรับ `customer`: `docker compose exec -T api node scripts/omise-test-payment.js status customer` และ `docker compose exec -T api node scripts/omise-test-payment.js paid ATTEMPT_ID customer` (หรือ `failed`). แทน ATTEMPT_ID ด้วย payment reference UUID จริง ไม่ต้องใช้ CLI เมื่อมีปุ่มบน QR แล้ว. CLI focused tests ผ่าน 5 ข้อ; full-suite totals ข้างบนเป็นผลก่อนเพิ่ม CLI/ปุ่ม Test
 
 ### ตรวจ flow คืนเงินฝั่งแอดมิน
 
@@ -1298,9 +1307,9 @@ Order Waiting/ยกเลิกออเดอร์ยังไม่สรุ
 | ผู้ใช้ข้อมูล | Interface ที่มีแล้ว | ขอบเขต/สิ่งที่ต้องตกลง |
 |---|---|---|
 | R1 Refund/Review | `GET /orders/:id` และ API R1 `/reviews`, `/refund-requests` | เจ้าของออเดอร์เท่านั้น; คืน Order พร้อม `items`, `payment`, `status_history`; R1 ใช้ `order_item_id` ตรวจสิทธิ์/eligibility และรับคำขอแล้ว ไม่มี API OrderItem แยก |
-| R3 รายงานยอดขาย | `GET /admin/orders`, `GET /admin/orders/:id` | ต้องเป็น admin; เป็นรายการ/รายละเอียด ยังไม่มี aggregate sales API; ตกลงวิธีคิดยอดคืนเงิน/ค่าจัดส่งก่อนสร้างรายงาน |
-| R3 Inventory | adapter ใน `orders.integrations.js` | signature ด้านล่างเป็นข้อเสนอของ R5 ยังรอ R3 ยืนยัน |
-| R4 Events | server outbox และ per-product adapter | มี draft body `{product_id,event_type,session_id}` จาก R1 แล้ว; รอ API จริง, trusted identity, deduplication และ worker ดู Events readiness ท้ายเอกสาร |
+| R3 รายงานยอดขาย | `GET /admin/sales-summary` ของ R3 และ Order/OrderItem/Refund ใน DB | ต้องเป็น admin; gross รวมค่าส่ง ไม่นับ cancelled; refunded ยังอยู่ใน gross แล้วหักยอดคำขอที่ปิดเป็น refunded ตาม resolved_at; units เป็นจำนวนก่อนคืน |
+| R3 Inventory | adapter ใน `orders.integrations.js` | เชื่อม applyStockChange ของ R3 แล้ว 15 พ.ย.; signature deductStock ด้านล่างคงเป็น boundary ภายใน R5 |
+| R4 Events | server outbox → local worker → `events.service.record(input, client)` | เชื่อมแล้ว ใช้ trusted user/session และ transaction เดียวสำหรับ event/ack; หนึ่ง event ต่อสินค้าที่ไม่ซ้ำใน purchase ไม่ส่งจาก browser ซ้ำ; Omise Test purchase ถูกข้ามตามค่าเริ่มต้น |
 
 **Order/OrderItem read contract:** รายละเอียดคืน `{data: order}` โดยมี
 `order_id`, `current_status`, `placed_at`, `subtotal`, `shipping_fee`, `grand_total`,
@@ -1313,18 +1322,17 @@ shipping_address เป็น snapshot ชื่อ `ship_*`; ไม่ควร
 ผิดเจ้าของ/ไม่พบตอบ 404; ไม่ล็อกอิน 401; admin endpoint ไม่มีสิทธิ์ตอบ 403.
 Refund/Review ต้องตรวจสิทธิ์ฝั่ง server อีกครั้ง ไม่เชื่อสถานะจาก browser.
 
-**R3 inventory proposal:** โมดูล `backend/src/modules/inventory/inventory.service.js`
-export `async deductStock(client, { product_id, quantity, order_item_id, created_by })`.
-อัปเดตการเตรียมรองรับ 1 พ.ย. 2026: `orders.integrations.createStockAdapter()`
+**R3 inventory contract — เชื่อมแล้ว 15 พ.ย. 2026:** โมดูล `backend/src/modules/inventory/inventory.service.js`
+export `async applyStockChange(client, { productId, type, change, actorId, orderItemId, note })`.
+R5 คง boundary `deductStock(client, {product_id, quantity, order_item_id, created_by})` ภายใน และแปลงชื่อ field, `type: 'sale'`, `change: -quantity` ผ่าน `orders.integrations.createStockAdapter()` ซึ่ง
 ตรวจ export และข้อมูลก่อนส่งต่อ. IDs รับ safe positive integer/string จาก PostgreSQL
 แล้วส่งให้ R3 เป็น number; quantity ต้องเป็น positive integer number.
 ข้อมูลจาก caller ผิดตอบ 500 INVENTORY_CONTRACT_ERROR โดยไม่เรียก R3;
-error จาก R3 ส่งต่อเดิมเพื่อ rollback. ไม่กำหนดรูปแบบ return value เพราะ R5 ไม่ใช้ผลคืน.
+error จาก R3 ส่งต่อเดิมเพื่อ rollback; R3 คืน null → PRODUCT_NOT_FOUND และ INSUFFICIENT_STOCK คง error เดิม. ผลสำเร็จไม่ใช้คำนวณยอดใน R5
 ทดสอบด้วย constructor injection เท่านั้น ไม่มี env/HTTP flag เปิด mock บนระบบจริง.
 ใช้ PostgreSQL client ที่ R5 ส่งให้; ห้าม BEGIN/COMMIT transaction แยกเอง.
-ต้องลด stock แบบ atomic เมื่อสินค้า available และ stock พอ พร้อมเพิ่ม sale movement
-ลง `stock_movement` ใน transaction เดียวกัน. สำเร็จ R5 ไม่ใช้ return value;
-ล้มเหลวให้ throw AppError (เสนอ 409 OUT_OF_STOCK) เพื่อ rollback ทั้งออเดอร์.
+R5 ตรวจสินค้า available/stock ภายใต้ product locks ก่อนสร้างออเดอร์; R3 ลด stock แบบ atomic พร้อมเพิ่ม sale movement
+ลง `stock_movement` ใน transaction เดียวกัน. หากล้มเหลวให้ rollback ทั้งออเดอร์
 `created_by` คือ user_id ของผู้ซื้อ ไม่ใช่ admin โดยอัตโนมัติ.
 ก่อนสร้าง payable QR R5 ตรวจว่ามี export นี้แล้ว; ถ้าไม่มีตอบ 503 INVENTORY_NOT_READY.
 ยังไม่มี reservation ระหว่างรอ QR: จ่ายสำเร็จแต่ finalize ไม่ได้จะเป็น needs_review
@@ -1339,12 +1347,12 @@ Order/OrderItem/Payment/StockMovement/status log → ลบเฉพาะจำ
 นี่ไม่ใช่ผลทดสอบ Omise ภายนอกหรือ Inventory implementation ของ R3;
 หน้า Checkout ปกติยังคงปิดการสร้าง QR เมื่อ R3 ไม่พร้อม.
 
-**R4 event proposal:** `add_to_cart` ส่งหลัง API เพิ่มสำเร็จเท่านั้น
-(เสนอ product_id, quantity ที่เพิ่ม, unit_price); `purchase` ส่งหลัง server ยืนยันจ่ายและ
-สร้างออเดอร์สำเร็จแล้ว (เสนอ order_id, currency THB, value, items).
-ต้องตกลงชื่อ field, auth, consent และ deduplication key ก่อน implement.
+**R4 event contract — ใช้งานปัจจุบัน:** `add_to_cart` เข้า outbox ใน transaction เพิ่มสินค้าเท่านั้น
+(product_id, quantity ที่เพิ่ม, unit_price); `purchase` เข้า outbox หลัง server ยืนยันจ่ายและ
+สร้างออเดอร์สำเร็จ (order_id, currency THB, value, items, test_mode).
+Local worker แปลงเป็นหนึ่ง event ต่อ product_id ที่ไม่ซ้ำ ส่ง eventType/productId/sessionId/userId เข้า R4 record ด้วย transaction client เดิม; event และ acknowledgment commit พร้อมกัน
 ห้ามส่ง purchase จากการเห็น QR/กดปุ่มจ่าย หรือจาก Preview.
-value จะรวม shipping หรือไม่ยังต้องตกลง; Events ล้มเหลวต้องไม่ทำให้จ่ายซ้ำ.
+value ใน outbox รวม shipping แต่ R4 record ไม่รับราคา/จำนวน/order_id. Events ล้มเหลวต้องไม่ทำให้จ่ายซ้ำ; Omise Test purchase ไม่ส่งตามค่าเริ่มต้น. หัวข้อ preparation ที่ลงวันที่เก่าต่อจากนี้เป็นประวัติ ไม่ใช่ blocker ปัจจุบัน
 
 #### R5 Events preparation — 1 พ.ย. 2026
 
@@ -2034,3 +2042,57 @@ R1 activity integration in the primary branch now includes order target codes/se
 ### R5 — รวม Inventory / Sales ของ R3 (15 พ.ย. 2026)
 
 รวม main ถึง `79c4a57` แล้ว มี Inventory `applyStockChange(client, {productId,type,change,actorId,orderItemId,note})` และ Sales Summary ของ R3 จริง ข้อความเก่าที่ระบุว่าไม่มี Inventory เป็นประวัติก่อนรวมครั้งนี้ อย่างไรก็ตาม adapter ของ R5 ยังรอ `deductStock(client,line)` จึงยังตอบ INVENTORY_NOT_READY และไม่เปิดการซื้อผ่าน provider จนปรับ boundary ให้ตรง R3 พร้อมตรวจ transaction/rollback และซื้อครบเส้นทาง ห้ามแก้ด้วย fallback ตัดสต็อกเอง เมนู Admin คงทั้ง Orders และ Sales; config คงทั้ง Omise และ Supabase. ผลหลังรวม Backend 356 ผ่าน / 1 ข้าม / 0 ล้มเหลว, Frontend 37 ผ่าน.
+
+### R5 — Step 1: Inventory จริง (15 พ.ย. 2026)
+
+อัปเดตแทนสถานะรอ adapter ในบันทึกก่อนหน้า: เชื่อม R3 service แล้วโดยไม่แก้โมดูล Inventory ของ R3
+
+| Input ภายใน R5 | Input ที่ส่ง R3 |
+|---|---|
+| product_id | productId เป็น number |
+| quantity จำนวนเต็มบวก | change = -quantity, type = sale |
+| order_item_id | orderItemId เป็น number |
+| created_by | actorId = user_id ผู้ซื้อ ไม่ใช่ admin โดยอัตโนมัติ |
+| client | PostgreSQL transaction client ตัวเดิม ไม่มี nested transaction/commit ใน adapter |
+
+R5 ตรวจ IDs/quantity ก่อนเรียก R3 และตรวจ available/stock ภายใต้ product locks ในขั้นสร้าง Order; R3 ล็อกและลดสต็อกพร้อมบันทึก StockMovement. R3 คืน null เมื่อไม่พบสินค้า → adapter throw PRODUCT_NOT_FOUND; INSUFFICIENT_STOCK/SQL errors ส่งต่อเพื่อ rollback. ถ้า paid fulfillment ล้มเหลว คง attempt เป็น needs_review และ retry charge เดิมหลังแก้สาเหตุ ไม่สร้าง charge ใหม่อัตโนมัติ
+
+checkout.test.js และ omise-payments.test.js เปลี่ยนจาก Inventory double มาใช้ production adapter + R3 service จริงแล้ว ยังคง Omise gateway double เพื่อไม่สร้าง charge ภายนอก เฉพาะ fault injection tests เท่านั้นที่จำลองข้อผิดพลาด ผล targeted 43 ผ่าน ไม่มีข้าม/ล้มเหลว ครอบคลุม two-buyers/last-item, duplicate sync/webhook, คืนค่าเมื่อ ledger insert ล้มเหลว, rollback หลายสินค้า และ retry ได้ sale movement เดียว. ยังไม่ถือว่าเสร็จ Step 2 ซึ่งต้องตรวจ Omise Test ผ่าน provider/หน้าเว็บจริงแยกต่างหาก
+
+ผล regression หลัง Step 1: Backend 360 ข้อ ผ่าน 359 / ข้าม 1 / ล้มเหลว 0 (กรณี missing Auth ถูกข้ามเพราะ Auth มีแล้ว). ไม่สร้าง charge กับ provider จริง.
+
+### R5 — Step 2: Checkout / Omise Test ภายนอกจริง (15 พ.ย. 2026)
+
+ผ่านเว็บหลักและ production API/R3 Inventory โดยไม่มี gateway/stock doubles ในรอบนี้ ใช้บัญชีและสินค้า QA แยก ไม่ใช้ Live keys/เงินจริง:
+
+| วิธี | failed | successful |
+|---|---|---|
+| PromptPay | สร้าง QR ฿80 จาก Omise จริง แล้วใช้ Test API mark_as_failed; ไม่สร้างออเดอร์ สต็อก/Cart คงเดิม | Test API mark_as_paid → server retrieve ผลและสร้าง ORD-1878 ฿80, ลดสินค้า 2 ชิ้นจาก 6 เป็น 4 พร้อม sale movement เดียว |
+| TrueMoney | เปิด Test authorization page ของ Omise กด failed แล้วกลับ return_uri → ไม่มีออเดอร์เพิ่ม สต็อก/Cart คงเดิม | สร้างรายการใหม่ เปิดหน้า Test กด paid แล้วกลับมา ORD-1879 ฿60, ลดสินค้า 1 ชิ้นจาก 6 เป็น 5 พร้อม sale movement เดียว |
+
+หลัง PromptPay สำเร็จ Cart ลบเฉพาะสินค้าที่เลือกซื้อและเหลือ TrueMoney; หลัง TrueMoney สำเร็จ Cart ว่าง. ยอดแต่ละออเดอร์รวมค่าจัดส่งธรรมดา ฿40 ตามราคา QA. ทั้ง 4 charge ตรวจกลับจาก Omise ว่า livemode=false, amount/metadata/status ตรง attempt และไม่มี pending เหลือ
+
+ตรวจ concurrent duplicate authenticated HTTP sync และ replay charge.complete ผ่าน service handler (ซึ่ง retrieve provider จริงอีกครั้ง): ยังคง 2 orders / 2 payments / 2 sale movements / 2 paid logs ไม่เพิ่มซ้ำ. เปิด return URL ของ TrueMoney ในแท็บใหม่โดยไม่มี sessionStorage เดิม → restore ไปออเดอร์เดิมได้. รอบนี้ไม่ได้ทดสอบ public webhook delivery จาก Omise ผ่านอินเทอร์เน็ตเข้ามาที่ localhost หรือ Live/OTP จริง; webhook signature boundary มี automated tests แยก
+
+ใช้ Omise Test controls ตาม https://docs.omise.co/charges-api และ https://docs.omise.co/truemoney-wallet . บัญชี QA และออเดอร์เก็บไว้สำหรับ Step 3; สินค้า QA ซ่อนจาก storefront หลังตรวจแล้ว มีข้อมูล Test สองออเดอร์ใน local DB จึงต้องแยกจากยอดขายธุรกิจจริงในการประเมินรายงาน ไม่ได้แก้ข้อมูลผู้ใช้เดิม ไม่ commit/push
+
+### R5 — Step 3: Fulfillment / Review / Refund ของ R1 (15 พ.ย. 2026)
+
+ตรวจด้วยออเดอร์ QA จาก Step 2: admin เปลี่ยน paid → packing → shipped → delivered ผ่าน API จริง และ customer ยืนยันรับเป็น completed. มี delivered log ครั้งเดียวต่อออเดอร์; R1 นับ deadline จาก log นี้ + 7 วัน และยืนยันรับไม่เริ่มนับใหม่. ตรวจสิทธิ์ข้ามบัญชีและการส่ง refund ก่อน delivered ถูกปฏิเสธ. ทดสอบผ่านเว็บจริงจาก Order Detail ไปเขียนรีวิว 5 ดาว และส่งคำขอคืนเงิน; admin อนุมัติ/ปิดคำขอผ่าน UI จริง
+
+| QA order | Refund | ผลที่ตรวจ |
+|---|---|---|
+| 1878 PromptPay | RF079 คืน 1 จาก 2 ชิ้น ฿20 แบบ return | stock 4 → 5 พร้อม return movement ครั้งเดียว; order completed / payment succeeded; อีก 1 ชิ้นยังขอคืนได้ |
+| 1879 TrueMoney | RF080 คืนครบ 1 ชิ้น ฿20 แบบ write_off | stock คง 5 ไม่มี return movement; order/payment refunded และมี refunded log ครั้งเดียว |
+
+กด approve/refund ซ้ำได้ 409 ไม่มีเพิ่มสต็อกหรือ status log; review ซ้ำได้ 409. การคืนเงินของ R1 ในรอบนี้เป็นบันทึกจำลองในแอป ไม่เรียก Omise Refund API ไม่โอนเงินจริง และไม่เปลี่ยน charge ที่ provider. ยอดคืนคิดเฉพาะสินค้า ไม่รวมค่าส่ง ตามกฎปัจจุบันของ R1. ตรวจ deadline 7 วันจากข้อมูลจริง แต่ไม่ได้รอจนหมดอายุ 7 วันในรอบ manual นี้. ไม่มี application fix เพิ่มใน Step 3 และยังไม่ commit/push
+
+### R5 — Step 4: ตรวจ Sales ของ R3 / Events ของ R4 (15 พ.ย. 2026)
+
+Sales Summary API จริงสำหรับวันที่ 15 พ.ย. (Asia/Bangkok) ตรงกับ SQL ตรวจแยก: QA 2 orders / 3 units / 1 customer, gross ฿140 รวมค่าส่ง ฿80, refunds ฿40, net ฿100, average order ฿70. รายวันตรงยอดรวม; admin อ่านได้ ลูกค้า 403 และไม่ล็อกอิน 401. นี่เป็นข้อมูลทดสอบใน local DB ไม่ใช่ยอดเงินจริง. R3 นับ refunded order ใน gross แล้วหัก refund แยก; units เป็นจำนวนขายก่อนคืน และยอดตามสินค้า/หมวดไม่รวมค่าส่ง
+
+ตรวจ purchase outbox มีหนึ่งรายการต่อออเดอร์สำเร็จ 1878/1879 และไม่มีจาก failed charge. Production dispatcher ข้าม Omise Test purchase ตามกฎเดิม. ตรวจ Cart service → outbox → R4 record จริงใน transaction ทดสอบ: add_to_cart 1 event พร้อม session เดิม และ purchase 2 events เมื่อเปิด allowTestEvents เฉพาะ fixture; dispatch ซ้ำได้ empty. Rollback transaction ทั้งชุดแล้ว ตรวจ user_event ไม่เพิ่ม, Cart QA ว่างและสินค้ายัง hidden เพื่อไม่ปนข้อมูลระบบแนะนำ
+
+ชุด sales.test.js / events.test.js / r5-events.test.js ผ่าน 30 ข้อ ไม่มีข้ามหรือล้มเหลว ครอบคลุม concurrent dispatch, retry, SQL/ack/commit rollback และสิทธิ์ Sales. เปิด API กลับแล้วและ API/DB/web healthy; ตรวจ integration ซ้ำผ่าน. Step 4 ไม่มี source fix เพิ่ม ไม่ commit/push และไม่ได้เพิ่มการทดสอบ public webhook delivery หรือคืนเงินจริง
+
+อัปเดต flow Checkout: เข้า Checkout จาก Cart ที่มีรายการเลือกแล้วต้องแสดงตัวเลือก PromptPay/TrueMoney ก่อน แม้มี active attempt; ยืนยันวิธีเดิมจะ resume charge เดิม ไม่สร้างซ้ำ. หากเลือกวิธีต่างจากรายการ pending เดิม ให้จบรายการเดิมก่อนและมีปุ่มเปิดรายการเดิม. Direct provider return และ recovery ที่ไม่มี Cart selection ยังคงกู้รายการเดิมได้. Frontend regression หลังแก้ flow ผ่าน 39 ข้อ

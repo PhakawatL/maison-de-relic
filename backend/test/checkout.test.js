@@ -14,20 +14,9 @@ const addresses = {
   },
   toShippingSnapshot: a => ({ship_name:a.recipient_name,ship_phone:a.phone,ship_line1:a.line1,ship_district:a.district,ship_province:a.province,ship_postcode:a.postcode}),
 };
-// Contract double only: verifies R5 orchestration using the same transaction client.
-// This does not claim to verify R3's not-yet-integrated inventory implementation.
+// Use the production R5 adapter and real R3 stock/ledger service.
 const {createStockAdapter}=require('../src/modules/orders/orders.integrations');
-const inventoryDouble = {
-  assertReady() {},
-  async deductStock(client, line) {
-    const result=await client.query(`UPDATE product SET stock_quantity=stock_quantity-$2
-      WHERE product_id=$1 AND status='available' AND stock_quantity >= $2 RETURNING stock_quantity`,[line.product_id,line.quantity]);
-    if(!result.rows.length)throw new Error('test stock failure');
-    await client.query(`INSERT INTO stock_movement(product_id,order_item_id,movement_type,qty_change,balance_after,created_by)
-      VALUES ($1,$2,'sale',$3,$4,$5)`,[line.product_id,line.order_item_id,-line.quantity,result.rows[0].stock_quantity,line.created_by]);
-  },
-};
-const stock=createStockAdapter({loadInventory:()=>inventoryDouble});
+const stock=createStockAdapter();
 const service=createService({addresses,stock});
 async function user() {
   const key=tag+'_'+users.length;
@@ -48,6 +37,30 @@ async function add(cart,pid,quantity=1){await db.query('INSERT INTO cart_item(ca
 function input(owner,pids){return {product_ids:[...pids].sort((a,b)=>a-b),address_id:owner.address,shipping_method:'standard',payment_method:'promptpay'};}
 async function request(owner,pids){const i=input(owner,pids);const q=await service.quote(owner.u,i);return {...i,quote_hash:q.quote_hash,checkout_key:randomUUID(),simulation_result:'succeeded'};}
 async function orderCount(u){return Number((await db.query('SELECT COUNT(*) FROM "order" WHERE user_id=$1',[u])).rows[0].count);}
+
+test('real R3 ledger insert failure rolls back stock, order/items/payment/logs and preserves cart',async()=>{
+ const a=await user(),p=await product(3);await add(a.cart,p,2);const r=await request(a,[p]);
+ const failingDb={...db,withTransaction:fn=>db.withTransaction(client=>fn({query:(sql,args)=>
+  sql.includes('INSERT INTO stock_movement')?Promise.reject(Error('test ledger unavailable')):client.query(sql,args)}))};
+ const failing=createService({db:failingDb,addresses,stock});
+ await assert.rejects(()=>failing.place(a.u,r),/test ledger unavailable/);
+ assert.equal(await orderCount(a.u),0);
+ assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,3);
+ assert.equal((await db.query('SELECT * FROM stock_movement WHERE product_id=$1',[p])).rows.length,0);
+ assert.equal((await db.query('SELECT quantity FROM cart_item WHERE cart_id=$1 AND product_id=$2',[a.cart,p])).rows[0].quantity,2);
+ const recovered=await service.place(a.u,r);
+ assert.ok(recovered.order.order_id);
+ const movements=(await db.query('SELECT qty_change,balance_after,created_by,order_item_id FROM stock_movement WHERE product_id=$1',[p])).rows;
+ assert.equal(movements.length,1);assert.equal(movements[0].qty_change,-2);assert.equal(movements[0].balance_after,1);
+ assert.equal(Number(movements[0].created_by),Number(a.u));assert.equal(Number(movements[0].order_item_id),recovered.order.items[0].order_item_id);
+});
+
+test('real R3 insufficient-stock error propagates and leaves stock/ledger unchanged',async()=>{
+ const a=await user(),p=await product(1);
+ await assert.rejects(()=>db.withTransaction(client=>stock.deductStock(client,{product_id:p,quantity:2,order_item_id:1,created_by:a.u})),e=>e.code==='INSUFFICIENT_STOCK');
+ assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,1);
+ assert.equal((await db.query('SELECT * FROM stock_movement WHERE product_id=$1',[p])).rows.length,0);
+});
 before(async()=>{
  const owner=await user();adminId=owner.u;
  await db.query('INSERT INTO admin(user_id) VALUES ($1)',[adminId]);

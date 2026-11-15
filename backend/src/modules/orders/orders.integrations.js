@@ -6,15 +6,13 @@ function addresses() {
   if (!fs.existsSync(filename)) throw new AppError(503, 'ADDRESS_NOT_READY', 'ระบบที่อยู่จัดส่งยังไม่พร้อมใช้งาน');
   return require(filename);
 }
-// Proposed R3 contract. Wire this boundary to R3's agreed export during integration.
-// deductStock(client, { product_id, quantity, order_item_id, created_by }) must
-// atomically decrement stock AND append a sale movement using this same client.
+// Keep R5's deductStock boundary; map it to R3's transaction-aware stock ledger.
 // No R5 fallback stock writes: missing R3 must abort the whole checkout.
 function inventory() {
   const filename = path.join(__dirname, '../inventory/inventory.service.js');
   if (!fs.existsSync(filename)) throw new AppError(503, 'INVENTORY_NOT_READY', 'ระบบตัดสต็อกยังไม่พร้อมใช้งาน');
   const service = require(filename);
-  if (typeof service.deductStock !== 'function') throw new AppError(503, 'INVENTORY_NOT_READY', 'ต้องเชื่อมฟังก์ชันตัดสต็อกของ R3 ก่อนสั่งซื้อ');
+  if (typeof service.applyStockChange !== 'function') throw new AppError(503, 'INVENTORY_NOT_READY', 'ระบบตัดสต็อกยังไม่พร้อมใช้งาน');
   return service;
 }
 // Injection is constructor-only for contract tests. Production always uses inventory().
@@ -22,7 +20,7 @@ function inventory() {
 function createStockAdapter({ loadInventory = inventory } = {}) {
   function ready() {
     const service = loadInventory();
-    if (!service || typeof service.deductStock !== 'function')
+    if (!service || typeof service.applyStockChange !== 'function')
       throw new AppError(503, 'INVENTORY_NOT_READY', 'ต้องเชื่อมฟังก์ชันตัดสต็อกของ R3 ก่อนสั่งซื้อ');
     return service;
   }
@@ -38,10 +36,12 @@ function createStockAdapter({ loadInventory = inventory } = {}) {
           !Number.isSafeInteger(line.quantity) || line.quantity<1)
         throw new AppError(500, 'INVENTORY_CONTRACT_ERROR', 'ข้อมูลตัดสต็อกไม่ตรงกับข้อตกลงของระบบ');
       // Forward the exact transaction client and preserve provider errors for rollback.
-      return ready().deductStock(client, {
-        product_id:Number(line.product_id), quantity:line.quantity,
-        order_item_id:Number(line.order_item_id), created_by:Number(line.created_by),
+      const result = await ready().applyStockChange(client, {
+        productId:Number(line.product_id), type:'sale', change:-line.quantity,
+        orderItemId:Number(line.order_item_id), actorId:Number(line.created_by),
       });
+      if (!result) throw AppError.notFound('PRODUCT_NOT_FOUND', 'ไม่พบสินค้าที่ต้องการตัดสต็อก');
+      return result;
     },
   };
 }

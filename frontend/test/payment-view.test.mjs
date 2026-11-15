@@ -7,6 +7,14 @@ after(()=>{delete globalThis.window;delete globalThis.document;});
 const sample={attempt_id:'test-reference',amount:20,status:'pending',charge_id:'chrg_test_abc',
   qr_url:'https://api.omise.co/charges/chrg_test_abc/documents/docu/downloads/qr.svg',expires_at:'2026-10-16T13:00:00Z'};
 const now=Date.parse('2026-10-16T12:50:00Z');
+test('Test buttons require server capability, Test mode, pending PromptPay and unexpired time',()=>{
+ const enabled={...sample,payment_method:'promptpay',test_mode:true,test_controls:true};
+ assert.match(paymentPanel(enabled,false,now),/data-payment-test="paid"/);
+ assert.match(paymentPanel(enabled,false,now),/data-payment-test="failed"/);
+ assert.match(paymentPanel(enabled,true,now),/data-payment-test="paid" disabled/);
+ for(const change of [{test_controls:false},{test_mode:false},{payment_method:'truemoney'},{status:'successful'},{expires_at:'2000-01-01'}])
+   assert.doesNotMatch(paymentPanel({...enabled,...change},false,now),/data-payment-test/);
+});
 test('QR panel labels Test mode and never claims real payment',()=>{
   const html=paymentPanel(sample,false,now);
   assert.match(html,/Omise Test/);assert.match(html,/Do not scan with a banking app/);

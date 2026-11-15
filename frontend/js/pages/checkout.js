@@ -12,6 +12,8 @@ let state = 'loading', addresses = [], items = [], productIds = [], quote = null
 let addressId, shipping = 'standard', payment = 'promptpay', result = 'succeeded';
 let showAddresses = false, refreshing = false, placing = false, userId, pending = null;
 let paymentAttempt = null, pollTimer = null, walletPhone = '';
+let existingPayment = null;
+let existingWarning = false;
 const pendingKey = () => `mdr_checkout_attempt_${userId}`;
 function input() { return { product_ids: productIds, address_id: addressId, shipping_method: shipping, payment_method: payment, session_id:getR5SessionId() }; }
 function notice(text, key) {
@@ -40,6 +42,9 @@ function render() {
     content.innerHTML = `<section class="cart-empty"><h2>${t('checkout.recoverTitle')}</h2><p>${t('checkout.recoverText')}</p><button class="cart-primary" data-recover ${placing?'disabled':''}>${placing?t('checkout.processing'):t('checkout.recover')}</button></section>`; return;
   }
   const address = addresses.find(a => a.address_id === addressId);
+  if(existingPayment) {
+    message.innerHTML=`${esc(t(existingWarning?'payment.finishExisting':'payment.existingNotice'))} <button type="button" class="cart-text-button" data-payment-resume>${esc(t('payment.resume'))}</button>`;
+  }
   const locked = refreshing || placing || !!pending;
   content.innerHTML = `<form id="checkout-form" class="checkout-columns"><div class="checkout-sections"><section class="checkout-card checkout-address"><div class="checkout-heading"><h2>${symbol('house')}${t('checkout.address')}</h2><button type="button" data-addresses ${locked?'disabled':''}>${t('checkout.change')}</button></div>${address?`<div class="checkout-address-details"><p class="checkout-recipient">${esc(address.recipient_name)}</p><p class="checkout-phone"><span>${t('checkout.phone')}</span> ${esc(address.phone)}</p><address>${esc(address.line1)}<br>${esc(address.district)} ${esc(address.province)} ${esc(address.postcode)}</address></div>`:''}${showAddresses?`<label>${t('checkout.chooseAddress')}<select name="address_id" ${locked?'disabled':''}>${addresses.map(a=>`<option value="${a.address_id}" ${a.address_id===addressId?'selected':''}>${esc(a.recipient_name)} · ${esc(a.line1)}</option>`).join('')}</select></label>${!preview?`<a href="/profile">${t('checkout.manageAddresses')}</a>`:''}`:''}</section><section class="checkout-card"><fieldset ${locked?'disabled':''}><legend>${symbol('truck')}${t('checkout.shipping')}</legend><div class="checkout-options">${['standard','express'].map(method=>`<label class="checkout-option"><input type="radio" name="shipping_method" value="${method}" ${shipping===method?'checked':''} required>${symbol('truck')}${method==='express'?symbol('zap'):''}<span>${t('checkout.'+method)}</span></label>`).join('')}</div><p class="checkout-note">${t('cart.shippingNote')}</p></fieldset></section><section class="checkout-card"><fieldset ${locked?'disabled':''}><legend>${symbol('credit-card')}${t(preview?'checkout.payment':'payment.paymentMethod')}</legend><div class="checkout-options">${paymentOptions()}</div><p class="checkout-notice">${t(preview?'checkout.simulationNotice':'payment.testNotice')}</p>${preview?`<label>${t('checkout.simulationResult')}<select name="simulation_result"><option value="succeeded" ${result==='succeeded'?'selected':''}>${t('checkout.succeeded')}</option><option value="failed" ${result==='failed'?'selected':''}>${t('checkout.failed')}</option></select></label>`:''}</fieldset></section><section class="checkout-card"><h2>${symbol('package')}${t('checkout.items')}</h2>${itemRows(quote?.items ?? items,false,true)}</section></div><aside class="cart-summary checkout-summary"><h2><span class="summary-list-symbol" aria-hidden="true"></span>${t('cart.summary')}</h2>${quote?`<p class="summary-item-count">${t('checkout.selectedCount',{n:quote.items.reduce((sum,item)=>sum+item.quantity,0)})}</p>`:''}${quote?summaryRows(quote):`<p>${t('checkout.checking')}</p>`}<button class="cart-primary" type="submit" ${placing||refreshing||!quote?'disabled':''}>${placing?t('checkout.processing'):pending?t('checkout.retryOrder'):t(preview?'checkout.confirm':'payment.confirm')}</button>${!quote&&!refreshing?`<button type="button" class="cart-text-button" data-requote>${t('checkout.refreshQuote')}</button>`:''}<p class="checkout-notice">${t(pending?'checkout.recoverText':preview?'checkout.simulationNotice':'payment.testNotice')}</p></aside></form>`;
 }
@@ -74,9 +79,13 @@ async function load() {
         return;
       }
       const active = (await api.get('/orders/payment-attempts/active')).data;
-      if (active) { acceptPayment(active); return; }
+      const selection = readSession('mdr_checkout_product_ids', []);
+      // Cart → Checkout must still show the method picker. Only a recovery without
+      // a cart selection resumes a payment immediately; never create another charge.
+      existingPayment = active || null;
+      if (active && (!Array.isArray(selection)||!selection.length)) { acceptPayment(active); return; }
       const saved = readSession(pendingKey());
-      if (saved?.checkout_key && saved?.quote_hash && Array.isArray(saved.product_ids)) { pending=saved;state='recover';render();return; }
+      if (!active && saved?.checkout_key && saved?.quote_hash && Array.isArray(saved.product_ids)) { pending=saved;state='recover';render();return; }
       const selected = readSession('mdr_checkout_product_ids', []);
       if (!Array.isArray(selected)||!selected.length||selected.length>100||selected.some(id=>!Number.isSafeInteger(id)||id<1)) {state='empty';render();return;}
       productIds=[...new Set(selected)].sort((a,b)=>a-b);
@@ -94,6 +103,10 @@ async function submit() {
   if(placing||refreshing||(!quote&&!pending))return;
   placing=true;delete message.dataset.i18n;message.textContent='';render();
   try {
+    if(!preview && existingPayment) {
+      if(existingPayment.payment_method!==payment){existingWarning=true;notice(t('payment.finishExisting'));return;}
+      const resumed=existingPayment;existingPayment=null;pending=null;acceptPayment(resumed);return;
+    }
     if(preview) {
       if(result==='failed'){notice(t('checkout.paymentFailed'));return;}
       const sample={order_id:'PREVIEW',current_status:'paid',placed_at:new Date().toISOString(),...quote,
@@ -137,11 +150,15 @@ content.addEventListener('change',event=>{
 content.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button||button.disabled)return;
   if(button.hasAttribute('data-payment-sync')){void syncPayment();return;}
+  if(button.hasAttribute('data-payment-test')){void testPayment(button.dataset.paymentTest);return;}
   if(button.hasAttribute('data-payment-new')){clearSession(pendingKey());pending=null;paymentAttempt=null;clearTimeout(pollTimer);if(new URLSearchParams(location.search).has('payment_attempt')){location.assign('/checkout');return;}void load();return;}
   if(button.hasAttribute('data-addresses')){showAddresses=!showAddresses;render();}
   else if(button.hasAttribute('data-reload'))void load();
   else if(button.hasAttribute('data-requote'))void refreshQuote();
   else if(button.hasAttribute('data-recover'))void submit();
+});
+message.addEventListener('click',event=>{
+  if(event.target.closest('[data-payment-resume]')&&existingPayment){const resumed=existingPayment;existingPayment=null;pending=null;message.textContent='';acceptPayment(resumed);}
 });
 function acceptPayment(attempt) {
   paymentAttempt=attempt; state='payment';
@@ -161,6 +178,13 @@ async function syncPayment() {
   placing=true;render();
   try { acceptPayment((await api.post('/orders/payment-attempts/'+encodeURIComponent(paymentAttempt.attempt_id)+'/sync',{})).data); }
   catch(err){notice(err.message);if(err.status===401){state='login';clearTimeout(pollTimer);}}
+  finally{placing=false;render();if(state==='payment')schedulePoll();}
+}
+async function testPayment(result) {
+  if(placing||!paymentAttempt||preview)return;
+  placing=true;clearTimeout(pollTimer);render();
+  try { acceptPayment((await api.post('/orders/payment-attempts/'+encodeURIComponent(paymentAttempt.attempt_id)+'/test-result',{result})).data); }
+  catch(err){notice(err.message);if(err.status===401)state='login';}
   finally{placing=false;render();if(state==='payment')schedulePoll();}
 }
 document.addEventListener('visibilitychange',()=>{if(document.hidden)clearTimeout(pollTimer);else schedulePoll();});

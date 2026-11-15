@@ -71,3 +71,12 @@ test('lost create response retries the same checkout key and preserves recoverab
  const creates=page.calls.filter(c=>c[1]==='/orders/payment-attempts');assert.equal(creates.length,2);assert.equal(creates[0][2].checkout_key,creates[1][2].checkout_key);
  assert.equal(JSON.parse(page.session.get('mdr_checkout_attempt_77')).checkout_key,saved.checkout_key);
 });
+
+test('Cart selection shows method picker before resuming an existing QR',async()=>{
+ const quote={items:[{product_id:7,title:'Fixture',price:100,quantity:1}],grand_total:140,subtotal:100,shipping_fee:40,shipping_address:{},quote_hash:'a'.repeat(64)};
+ const qr={...attempt,payment_method:'promptpay',authorize_url:null,qr_url:'https://api.omise.co/qr'};
+ const page=await mount({search:'',storage:[['mdr_checkout_product_ids','[7]']],get:path=>path==='/orders/payment-attempts/active'?qr:path==='/cart'?{items:[{product_id:7,available:true,quantity_valid:true}]}:[{address_id:1,is_default:true}],post:()=>quote});
+ assert.match(page.content.innerHTML,/name="payment_method" value="promptpay"/);assert.match(page.content.innerHTML,/name="payment_method" value="truemoney"/);assert.doesNotMatch(page.content.innerHTML,/class="payment-qr"/);
+ assert.equal(page.calls.filter(c=>c[1]==='/orders/payment-attempts').length,0);
+ page.content.events.submit({preventDefault(){}});await page.flush();assert.match(page.content.innerHTML,/class="payment-qr"/);assert.equal(page.calls.filter(c=>c[1]==='/orders/payment-attempts').length,0);
+});

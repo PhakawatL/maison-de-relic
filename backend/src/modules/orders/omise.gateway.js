@@ -64,7 +64,12 @@ function createGateway({ config = omise, transport = fetch, returnUrl = appUrl }
     });
     if (!valid) throw AppError.unauthorized('ลายเซ็น webhook ไม่ถูกต้อง');
   }
-  return { assertReady, create, retrieve, verifyWebhook };
+  function testResult(id, result) {
+    if (!['paid','failed'].includes(result) || !/^chrg(?:_test)?_[a-z0-9]+$/.test(id))
+      throw AppError.badRequest('INVALID_TEST_RESULT','ผลทดสอบไม่ถูกต้อง');
+    return request(`/charges/${id}/mark_as_${result}`, {});
+  }
+  return { assertReady, create, retrieve, verifyWebhook, testResult };
 }
 function qrUrl(charge) {
   const raw = charge.source?.scannable_code?.image?.download_uri;

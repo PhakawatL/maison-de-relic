@@ -22,6 +22,7 @@ function createController({ service = serviceDefault, gateway = gatewayDefault }
     res.json({data:await service.sync(req.user.user_id,id(req),chargeId)});
   };
   controller.active = async (req,res) => res.json({data:await service.active(req.user.user_id)});
+  controller.testResult = async (req,res) => res.json({data:await service.testResult(req.user.user_id,id(req),req.body?.result)});
   controller.webhook = async (req,res) => {
     gateway.verifyWebhook(req);
     await service.webhook(req.body);
