@@ -1,6 +1,7 @@
 const database = require('../../db/pool');
 const r4 = require('../events/events.service');
 const { productEvents } = require('./r5-event-contract');
+const { isProduction } = require('../../config/env');
 
 // Same database: the outbox lock, R4 writes and acknowledgment commit together.
 // A rollback (including process termination) leaves no event to duplicate on retry.
@@ -50,4 +51,7 @@ function startWorker({ dispatcher = createDispatcher(), intervalMs = 1000, batch
   tick();
   return async function stop() { stopped = true; clearInterval(timer); await running; };
 }
-module.exports = { createDispatcher, startWorker };
+function createRuntimeDispatcher({ production = isProduction, ...options } = {}) {
+  return createDispatcher({...options,allowTestEvents:!production});
+}
+module.exports = { createDispatcher, createRuntimeDispatcher, startWorker };

@@ -162,7 +162,7 @@ test('webhook signature verifies raw bytes, timestamp and separate Base64 secret
  assert.throws(()=>g.verifyWebhook({...req,get:()=> '0'}),e=>e.status===401);
 });
 
-test('HTTP routes require Auth, protect ownership and reject simulated paid orders',async()=>{
+test('HTTP routes require Auth, protect ownership and reject unvalidated paid claims',async()=>{
  const a=await user(),b=await user(),p=await product();await add(a.cart,p);
  const attempt=await payments.create(a.u,await paymentRequest(a,[p]));
  const app=require('../src/app');const server=app.listen(0,'127.0.0.1');
@@ -175,7 +175,8 @@ test('HTTP routes require Auth, protect ownership and reject simulated paid orde
    assert.equal((await fetch(base+path,{method})).status,401);
   assert.equal((await fetch(base+'/orders/payment-attempts/'+attempt.attempt_id,{headers})).status,404);
   const blocked=await fetch(base+'/orders',{method:'POST',headers,body:JSON.stringify({simulation_result:'succeeded'})});
-  assert.equal(blocked.status,409);assert.equal((await blocked.json()).error.code,'PAYMENT_PROVIDER_REQUIRED');
+  const offline=require('../src/modules/orders/payment-mode').paymentMode()==='simulated';
+  assert.equal(blocked.status,offline?400:409);assert.equal((await blocked.json()).error.code,offline?'VALIDATION_ERROR':'PAYMENT_PROVIDER_REQUIRED');
   const active=await fetch(base+'/orders/payment-attempts/active',{headers:{Authorization:'Bearer '+signToken(a.u)}});
   assert.equal((await active.json()).data.attempt_id,attempt.attempt_id);
  } finally {await new Promise(resolve=>server.close(resolve));}

@@ -153,3 +153,28 @@ test('two buyers of final item: only one order and stock never negative',async()
  assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,0);
  assert.equal((await orderCount(a.u))+(await orderCount(b.u)),1);
 });
+
+test('offline Demo HTTP uses real Inventory, failed/successful/replay and queues purchase',async()=>{
+ const a=await user(),p=await product(5),keep=await product();await add(a.cart,p,2);await add(a.cart,keep);
+ const express=require('express'),{signToken}=require('../src/middleware/auth');const ctrl=require('../src/modules/orders/orders.controller');const {createRouter}=require('../src/modules/orders/orders.routes');
+ const app=express();app.use(express.json());app.use('/api/orders',createRouter({orders:{...ctrl,...ctrl.createDemoController({orders:service,mode:()=> 'simulated'})}}));app.use(require('../src/middleware/errorHandler').errorHandler);
+ const server=app.listen(0,'127.0.0.1');await new Promise(resolve=>server.once('listening',resolve));const base='http://127.0.0.1:'+server.address().port+'/api/orders';
+ const headers={Authorization:'Bearer '+signToken(a.u),'Content-Type':'application/json'};
+ const post=async body=>{const r=await fetch(base,{method:'POST',headers,body:JSON.stringify(body)});return {status:r.status,body:await r.json()};};
+ try{
+  const config=await fetch(base+'/payment-config',{headers});assert.equal((await config.json()).data.mode,'simulated');
+  const req=await request(a,[p]);let r=await post({...req,simulation_result:'failed'});assert.equal(r.status,409);assert.equal(r.body.error.code,'PAYMENT_SIMULATED_FAILED');assert.equal(Number((await db.query('SELECT count(*) n FROM "order" WHERE user_id=$1',[a.u])).rows[0].n),0);
+  r=await post(req);assert.equal(r.status,201);const id=r.body.data.order_id;assert.equal(r.body.data.payment.method,'simulated_promptpay');assert.equal(r.body.data.payment.simulated,true);
+  r=await post(req);assert.equal(r.status,200);assert.equal(r.body.data.order_id,id);assert.equal(r.body.replayed,true);
+  assert.equal((await db.query('SELECT stock_quantity FROM product WHERE product_id=$1',[p])).rows[0].stock_quantity,3);
+  assert.deepEqual((await db.query('SELECT product_id FROM cart_item WHERE cart_id=$1',[a.cart])).rows.map(r=>Number(r.product_id)),[keep]);
+  const queued=(await db.query('SELECT payload FROM r5_event_outbox WHERE order_id=$1',[id])).rows;assert.equal(queued.length,1);assert.equal(queued[0].payload.test_mode,true);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM checkout_payment_attempt WHERE user_id=$1',[a.u])).rows[0].n),0);
+ }finally{await new Promise(resolve=>server.close(resolve));}
+});
+test('offline Demo refuses to bypass an unresolved provider attempt',async()=>{
+ const a=await user(),p=await product();await add(a.cart,p);const req=await request(a,[p]);
+ await db.query(`INSERT INTO checkout_payment_attempt(attempt_id,user_id,request_hash,input_snapshot,quote_snapshot,amount_cents,expires_at,status) VALUES($1,$2,$3,$4,'{}',10000,NOW()+INTERVAL '15 minutes','unknown')`,[randomUUID(),a.u,'a'.repeat(64),input(a,[p])]);
+ try{await assert.rejects(()=>service.place(a.u,req),e=>e.code==='PAYMENT_IN_PROGRESS');assert.equal(Number((await db.query('SELECT count(*) n FROM "order" WHERE user_id=$1',[a.u])).rows[0].n),0);}
+ finally{await db.query('DELETE FROM checkout_payment_attempt WHERE user_id=$1',[a.u]);}
+});

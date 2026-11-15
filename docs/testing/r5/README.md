@@ -24,7 +24,7 @@
 - P2 ราคา **฿1,500** สต็อกอย่างน้อย **2** สถานะ `available`
 - Cart ของ customer A ควรว่าง และไม่มี payment attempt ค้างอยู่ อย่าใช้สินค้าหรือออเดอร์ส่วนตัว
 - ไม่ยึด IDs จากเครื่องผู้พัฒนา เช่น 1878/1879 หรือ 2503/2504 เพราะเครื่องอาจารย์มี IDs ต่างกัน
-- ตั้ง Omise **Test** public/secret keys ที่ `.env` ฝั่ง server ตาม [setup](../../setup.md); ห้ามใส่ secret ใน Postman/frontend
+- ถ้าตรวจทาง provider ให้ตั้ง Omise **Test** public/secret keys ที่ `.env` ฝั่ง server ตาม [setup](../../setup.md); ถ้า Demo ไม่ใช้ key/เน็ตให้ใช้หัวข้อ 5 ทางเลือก Offline แทน ห้ามใส่ secret ใน Postman/frontend
 - ปุ่ม/API เปลี่ยนผล PromptPay Test ใช้ได้เมื่อ `NODE_ENV` ไม่ใช่ `production`; Docker compose หลักตั้ง `development` ไว้แล้ว ต้องเชื่อมอินเทอร์เน็ตถึง Omise
 
 ```powershell
@@ -146,6 +146,36 @@ $ExpressQuote = (Invoke-R5 POST '/orders/quotes' -Token $CustomerToken -Body @{
 
 ## 5. PromptPay Test — R5-P01 ถึง P06
 
+### ทางเลือก Demo ไม่มี key / ไม่มีเน็ต — R5-D01 ถึง D06
+
+ใช้แทนหัวข้อ PromptPay/TrueMoney provider เมื่อเครื่องอาจารย์ไม่พร้อมเรียก Omise: ให้เว้น `OMISE_PUBLIC_KEY` และ `OMISE_SECRET_KEY` **ทั้งคู่** แล้ว recreate API ด้วย `docker compose up -d --force-recreate api` (ไม่ลบ volume). ไม่ต้องเผย key/ให้ AI อ่าน `.env`. ต้องไม่มีรายการ provider เดิมที่ยังตรวจผลไม่ได้; ห้ามเปลี่ยนโหมดเพื่อข้ามการจ่ายเดิม
+
+1. D01: `GET /orders/payment-config` ด้วย CustomerToken → mode `simulated`. บน `/checkout` ต้องขึ้น “จ่ายจำลอง” และตัวเลือกผลสำเร็จ/ไม่สำเร็จ ไม่แสดง QR/พาออกไป wallet
+2. D02: ใช้ `$QuoteInput` จากหัวข้อ 4 พร้อม quote_hash และ UUID ใหม่ POST `/orders` โดย `simulation_result='failed'` → 409 PAYMENT_SIMULATED_FAILED; Cart/stock คงเดิม
+3. D03: เปลี่ยนเป็น succeeded (หลัง failed ใช้ key ใหม่) → 201 Order พร้อม `payment.method='simulated_promptpay'` หรือ simulated_truemoney, `payment.simulated=true`; stock/ledger/selected Cart ถูกต้องเหมือน flow จริง ไม่มี provider charge
+4. D04: POST body/key เดิมอีกครั้ง → 200 replayed=true และ Order เดิม ไม่ตัด stock/ส่ง Purchase ซ้ำ
+5. D05: ทดลอง Review/Refund/Fulfillment/Sales ต่อด้วย Order ID นี้ได้ เป็น DB จริงของ Demo ไม่ใช่ Preview และไม่มีการโอนเงินจริง
+6. D06: กลับมาใส่ Test keys แล้ว recreate API → mode omise_test, POST `/orders` ถูกปิด 409 ตามเดิม; production ปิดจำลองเสมอ หาก provider เน็ตขัดข้องขณะตั้ง keys จะไม่สลับเป็นจำลองอัตโนมัติ
+
+```powershell
+$Config = (Invoke-R5 GET '/orders/payment-config' -Token $CustomerToken).data
+if ($Config.mode -ne 'simulated') { throw 'ยังไม่ใช่ Offline Demo: ตรวจ configuration โดยไม่แสดง key' }
+$DemoInput = @{} + $QuoteInput
+$DemoInput.quote_hash = $Quote.quote_hash
+$DemoInput.checkout_key = [guid]::NewGuid().ToString()
+$DemoInput.simulation_result = 'failed'
+Invoke-R5 POST '/orders' -Token $CustomerToken -Body $DemoInput -Expected 409
+$DemoInput.checkout_key = [guid]::NewGuid().ToString()
+$DemoInput.simulation_result = 'succeeded'
+$Order = (Invoke-R5 POST '/orders' -Token $CustomerToken -Body $DemoInput -Expected 201).data
+[long]$OrderId = $Order.order_id
+Invoke-R5 POST '/orders' -Token $CustomerToken -Body $DemoInput
+```
+
+ถ้าเลือก offline Demo ให้ข้าม code ของ provider ในหัวข้อ 5/7 แล้วไปหัวข้อ 6 ด้วย OrderId นี้; ที่อยู่/Cart/สินค้า/quote ยังต้องเตรียมจริงตามหัวข้อ 1–4. ตัวเลขผลขาย/สต็อกในหัวข้อ 8 ให้เทียบตามรายการที่ทำจริง ไม่รวมรอบที่ข้าม
+
+### ทาง Omise Test — ต้องตั้ง Test keys และเชื่อมต่อ provider ได้
+
 ทำ failure ก่อน success เพื่อใช้ Cart ชุดเดียวกัน ห้ามสแกนด้วยธนาคารจริง ค่า Test result นี้ส่งไป Omise Test จริง ไม่ใช่แก้ DB ให้ paid โดยตรง
 
 ```powershell
@@ -176,7 +206,7 @@ Invoke-R5 POST '/orders/payment-attempts' -Token $CustomerToken -Body $PaymentIn
 | P03 | รอบใหม่ Test paid → successful พร้อม order_id; Order paid / payment succeeded; P1 stock ลด 2, sale movement หนึ่งแถว quantity -2 |
 | P04 | GET Cart หลังสำเร็จ: P1 หาย P2 ยังอยู่ quantity 1; ยอด/ชื่อ/ที่อยู่เป็น snapshot ณ สั่งซื้อ |
 | P05 | Sync และ POST create ด้วย body/key เดิมหลังสำเร็จ → Order ID เดิม ไม่ลด stock/เพิ่ม Order ซ้ำ; ไม่เปลี่ยน input ระหว่างทดสอบ replay |
-| P06 | `POST /orders` โดยตรง → 409 PAYMENT_PROVIDER_REQUIRED; browser ส่ง successful หรือ order_id มาเองไม่ใช่หลักฐานการจ่าย |
+| P06 | เมื่อมี Omise key หรือ production: `POST /orders` → 409 PAYMENT_PROVIDER_REQUIRED; browser ส่ง successful หรือ order_id มาเองไม่ใช่หลักฐานการจ่าย |
 
 ทางเลือกสาธิตผ่านเว็บ: `/cart` → เลือก P1 → `/checkout` เลือก PromptPay → ยืนยัน → QR → กด Test failed/paid; มี Check payment status และไป Order Detail เมื่อสำเร็จ ไม่ใช้ `?preview=1` ทดสอบ Backend
 
@@ -254,7 +284,7 @@ Invoke-R5 POST "/orders/payment-attempts/$($Wallet.attempt_id)/sync" -Token $Cus
 | I04 | Admin PATCH `/admin/refund-requests/:id` `{action:'approve',restock_decision:'return'}` แล้ว `{action:'refund'}` | คืน 1 จาก P1 ที่ซื้อ 2: stock เพิ่ม 1 ตอนอนุมัติพร้อม return movement; Order ยัง Completed; refund เป็นบันทึกจำลอง ไม่คืนผ่าน Omise |
 | I05 | ส่งคำขอของ P1 ที่เหลืออีก 1 หลัง I04; approve แบบ `write_off` แล้ว refund | stock ไม่เพิ่ม; เมื่อครบจำนวนทุก item ของ Order แล้ว Order/Payment → refunded พร้อม log; กดซ้ำ → 409 |
 | I06 | R3 GET `/admin/sales-summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | ใช้วันที่ไทยของรอบ Demo: gross เพิ่ม 240 จาก PromptPay (และ 140 ถ้า TrueMoney สำเร็จ); คืน P1 ทั้ง 2 ชิ้นหัก refunds 200; ค่าส่งไม่คืน; ตัวเลขรวมอาจมีของ Demo ก่อนหน้า จึงเทียบส่วนเพิ่ม |
-| I07 | อ่าน outbox/user_event หลัง Cart และ payment | add_to_cart ส่งผ่าน server; set/remove ไม่ส่ง; purchase มี outbox หนึ่งแถวต่อ Order; Omise Test purchase ถูกข้ามจาก recommendation ตามค่าเริ่มต้น ไม่ถือว่า Events พัง |
+| I07 | อ่าน outbox/user_event หลัง Cart และ payment | add_to_cart ส่งผ่าน server; set/remove ไม่ส่ง; purchase มี outbox หนึ่งแถวต่อ Order แล้ว Development worker ส่งเข้า user_event หนึ่ง event ต่อสินค้าที่ไม่ซ้ำใน Order รวม Omise Test/จ่ายจำลอง; production ยังคงข้าม Test |
 
 I01–I05 เป็นการตรวจจุดเชื่อมกับ R1 ไม่ใช่การย้ายความรับผิดชอบ Refund/Review มา R5 ต้องให้เจ้าของ service ตรวจขั้นตอนอีกครั้งก่อนรวม README ทีม
 
@@ -270,9 +300,11 @@ SELECT event_type,count(*) FROM user_event WHERE user_id=$CustomerId GROUP BY ev
 "@ | docker compose exec -T db psql -U postgres -d maison_de_relic -v ON_ERROR_STOP=1
 ```
 
-Expected: sale -2 ครั้งเดียว; ถ้าทำ I04 มี return +1 ครั้งเดียว; I05 write_off ไม่เพิ่ม movement. Outbox อาจใช้เวลาสักครู่ส่ง add_to_cart; purchase Test มี test_mode true/delivered false ตามการกันข้อมูลทดสอบ และไม่ต้องเปิดส่งเพื่อ Demo
+Expected: sale -2 ครั้งเดียว; ถ้าทำ I04 มี return +1 ครั้งเดียว; I05 write_off ไม่เพิ่ม movement. Development worker อาจใช้เวลาสักครู่ส่ง events: Test purchase มี test_mode true/delivered true และ user_event purchase ตามสินค้า. Production คง delivered false สำหรับ Test. Cart adds หลายครั้งมีหลาย event ได้ แต่ replay payment ของ Order เดิมต้องไม่เพิ่ม Purchase ซ้ำ. Development จะส่ง outbox Test เก่าที่ยังค้างด้วย จึงใช้ Order ID/session ของรอบปัจจุบันแยกผล
 
 ## 9. Negative / Security / Recovery cases เพิ่มเติม
+
+อัปเดตหลัง review ข้อ 3: R5 ใช้ middleware Auth ของ R2 โดยตรงผ่าน `cart.auth.js` แล้ว ไม่มีการเช็กไฟล์/503 AUTH_NOT_READY แบบช่วงรอรวม Auth. Test `r5-auth-boundary.test.js` ตรวจ token ปลอม + body spoof/preview flags ให้ได้ 401 ทุก route ที่ทดสอบจริง ไม่ข้าม test นี้แล้ว. ลบเฉพาะบรรทัด route ที่คอมเมนต์ค้างใน app.js; Wishlist/Cart/Orders routes ที่ใช้งานยัง mount ตามเดิม
 
 | ID | เงื่อนไข | Expected |
 |---|---|---|
@@ -285,6 +317,20 @@ Expected: sale -2 ครั้งเดียว; ถ้าทำ I04 มี ret
 | N07 | Test-result ของรายการหมดอายุ/วิธี TrueMoney/ผลนอก paid,failed | 409 TEST_PAYMENT_UNAVAILABLE หรือ 400 INVALID_TEST_RESULT ตามกรณี; NODE_ENV=production endpoint นี้ 404 |
 | N08 | จ่ายแล้ว stock ไม่พอ / ledger SQL ล้มเหลว | needs_review ไม่มี Order บางส่วน ไม่มี stock ติดลบ; ห้ามจ่ายใหม่ รอเจ้าหน้าที่แก้แล้ว sync charge เดิม; ใช้ automated tests ไม่จงใจทำ DB เสียระหว่าง Demo |
 | N09 | Refresh/สองแท็บ/duplicate sync-webhook | Order/Payment/sale/paid log ไม่เพิ่มซ้ำ; ทดสอบ concurrency/rollback/signature ใน automated suite |
+
+### Header / Responsive — หลัง review ข้อ 4
+
+ใช้บัญชี customer ที่ login แล้ว ตรวจหน้า `/orders` และลองเมนูข้ามไป Cart/Profile เพื่อยืนยันว่า Header กลางใช้ได้จริง:
+
+| ID | วิธีตรวจ | Expected |
+|---|---|---|
+| H01 | จอ 1280px ภาษาไทย | ประวัติการซื้อไม่เบียด TH/EN มีช่องว่างอ่านแยกได้; ที่ตรวจจริงได้ประมาณ 40px |
+| H02 | สลับ TH/EN ที่ 1280px | เมนู/ปุ่มยังคลิกได้ ไม่ซ้อนกันและไม่เกิด horizontal page overflow |
+| H03 | สลับสว่าง/มืด | ระยะเหมือนกัน ไม่เปลี่ยนโทนสีของ Header |
+| H04 | จอ 390px ทั้งสองภาษา | เมนูลงแถวตาม responsive เดิม ปุ่มไม่ซ้อนและหน้าไม่ล้นแนวนอน |
+| H05 | กดประวัติการซื้อ/Cart/Profile และ logout | ไป URL ถูกต้อง; logout แล้วไม่แสดงข้อมูลบัญชีเดิม |
+
+แก้เฉพาะ base.css ของ Header กลาง: เอา margin โลโก้ที่ซ้ำกับ gap ออกใน desktop แล้วเผื่อพื้นที่นำหน้ากลุ่มปุ่ม ไม่เปลี่ยน Auth/ชื่อเมนู/สีธีม. จุดนี้เป็นไฟล์ส่วนกลาง ควรให้ R2 ตรวจ diff ก่อน merge PR แก้ไขด้วย
 
 ## 10. Automated tests สำหรับเพื่อนตรวจซ้ำ
 
@@ -305,6 +351,10 @@ node --test "frontend/test/*.test.mjs"
 ชุดสำคัญใน `backend/test/`: cart.test.js, cart-http.test.js, checkout.test.js, inventory-adapter.test.js, omise-payments.test.js, omise-test-payment.test.js, orders-read.test.js, fulfillment.test.js, fulfillment-http.test.js, r5-events.test.js, events.test.js, sales.test.js และ refunds.test.js/reviews.test.js ของ R1. Automated payment tests ใช้ gateway double เพื่อไม่เรียก provider แต่ใช้ R3 Inventory/PG จริง; จึงต้องตรวจ provider Test จริงตามหัวข้อ 5/7 แยก
 
 ผลก่อนส่ง PR วันที่ 15 พ.ย.: Backend ปกติ 368 ข้อ = 366 ผ่าน / 1 ข้าม / 1 ล้มเหลวใน Search ของ R4 (`Charizard` คาดว่าผลสองอันดับแรกเป็น name แต่ seed product 467 stock เหลือ 0 หลัง Demo จึงเหลือชื่อที่พร้อมขายเพียงหนึ่งรายการ). ไม่แก้ stock/ข้อมูล Demo เพื่อให้ test ผ่าน. รันเพิ่มด้วย `docker compose run --rm --no-deps -e CI=true api npm test` ตามเงื่อนไข GitHub Actions ได้ 353 ผ่าน / 15 ข้าม / 0 ล้มเหลว; รายการข้ามเป็นเงื่อนไขที่ tests กำหนดเมื่อ CI=true และ fallback Auth. Frontend 39 ผ่าน. ไม่ถือว่าผล local เป็น GitHub CI ผ่านแล้ว และไม่บวกผล targeted ทับ full suite
+
+อัปเดตหลังแก้ review ข้อ 1–2: targeted Backend 61 ผ่าน; full Backend CI=true 358 ผ่าน / 15 ข้าม / 0 ล้มเหลว รวม 373 ข้อ; Frontend 41 ผ่าน. ตรวจ process runtime ที่ไม่ตั้ง key ใน container เดิมได้ simulated จริงโดยไม่แก้ `.env` หรือสร้าง provider charge และ Purchase QA ที่เคยค้างเข้า user_event แล้วหนึ่งครั้งต่อสินค้า
+
+ล่าสุดหลังเก็บ review ข้อ 3–4: full Backend CI=true **359 ผ่าน / 14 ข้าม / 0 ล้มเหลว** รวม 373 ข้อ; Frontend **41 ผ่าน**. Auth boundary test เดิมที่ skip เปลี่ยนเป็นตรวจ token ปลอมจริงแล้ว. Browser customer login: Header ที่ 1280px ช่องว่าง TH ระหว่างเมนูสุดท้ายกับภาษา 40px, EN ประมาณ 69px; ทดสอบ 390px และ theme สว่าง/มืดไม่ล้น. ลิงก์ Cart/Profile/Orders และ logout ตรวจผ่าน โดยไม่แก้ข้อมูลบัญชี/ออเดอร์
 
 ## 11. วิธีบันทึกผลและรวม README ทีม
 

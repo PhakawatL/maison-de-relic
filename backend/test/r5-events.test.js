@@ -166,3 +166,11 @@ test('failure before transaction commit leaves no R4 event or delivered acknowle
  assert.equal((await createDispatcher({scopeUserId:u}).dispatchOne()).status,'delivered');
  assert.equal((await db.query('SELECT * FROM user_event WHERE user_id=$1',[u])).rows.length,1);
 });
+
+test('runtime development dispatcher delivers Test purchases; production excludes them and replay stays empty',async()=>{
+ const {createRuntimeDispatcher}=require('../src/modules/orders/r5-local-events');const u=await user(),p=await product();
+ await enqueue(createEvents(),{key:'purchase:'+randomUUID(),type:'purchase',userId:u,payload:{test_mode:true,items:[{product_id:p}]}});
+ assert.equal((await createRuntimeDispatcher({scopeUserId:u,production:true}).dispatchOne()).status,'empty');
+ const dev=createRuntimeDispatcher({scopeUserId:u,production:false});assert.equal((await dev.dispatchOne()).status,'delivered');assert.equal((await dev.dispatchOne()).status,'empty');
+ assert.equal((await db.query("SELECT * FROM user_event WHERE user_id=$1 AND event_type='purchase'",[u])).rows.length,1);
+});

@@ -80,3 +80,15 @@ test('Cart selection shows method picker before resuming an existing QR',async()
  assert.equal(page.calls.filter(c=>c[1]==='/orders/payment-attempts').length,0);
  page.content.events.submit({preventDefault(){}});await page.flush();assert.match(page.content.innerHTML,/class="payment-qr"/);assert.equal(page.calls.filter(c=>c[1]==='/orders/payment-attempts').length,0);
 });
+
+test('server offline mode shows explicit simulation and creates a real order without a provider attempt',async()=>{
+ const quote={items:[{product_id:7,title:'Fixture',price:100,quantity:1}],grand_total:140,subtotal:100,shipping_fee:40,shipping_address:{},quote_hash:'a'.repeat(64)};
+ const page=await mount({search:'',storage:[['mdr_checkout_product_ids','[7]']],get:path=>path==='/orders/payment-config'?{mode:'simulated'}:path==='/orders/payment-attempts/active'?null:path==='/cart'?{items:[{product_id:7,available:true,quantity_valid:true}]}:[{address_id:1,is_default:true}],post:path=>path==='/orders/quotes'?quote:{order_id:888}});
+ assert.match(page.content.innerHTML,/Simulated payment/);assert.match(page.content.innerHTML,/name="simulation_result"/);
+ page.content.events.submit({preventDefault(){}});await page.flush();assert.deepEqual(page.redirects,['/order-detail?id=888']);assert.equal(page.calls.filter(c=>c[1]==='/orders').length,1);assert.equal(page.calls.filter(c=>c[1]==='/orders/payment-attempts').length,0);
+});
+test('configured provider failure never switches to offline order creation',async()=>{
+ const quote={items:[{product_id:7,title:'Fixture',price:100,quantity:1}],grand_total:140,subtotal:100,shipping_fee:40,shipping_address:{},quote_hash:'a'.repeat(64)};
+ const page=await mount({search:'',storage:[['mdr_checkout_product_ids','[7]']],get:path=>path==='/orders/payment-config'?{mode:'omise_test'}:path==='/orders/payment-attempts/active'?null:path==='/cart'?{items:[{product_id:7,available:true,quantity_valid:true}]}:[{address_id:1,is_default:true}],post:path=>{if(path==='/orders/quotes')return quote;throw {status:502,code:'PAYMENT_UNCERTAIN',message:'Cannot verify'};}});
+ page.content.events.submit({preventDefault(){}});await page.flush();assert.equal(page.calls.filter(c=>c[1]==='/orders').length,0);assert.equal(page.redirects.length,0);assert.ok(page.session.get('mdr_checkout_attempt_77'));
+});
