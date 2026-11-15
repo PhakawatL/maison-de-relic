@@ -1,0 +1,435 @@
+/* =========================================================
+   สรุปยอดขาย (R3) — /admin/sales
+   ใช้ token สีจาก admin.css (.page-admin) ทั้งหมด จึงเปลี่ยนตามโหมดมืดเอง
+   ========================================================= */
+
+/* ---------- เลือกช่วงเวลา ---------- */
+.sl-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-bottom: var(--space-3);
+}
+.sl-presets {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+}
+.sl-presets label {
+  position: relative;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.sl-presets input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.sl-presets label:has(input:checked) {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.sl-presets label:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sl-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sl-custom[hidden] {
+  display: none;
+}
+.sl-custom label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+}
+.sl-custom input {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+}
+.sl-range-text {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+
+/* ---------- ตัวเลขสรุป ---------- */
+.sl-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* 6 ตัวเลข = 3 × 2 แถวพอดี ไม่เหลือเศษ */
+  gap: 12px;
+  margin-bottom: var(--space-3);
+}
+.sl-kpi {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+.sl-kpi.is-main {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: linear-gradient(160deg, var(--accent-soft), var(--card) 70%);
+}
+.sl-kpi-label {
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.sl-kpi-value {
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sl-kpi-foot {
+  min-height: 1.2em;
+  color: var(--ink-3);
+  font-size: 0.78rem;
+}
+.sl-delta {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.sl-delta.is-good {
+  color: var(--ok);
+}
+.sl-delta.is-bad {
+  color: var(--danger);
+}
+.sl-delta.is-new {
+  color: var(--accent);
+}
+.sl-kpi.is-loading span,
+.sl-kpi.is-loading strong {
+  display: block;
+  height: 12px;
+  width: 50%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--skel-a), var(--skel-b), var(--skel-a));
+  background-size: 200% 100%;
+  animation: sl-shimmer 1.2s linear infinite;
+}
+.sl-kpi.is-loading strong {
+  height: 26px;
+  width: 75%;
+}
+
+/* ---------- การ์ด ---------- */
+.sl-card {
+  min-width: 0;
+  margin-bottom: var(--space-3);
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  box-shadow: var(--shadow-sm);
+}
+.sl-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 12px;
+}
+.sl-card-head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 600;
+}
+.sl-card-sub {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 0.85rem;
+}
+.sl-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.sl-grid .sl-card {
+  margin-bottom: 0;
+}
+@media (max-width: 900px) {
+  .sl-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- กราฟ ---------- */
+.sl-chart {
+  position: relative;
+  min-height: 240px;
+}
+.sl-chart svg {
+  display: block;
+  width: 100%; /* ทับขนาดไอคอน svg ของ base.css */
+  height: 240px;
+  overflow: visible;
+}
+.sl-chart .grid {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+.sl-chart .base {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.sl-chart .axis {
+  fill: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.sl-chart .hit {
+  fill: transparent;
+}
+.sl-chart .col {
+  fill: var(--accent);
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.sl-chart .bar.is-on .col {
+  opacity: 1;
+}
+.sl-chart .bar.is-on .hit {
+  fill: var(--accent-soft);
+}
+.sl-tip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.82rem;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -8px);
+}
+.sl-tip[hidden] {
+  display: none;
+}
+.sl-tip strong {
+  font-variant-numeric: tabular-nums;
+}
+.sl-tip span {
+  color: var(--ink-3);
+}
+.sl-chart-skel {
+  height: 240px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--skel-a), var(--skel-b), var(--skel-a));
+  background-size: 200% 100%;
+  animation: sl-shimmer 1.2s linear infinite;
+}
+.sl-empty {
+  display: grid;
+  place-items: center;
+  height: 240px;
+  margin: 0;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink-3);
+  text-align: center;
+  padding: 0 16px;
+}
+
+/* ---------- สินค้าขายดี ---------- */
+.sl-top,
+.sl-bars,
+.sl-status {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sl-top {
+  counter-reset: rank;
+}
+.sl-top-item {
+  display: grid;
+  grid-template-columns: auto 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.sl-top-item::before {
+  counter-increment: rank;
+  content: counter(rank);
+  width: 1.4em;
+  color: var(--ink-3);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-align: center;
+}
+.sl-top-item:hover {
+  background: var(--line-soft);
+}
+.sl-thumb {
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--line-soft);
+}
+.sl-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.sl-top-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.sl-top-title {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sl-top-meta {
+  color: var(--ink-3);
+  font-size: 0.8rem;
+}
+.sl-top-rev {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sl-meter {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line-soft);
+}
+.sl-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+/* ---------- หมวด / สถานะ ---------- */
+.sl-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  padding: 6px 0;
+}
+.sl-bars .sl-meter {
+  grid-column: 1 / -1;
+}
+.sl-bar-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sl-bar-value small {
+  margin-left: 4px;
+  color: var(--ink-3);
+}
+.sl-sub-title {
+  margin: 18px 0 8px;
+  color: var(--ink-2);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.sl-status li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 0.9rem;
+}
+.sl-status li:last-child {
+  border-bottom: 0;
+}
+.sl-status li span:last-child {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sl-status li.is-muted {
+  color: var(--ink-3);
+}
+.sl-none {
+  padding: 12px 0;
+  color: var(--ink-3);
+}
+.sl-skel-row {
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--skel-a), var(--skel-b), var(--skel-a));
+  background-size: 200% 100%;
+  animation: sl-shimmer 1.2s linear infinite;
+}
+
+@keyframes sl-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-kpi.is-loading span,
+  .sl-kpi.is-loading strong,
+  .sl-chart-skel,
+  .sl-skel-row {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .sl-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .sl-top-item {
+    grid-template-columns: auto 40px minmax(0, 1fr);
+  }
+  .sl-top-rev {
+    grid-column: 3;
+    justify-self: start;
+    font-size: 0.9rem;
+  }
+}

@@ -129,6 +129,17 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/products/:id` | - | R3 | สินค้า 1 ชิ้นพร้อมรูปทั้งหมด |
 | GET | `/categories` | - | R3 | หมวดหมู่ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
 | GET | `/series` | - | R3 | ซีรีส์ทั้งหมด พร้อมจำนวนสินค้าที่ขายอยู่ |
+| GET | `/admin/products` | แอดมิน | R3 | รายการสินค้าทุกสถานะ (available / hidden / draft) กรอง `status` ได้ |
+| GET | `/admin/products/:id` | แอดมิน | R3 | สินค้า 1 ชิ้นทุกสถานะ + `has_orders` |
+| POST | `/products` | แอดมิน | R3 | เพิ่มสินค้า |
+| PUT | `/products/:id` | แอดมิน | R3 | แก้ไขสินค้า (ส่งครบทุกช่อง ยกเว้นสต็อก) |
+| DELETE | `/products/:id` | แอดมิน | R3 | ลบสินค้า (เคยขายแล้ว → ซ่อนแทน) |
+| POST | `/products/:id/images` | แอดมิน | R3 | อัปโหลดรูปสินค้า (ส่งไฟล์เป็น body) เก็บใน Supabase |
+| DELETE | `/products/:id/images/:seq` | แอดมิน | R3 | ลบรูปสินค้า |
+| PUT | `/products/:id/images/:seq/cover` | แอดมิน | R3 | ตั้งเป็นรูปปก |
+| POST | `/products/:id/stock` | แอดมิน | R3 | เติม / ตัดของเสีย / ปรับยอดสต็อก |
+| GET | `/products/:id/stock-movements` | แอดมิน | R3 | ประวัติสต็อกของสินค้า |
+| GET | `/admin/sales-summary` | แอดมิน | R3 | สรุปยอดขาย รายวัน สินค้าขายดี ยอดตามหมวด/สถานะ เทียบช่วงก่อนหน้า |
 | GET | `/wishlist` | ✓ | R1 | สินค้าที่ถูกใจของตัวเอง (ล่าสุดขึ้นก่อน) |
 | GET | `/wishlist/ids` | ✓ | R1 | รหัสสินค้าที่ถูกใจ ไว้ระบายสีปุ่มหัวใจ |
 | POST | `/wishlist` | ✓ ยืนยันอีเมลแล้ว | R1 | เพิ่มสินค้าเข้า wishlist |
@@ -658,6 +669,166 @@ await withTransaction(async (client) => {
 | 400 `INVALID_ID` | id ไม่ใช่จำนวนเต็มบวก |
 | 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ หรือยังไม่ได้วางขาย |
 
+### จัดการสินค้า (แอดมิน)
+
+ทุก endpoint ด้านล่างต้องล็อกอินเป็นแอดมิน (owner หรือ staff) · ไม่ล็อกอิน 401 · ลูกค้า 403
+ทุกการเพิ่ม / แก้ / ลบบันทึกลง `admin_action_log` (`create_product`, `update_product`, `delete_product`, `hide_product`)
+
+#### `GET /admin/products`
+
+query เหมือน `GET /products` ทุกตัว และเพิ่ม `status` = `available`, `hidden`, `draft` (ไม่ใส่ = ทุกสถานะ) · คำตอบรูปเดียวกัน
+
+#### `GET /admin/products/:id`
+
+เหมือน `GET /products/:id` แต่เปิดสินค้าได้ทุกสถานะ และมี `has_orders` (`true` = เคยขายแล้ว ลบจริงไม่ได้)
+
+#### `POST /products` และ `PUT /products/:id`
+
+body เดียวกัน (PUT ต้องส่งครบทุกช่อง **ยกเว้น `stock_quantity`**) · POST ตอบ 201 · PUT ตอบ 200 · ได้สินค้าแบบเดียวกับ `GET /admin/products/:id`
+
+```json
+{
+  "title": "RX-78-2 Gundam Ver.Ka",
+  "description": "กล่องครบ ไม่มีรอย",
+  "category_id": 3,
+  "series_id": 3,
+  "status": "draft",
+  "condition": "like_new",
+  "price": 1500,
+  "stock_quantity": 1,
+  "attributes": { "year": "2020", "original_box": "yes", "grading_company": "PSA", "grade": "10" }
+}
+```
+
+| ช่อง | กติกา |
+|---|---|
+| `title` | บังคับ ไม่เกิน 200 ตัวอักษร |
+| `description` | ไม่บังคับ (`null` ได้) ไม่เกิน 5000 ตัวอักษร |
+| `category_id` | บังคับ ต้องมีอยู่จริง |
+| `series_id` | `null` ได้ ถ้าใส่ต้องมีอยู่จริง |
+| `status` | `available`, `hidden`, `draft` |
+| `condition` | `new`, `like_new`, `excellent`, `good`, `fair`, `poor` |
+| `price` | ตัวเลข ≥ 0 ทศนิยมไม่เกิน 2 ตำแหน่ง |
+| `stock_quantity` | **POST เท่านั้น** (สต็อกตั้งต้น) จำนวนเต็ม ≥ 0 · PUT ส่งมาก็ไม่สนใจ |
+| `attributes` | ได้เฉพาะ `year`, `size`, `material`, `original_box` (`with_cert` / `yes` / `no`), `grading_company` (`none` / `PSA` / `BGS` / `CGC` / `other`), `grade` · ค่าเป็นข้อความไม่เกิน 100 ตัว · ค่าว่างไม่เก็บ |
+
+- ผิดตอบ 400 `VALIDATION_ERROR` พร้อม `details: [{ field, issue }]` (field ตรงกับชื่อช่องในฟอร์ม)
+- `created_by` = แอดมินที่ล็อกอินอยู่ (BR-04)
+- เพิ่มสินค้าที่มีสต็อกตั้งต้น → บันทึก `stock_movement` ประเภท `restock` ให้เอง
+- **PUT ไม่เปลี่ยนสต็อก** — เปลี่ยนได้ทาง `POST /products/:id/stock` เท่านั้น (ดูหัวข้อ "สต็อก (แอดมิน)") เพราะฟอร์มแก้ไขส่งยอดที่โหลดไว้ตอนเปิดกลับมา ถ้าระหว่างนั้นมีคนเติมของหรือลูกค้าซื้อ ยอดจะถูกทับ
+- ชื่อ / คำอธิบาย / หมวด / ซีรีส์เปลี่ยน → ล้าง `embedding` เป็น `NULL` แล้วคำนวณใหม่เบื้องหลังถ้าโมเดลของ R4 โหลดอยู่ (ไม่อย่างนั้นสคริปต์ `backfill-embeddings.js` จะเติมให้)
+- รูปสินค้าแยกเป็น API ของตัวเอง ดูหัวข้อ "รูปสินค้า (แอดมิน)"
+
+#### `DELETE /products/:id`
+
+```json
+{ "data": { "product_id": 12, "result": "deleted" } }
+```
+
+- ยังไม่เคยขาย → ลบจริง (`result: "deleted"`) รูป wishlist ตะกร้า event ลบตามไปด้วย
+- เคยขายแล้ว (มีใน `order_item`) → เปลี่ยนเป็น `hidden` แทน (`result: "hidden"`) เพราะคำสั่งซื้อ รีวิว และคำขอคืนเงินยังอ้างถึงสินค้านี้
+- ไม่มีสินค้านี้ → 404 `PRODUCT_NOT_FOUND`
+
+### รูปสินค้า (แอดมิน)
+
+ไฟล์เก็บใน Supabase Storage bucket `Product_image` โฟลเดอร์ `products/<product_id>/` (ดู `docs/deploy.md` ข้อ 3)
+ต้องใส่ `SUPABASE_URL` และ `SUPABASE_SERVICE_ROLE_KEY` ใน `.env` ที่ root ก่อน ไม่ใส่ = ตอบ 503 `STORAGE_NOT_CONFIGURED` (ส่วนอื่นของระบบใช้ได้ปกติ)
+ทุกการเปลี่ยนแปลงบันทึก `admin_action_log`: `add_product_image`, `delete_product_image`, `set_product_cover`
+
+#### `POST /products/:id/images?cover=true&alt=...`
+
+ส่ง**ไฟล์รูปเป็น body ตรง ๆ** (ไม่ใช่ multipart) · หน้าเว็บ: `api.post('/products/12/images', file, { params: { cover: 'true' } })`
+
+- รองรับ JPG / PNG / WebP ไม่เกิน 5 MB · ชนิดไฟล์ดูจาก byte จริง ไม่เชื่อ `Content-Type`
+- `cover=true` = ตั้งเป็นรูปปก · รูปแรกของสินค้าเป็นปกเสมอ · `alt` = คำอธิบายรูป ไม่เกิน 200 ตัว
+- สินค้า 1 ชิ้นมีได้ไม่เกิน 8 รูป
+- ตอบ 201
+
+```json
+{
+  "data": { "seq": 2, "url": "https://<project>.supabase.co/storage/v1/object/public/Product_image/products/12/<uuid>.jpg", "alt_text": null, "is_cover": true },
+  "meta": { "images": [ { "seq": 1, "...": "..." }, { "seq": 2, "...": "..." } ] }
+### สต็อก (แอดมิน)
+
+ทุกการเปลี่ยนสต็อกบันทึกลง `stock_movement` (ledger) พร้อมยอดคงเหลือหลังเปลี่ยน (`balance_after`) · ยอดไม่มีทางติดลบ
+แอดมินทำได้ 3 แบบ ส่วน `sale` (ระบบคำสั่งซื้อ R5) และ `return` (ระบบคืนเงิน R1) ระบบสร้างเอง
+
+#### `POST /products/:id/stock`
+
+```json
+{ "type": "restock", "quantity": 3, "note": "ของล็อตใหม่" }
+{ "type": "write_off", "quantity": 1, "note": "กล่องบุบ" }
+{ "type": "adjust", "new_quantity": 10, "note": "นับสต็อกสิ้นเดือน" }
+```
+
+| `type` | ทำอะไร | ช่องที่ต้องส่ง |
+|---|---|---|
+| `restock` | เติมของเข้า (+) | `quantity` ≥ 1 · `note` ไม่บังคับ |
+| `write_off` | ตัดของเสีย / หาย (−) | `quantity` ≥ 1 · **`note` บังคับ** |
+| `adjust` | ใส่ยอดที่นับได้จริง ระบบคิดส่วนต่างให้ (±) | `new_quantity` ≥ 0 · **`note` บังคับ** |
+
+ตอบ 201
+
+```json
+{
+  "data": {
+    "product_id": 12, "before": 5, "after": 8,
+    "movement": {
+      "movement_id": 31, "type": "restock", "qty_change": 3, "balance_after": 8, "note": "ของล็อตใหม่",
+      "created_at": "2026-11-12T07:43:00.000Z", "order_id": null,
+      "created_by": { "user_id": 2, "username": "Neptz", "display_name": "Neptz" }
+    }
+  }
+}
+```
+
+| error | เมื่อไหร่ |
+|---|---|
+| 400 `NO_FILE` | ไม่ได้แนบไฟล์ |
+| 413 `IMAGE_TOO_LARGE` | ใหญ่เกิน 5 MB |
+| 415 `UNSUPPORTED_IMAGE` | ไม่ใช่ JPG / PNG / WebP |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ |
+| 409 `TOO_MANY_IMAGES` | ครบ 8 รูปแล้ว |
+| 502 `STORAGE_ERROR` | Supabase ตอบ error (ไม่มีแถวค้างใน DB) |
+| 503 `STORAGE_NOT_CONFIGURED` | ยังไม่ได้ใส่ key ใน `.env` |
+
+#### `DELETE /products/:id/images/:seq`
+
+ตอบ `{ "data": { "product_id", "seq", "images": [...] } }` (รูปที่เหลือ) · ไม่มีรูปนี้ → 404 `IMAGE_NOT_FOUND`
+
+- ลบรูปปก → รูปที่ `seq` น้อยสุดที่เหลือเป็นปกแทน · ไม่เหลือรูป → `cover_image_url` = `null`
+- ลบไฟล์ใน Storage ด้วย **เฉพาะในโฟลเดอร์ `products/`** · รูปตัวอย่างใน `seed/` ใช้ร่วมกันทุกเครื่อง จึงเอาออกจากสินค้าได้แต่ไม่ลบไฟล์
+
+#### `PUT /products/:id/images/:seq/cover`
+
+ตั้งรูปนี้เป็นปก ตอบ `{ "data": { "product_id", "cover_seq", "images": [...] } }`
+
+> `product.cover_image_url` ตรงกับรูปปกเสมอ (การ์ดสินค้าทุกหน้าอ่านจากช่องนี้) · ลบสินค้าที่ไม่เคยขาย → ไฟล์รูปใน `products/<id>/` ถูกลบตาม
+| 400 `VALIDATION_ERROR` | ช่องผิด / ไม่มีเหตุผล / `type` เป็น `sale` หรือ `return` / รวมแล้วเกิน 100000 |
+| 400 `NO_CHANGE` | `adjust` แล้วยอดเท่าเดิม |
+| 409 `INSUFFICIENT_STOCK` | ตัดมากกว่าที่มี (`details.stock_quantity` = ยอดตอนนี้) |
+| 404 `PRODUCT_NOT_FOUND` | ไม่มีสินค้านี้ |
+
+บันทึก `admin_action_log` ประเภท `adjust_stock` ด้วย
+
+#### `GET /products/:id/stock-movements?type=&page=&pageSize=`
+
+ประวัติใหม่สุดก่อน · `type` กรองประเภท · `pageSize` สูงสุด 100 (ค่าเริ่มต้น 20) · `meta.stock_quantity` = ยอดปัจจุบัน
+แต่ละแถวเหมือน `movement` ด้านบน · แถวที่มาจากคำสั่งซื้อ / คืนเงินมี `order_id`
+
+#### ฟังก์ชันสต็อกกลาง (สำหรับ R1 / R5)
+
+```js
+const { applyStockChange } = require('../inventory/inventory.service');
+await withTransaction(async (client) => {
+  // ขายออก (R5): change ติดลบ · ของไม่พอ → throw 409 INSUFFICIENT_STOCK ทั้ง transaction ย้อนกลับ
+  await applyStockChange(client, { productId, type: 'sale', change: -qty, orderItemId, actorId: userId });
+});
+```
+
+ล็อกแถวสินค้า (`FOR UPDATE`) → ตรวจไม่ติดลบ → อัปเดต `product.stock_quantity` → บันทึก `stock_movement` ในครั้งเดียว
+ระบบคืนเงินของ R1 (`return`) ตอนนี้เขียน SQL เอง ผลเหมือนกัน เปลี่ยนมาเรียกฟังก์ชันนี้ได้เมื่อสะดวก
+
 ### `GET /categories` และ `GET /series`
 
 ใช้ทำ dropdown หรือตัวกรอง แล้วส่ง `slug` (หรือ id) ไปที่ `GET /products?category=...&series=...`
@@ -672,6 +843,46 @@ await withTransaction(async (client) => {
 ```
 
 `/series` ได้รูปเดียวกัน แต่ใช้ `series_id` แทน `category_id`
+
+## สรุปยอดขาย (R3)
+
+### `GET /admin/sales-summary?from=&to=&top=`
+
+แอดมินทุกระดับ · หน้าเว็บ `/admin/sales`
+
+| query | ค่า |
+|---|---|
+| `from`, `to` | `YYYY-MM-DD` นับตามเวลาไทย (Asia/Bangkok) รวมทั้งสองวัน · ไม่ส่ง → 30 วันล่าสุดถึงวันนี้ · ยาวสุด 366 วัน |
+| `top` | จำนวนสินค้าขายดี 1–20 (ค่าเริ่มต้น 5) |
+
+นับยอดขาย = คำสั่งซื้อที่ **ไม่ใช่** `cancelled` ตาม `placed_at` · คำสั่งซื้อ `refunded` ยังนับยอดขาย แล้วหักใน `refunds`
+`refunds` = `refund_request` สถานะ `refunded` ตามวันที่โอนคืน (`resolved_at`) · `previous` = ช่วงก่อนหน้าที่ยาวเท่ากัน
+
+```json
+{
+  "data": {
+    "range": { "from": "2026-10-15", "to": "2026-11-13", "days": 30 },
+    "previous_range": { "from": "2026-09-15", "to": "2026-10-14" },
+    "totals": { "gross": 39000, "refunds": 300, "net": 38700, "orders": 12, "units": 20,
+                "customers": 8, "avg_order": 3250, "refund_count": 1 },
+    "previous": { "gross": 31000, "...": "รูปเดียวกับ totals" },
+    "daily": [ { "date": "2026-10-15", "orders": 0, "gross": 0 } ],
+    "top_products": [ { "product_id": 7, "title": "...", "cover_image_url": "...", "status": "available",
+                        "units": 3, "orders": 2, "revenue": 3000 } ],
+    "categories": [ { "category_id": 2, "name": "ฟิกเกอร์", "slug": "figures", "units": 6, "revenue": 3000, "share": 76.9 } ],
+    "by_status": [ { "status": "delivered", "orders": 5, "amount": 16000 } ]
+  }
+}
+```
+
+- `daily` มีครบทุกวันในช่วง (วันที่ไม่มียอดเป็น 0) ใช้วาดกราฟได้เลย
+- `share` = เปอร์เซ็นต์ของยอดเงินหมวดนั้น (ทศนิยม 1 ตำแหน่ง)
+- `by_status` รวม `cancelled` ด้วย ไว้ดูว่ายกเลิกไปเท่าไร
+
+| error | เมื่อไร |
+|---|---|
+| 400 `VALIDATION_ERROR` | วันที่ผิดรูปแบบ / ไม่มีจริง / `from` หลัง `to` / เกิน 366 วัน / `top` นอก 1–20 (`details[0].field` บอกช่อง) |
+| 401 / 403 | ไม่ได้ล็อกอิน / ไม่ใช่แอดมิน |
 
 ---
 
@@ -948,7 +1159,7 @@ requested ──อนุมัติ──▶ approved ──โอนเงิ
 กติกาฝั่งผู้ดูแล (บันทึก `admin_action_log` ทุกครั้ง: `approve_refund`, `reject_refund`, `complete_refund`)
 
 - **อนุมัติ** ต้องเลือก `restock_decision`
-  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (R3 เปลี่ยนไปเรียกฟังก์ชันสต็อกกลางได้เมื่อทำ #20 เสร็จ)
+  - `return` คืนเข้าสต็อก → `product.stock_quantity` เพิ่มตามจำนวน + บันทึก `stock_movement` ประเภท `return` (มีฟังก์ชันสต็อกกลาง `applyStockChange` ของ R3 แล้ว ดูหัวข้อ "สต็อก (แอดมิน)")
   - `write_off` ตัดจำหน่าย (ของเสียหายขายต่อไม่ได้) → สต็อกไม่เปลี่ยน
 - **โอนเงินคืนแล้ว** (จำลอง ไม่มี payment gateway) ถ้าคืนครบทุกชิ้นของคำสั่งซื้อ → `"order".current_status = 'refunded'` + แถวใหม่ใน `order_status_log` + `payment.status = 'refunded'` · คืนไม่ครบ สถานะคำสั่งซื้อเหมือนเดิม
 
@@ -1775,7 +1986,7 @@ R1 activity integration in the primary branch now includes order target codes/se
 
 ### `GET /search/semantic?q=กันดั้ม` (ไม่ต้องล็อกอิน · จำกัด 30 ครั้ง/นาที/IP)
 
-ช่องค้นหาในหน้า Search ใช้ตัวนี้**ทุกครั้งที่มีคำค้น** (ชื่อตรงขึ้นก่อน จึงค้นด้วยชื่อได้เหมือนเดิม) · ไม่มีคำค้น ("แสดงทั้งหมด" / เลือกแค่ตัวกรอง) → หน้า Search ใช้ `GET /products` แบบแบ่งหน้า
+ช่องค้นหาในหน้า Search ใช้ตัวนี้**ทุกครั้งที่มีคำค้น** (ชื่อตรงขึ้นก่อน จึงค้นด้วยชื่อได้เหมือนเดิม) · ไม่มีคำค้น (กดค้นหาช่องว่าง = แสดงทั้งหมด / เลือกแค่ตัวกรอง) → หน้า Search ใช้ `GET /products` แบบแบ่งหน้า · เปิดหน้ามาเฉย ๆ → แถวแนะนำ (`/recommend/for-you` ถ้าล็อกอินและ `personalized` ไม่งั้น `/recommend/popular`)
 
 ```
 1. dict คำทับศัพท์ (src/modules/search/synonyms.js): "กันดั้ม" → "Gundam" · "แสตมป์" → "stamp"
@@ -1819,3 +2030,7 @@ R1 activity integration in the primary branch now includes order target codes/se
 ### R5 — รวม main 9 พ.ย. 2026
 
 รวม upstream ถึง `f95aa8d` (Semantic Search / For You / Related) ใน working tree แล้ว คง Cart mount, R5 routes และ local Events worker พร้อม R4 model warm-up. งาน Events เดิมที่ยังไม่ commit ถูกคืนจากสำรอง ไม่ได้เปลี่ยนเป็น Browser producer. Inventory ของ R3 ยังต้องตรวจตาม implementation ก่อนทดสอบการซื้อจริง.
+
+### R5 — รวม Inventory / Sales ของ R3 (15 พ.ย. 2026)
+
+รวม main ถึง `79c4a57` แล้ว มี Inventory `applyStockChange(client, {productId,type,change,actorId,orderItemId,note})` และ Sales Summary ของ R3 จริง ข้อความเก่าที่ระบุว่าไม่มี Inventory เป็นประวัติก่อนรวมครั้งนี้ อย่างไรก็ตาม adapter ของ R5 ยังรอ `deductStock(client,line)` จึงยังตอบ INVENTORY_NOT_READY และไม่เปิดการซื้อผ่าน provider จนปรับ boundary ให้ตรง R3 พร้อมตรวจ transaction/rollback และซื้อครบเส้นทาง ห้ามแก้ด้วย fallback ตัดสต็อกเอง เมนู Admin คงทั้ง Orders และ Sales; config คงทั้ง Omise และ Supabase. ผลหลังรวม Backend 356 ผ่าน / 1 ข้าม / 0 ล้มเหลว, Frontend 37 ผ่าน.

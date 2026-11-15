@@ -2,19 +2,22 @@
 // มุมมองสลับด้วย # ใน URL:   (ว่าง) = รายการ · #new = เพิ่ม · #edit/<id> = แก้ไข
 // ข้อความทุกตัวอยู่ใน js/locales/th.js และ en.js (หมวด admin.*, ap.*, status.*, cond.*, cat.*)
 //
-// API ที่ใช้:
-//   GET    /products, /products/:id, /categories, /series   ← มีแล้ว
-//   POST   /products, PUT /products/:id, DELETE /products/:id ← TODO (R3) รอ auth แอดมินของ R2
-// ตอนนี้ GET /products คืนเฉพาะสินค้า available — เมื่อมี API ฝั่งแอดมิน ให้เปลี่ยน LIST_PATH
+// API ที่ใช้ (ต้องล็อกอินเป็นแอดมิน):
+//   GET    /admin/products, /admin/products/:id  ← เห็นทุกสถานะ (available / hidden / draft)
+//   POST   /products, PUT /products/:id, DELETE /products/:id (เคยขายแล้ว → ซ่อนแทนการลบ)
+//   GET    /categories, /series
+//   POST   /products/:id/images (ส่งไฟล์เป็น body) · DELETE /products/:id/images/:seq · PUT .../:seq/cover
+//          รูปเก็บใน Supabase Storage — เครื่องที่ยังไม่ใส่ key ใน .env บันทึกสินค้าได้ แต่อัปโหลดรูปไม่ได้
+//   POST   /products/:id/stock, GET /products/:id/stock-movements ← กล่อง "สต็อก" ตอนแก้ไข
 import { api, ApiError } from '../api.js';
 import { escapeHtml, formatBaht } from '../utils.js';
-import { t, has, applyI18n, onLangChange } from '../i18n.js';
+import { t, has, applyI18n, onLangChange, getLang } from '../i18n.js';
 import { requireAdminPage } from '../auth-guard.js';
 
 // ไม่ใช่แอดมิน (ยังไม่ล็อกอิน / ลูกค้า / token หมดอายุ) → ส่งไปหน้า /login แล้วกลับมาหน้านี้หลังล็อกอิน (R2)
 await requireAdminPage();
 
-const LIST_PATH = '/products'; // TODO (R3): เปลี่ยนเป็น endpoint ของแอดมินที่เห็นทุกสถานะ
+const LIST_PATH = '/admin/products';
 const PAGE_SIZE = 10;
 
 const STATUSES = ['available', 'hidden', 'draft'];
@@ -50,10 +53,26 @@ const els = {
   dropzone: $('dropzone'),
   fileInput: $('f-image'),
   preview: $('image-preview'),
+  gallery: $('image-gallery'),
+  galleryList: $('gallery-list'),
   dropzoneText: $('dropzone-text'),
   dialog: $('delete-dialog'),
   deleteName: $('delete-name'),
   deleteConfirm: $('delete-confirm'),
+  stockHint: $('f-stock-hint'),
+  stockCard: $('stock-card'),
+  stockNow: $('stock-now'),
+  stockForm: $('stock-form'),
+  stockQty: $('stock-qty'),
+  stockQtyLabel: $('stock-qty-label'),
+  stockNote: $('stock-note'),
+  stockNoteReq: $('stock-note-req'),
+  stockPreview: $('stock-preview'),
+  stockSave: $('stock-save'),
+  stockRows: $('stock-rows'),
+  stockEmpty: $('stock-empty'),
+  stockMore: $('stock-more'),
+  toast: $('toast'),
 };
 
 const state = {
@@ -62,6 +81,8 @@ const state = {
   category: '',
   editingId: null,
   imageFile: null,
+  images: [], // รูปที่มีอยู่แล้วของสินค้าที่กำลังแก้ [{ seq, url, alt_text, is_cover }]
+  confirmDeleteSeq: null,
   deleting: null,
   categories: [],
   series: [],
@@ -71,6 +92,8 @@ const state = {
   lastListError: null,
   message: null, // { key, vars, type } หรือ { text, type }
   fieldErrors: {}, // { name: { key } | { text } }
+  // กล่องสต็อก (ตอนแก้ไข): current = ยอดคงเหลือล่าสุดจาก API · movements = ประวัติที่โหลดแล้ว
+  stock: { current: 0, movements: [], page: 1, total: 0 },
 };
 
 // ---------- ทั่วไป ----------
@@ -114,6 +137,31 @@ function showMessage(m, type = 'error') {
   replay(els.message, 'is-shown');
   els.message.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
+/* ---------- ป๊อปอัป (toast) ---------- */
+// ใช้กับปุ่มที่ทำทันทีกลางหน้า (กล่องสต็อก, ตั้งปก / ลบรูป) — แสดงผลตรงที่มองอยู่ ไม่เลื่อนหน้ากลับขึ้นบน
+let toastTimer = null;
+let lastToast = null;
+function renderToast() {
+  if (!lastToast) return;
+  els.toast.textContent = resolve(lastToast);
+  els.toast.className = `toast toast-${lastToast.type}`;
+}
+function showToast(m, type = 'success') {
+  lastToast = { ...m, type };
+  renderToast();
+  els.toast.hidden = false;
+  replay(els.toast, 'is-shown');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    els.toast.hidden = true;
+    lastToast = null;
+  }, type === 'error' ? 6000 : 3200);
+}
+els.toast.addEventListener('click', () => {
+  els.toast.hidden = true;
+  lastToast = null;
+});
+
 function clearMessage() {
   state.message = null;
   renderMessage();
@@ -270,7 +318,7 @@ async function loadList() {
     const code = /^p0*(\d+)$/i.exec(state.q);
     if (code) {
       try {
-        const { data } = await api.get(`/products/${Number(code[1])}`);
+        const { data } = await api.get(`${LIST_PATH}/${Number(code[1])}`);
         state.lastRows = [data];
         state.lastMeta = { page: 1, pageSize: PAGE_SIZE, total: 1 };
       } catch (err) {
@@ -360,9 +408,10 @@ els.deleteConfirm.addEventListener('click', async () => {
   els.deleteConfirm.disabled = true;
   els.deleteConfirm.classList.add('is-loading');
   try {
-    await api.delete(`/products/${state.deleting}`);
+    const res = await api.delete(`/products/${state.deleting}`);
     closeDialog();
-    showMessage({ key: 'ap.ok.deleted' }, 'success');
+    // เคยขายแล้ว → backend ซ่อนแทนการลบ (คำสั่งซื้อ / รีวิว ยังอ้างถึงสินค้านี้อยู่)
+    showMessage({ key: res?.data?.result === 'hidden' ? 'ap.ok.hidden' : 'ap.ok.deleted' }, 'success');
     loadList();
   } catch (err) {
     closeDialog();
@@ -425,7 +474,9 @@ function toPayload(v) {
     status: v.status,
     condition: v.condition,
     price: Number(v.price),
-    stock_quantity: Number(v.stock_quantity),
+    // สต็อกส่งเฉพาะตอนเพิ่มสินค้าใหม่ · ตอนแก้ไขเปลี่ยนที่กล่องสต็อกเท่านั้น
+    // (ส่งยอดที่โหลดไว้ตอนเปิดฟอร์มกลับไป จะทับสต็อกที่คนอื่นเพิ่งเติม / ลูกค้าเพิ่งซื้อ)
+    ...(state.editingId ? {} : { stock_quantity: Number(v.stock_quantity) }),
     attributes,
   };
 }
@@ -451,7 +502,7 @@ function resetImage() {
 
 function pickImage(file) {
   if (!file) return;
-  if (!['image/jpeg', 'image/png'].includes(file.type)) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     showMessage({ key: 'ap.err.imageType' });
     return;
   }
@@ -493,6 +544,7 @@ els.form.addEventListener('click', (event) => {
   const btn = event.target.closest('.stepper-btn');
   if (!btn) return;
   const input = els.form.elements.stock_quantity;
+  if (input.readOnly) return; // ตอนแก้ไข เปลี่ยนจำนวนที่กล่องสต็อกเท่านั้น
   const next = Math.max(0, (Number(input.value) || 0) + Number(btn.dataset.step));
   input.value = String(next);
   input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -522,16 +574,75 @@ function fillForm(product) {
   const attrs = product.attributes || {};
   for (const key of ATTRIBUTE_FIELDS) f[key].value = attrs[key] ?? '';
 
-  const images = product.images || [];
-  const cover = images.find((i) => i.is_cover) || images[0];
-  const url = cover?.url || product.cover_image_url;
-  if (url) {
-    els.preview.src = url;
-    els.preview.alt = cover?.alt_text || product.title;
-    els.preview.hidden = false;
+  setImages(product.images || [], product.title);
+}
+
+/* ---------- รูปที่มีอยู่แล้ว (ตอนแก้ไข) ---------- */
+
+// รูปปกโชว์ในกรอบอัปโหลด · รูปทั้งหมดโชว์เป็นแถวเล็กด้านล่าง
+function setImages(images, title = els.form.elements.title.value) {
+  state.images = images;
+  state.confirmDeleteSeq = null;
+  if (!state.imageFile) {
+    const cover = images.find((i) => i.is_cover) || images[0];
+    if (cover) {
+      els.preview.src = cover.url;
+      els.preview.alt = cover.alt_text || title;
+      els.preview.hidden = false;
+    } else {
+      els.preview.hidden = true;
+      els.preview.removeAttribute('src');
+    }
     renderDropzoneText();
   }
+  renderGallery();
 }
+
+function renderGallery() {
+  const images = state.images;
+  els.gallery.hidden = !state.editingId || images.length === 0;
+  els.galleryList.innerHTML = images
+    .map((img) => {
+      const confirming = state.confirmDeleteSeq === img.seq;
+      return `
+      <li class="gallery-item${img.is_cover ? ' is-cover' : ''}">
+        <img src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt_text || '')}" loading="lazy">
+        ${img.is_cover ? `<span class="cover-badge">${escapeHtml(t('ap.gallery.cover'))}</span>` : ''}
+        <div class="gallery-actions">
+          ${img.is_cover ? '' : `<button type="button" class="gallery-btn" data-cover="${img.seq}">${escapeHtml(t('ap.gallery.makeCover'))}</button>`}
+          <button type="button" class="gallery-btn danger${confirming ? ' confirming' : ''}" data-remove="${img.seq}">
+            ${escapeHtml(t(confirming ? 'ap.gallery.confirmDelete' : 'ap.gallery.delete'))}
+          </button>
+        </div>
+      </li>`;
+    })
+    .join('');
+}
+
+// ตั้งปก / ลบ ทำทันทีกับ API (ไม่รอปุ่มบันทึก) · ลบต้องกด 2 ครั้ง กันพลาด
+els.galleryList.addEventListener('click', async (event) => {
+  const btn = event.target.closest('button');
+  if (!btn || !state.editingId) return;
+  const id = state.editingId;
+  const removeSeq = btn.dataset.remove ? Number(btn.dataset.remove) : null;
+  if (removeSeq && state.confirmDeleteSeq !== removeSeq) {
+    state.confirmDeleteSeq = removeSeq;
+    renderGallery();
+    return;
+  }
+  btn.disabled = true;
+  try {
+    const res = removeSeq
+      ? await api.delete(`/products/${id}/images/${removeSeq}`)
+      : await api.put(`/products/${id}/images/${Number(btn.dataset.cover)}/cover`);
+    setImages(res.data.images);
+    showToast({ key: removeSeq ? 'ap.ok.imageDeleted' : 'ap.ok.coverChanged' });
+  } catch (err) {
+    state.confirmDeleteSeq = null;
+    renderGallery();
+    showToast(errorMessage(err), 'error');
+  }
+});
 
 function renderFormTitle() {
   const id = state.editingId;
@@ -539,11 +650,132 @@ function renderFormTitle() {
   document.title = t(id ? 'ap.editTitleTab' : 'ap.addTitleTab');
 }
 
+/* ---------- กล่องสต็อก (ตอนแก้ไข) ---------- */
+// เติม / ตัดของเสีย / ปรับยอด ทำทันทีกับ API พร้อมเหตุผล → ประวัติครบทุกครั้ง
+// ช่อง "จำนวน" ด้านบนเลยล็อกไว้ตอนแก้ไข (กันแก้ตรง ๆ แล้วไม่มีเหตุผล หรือทับยอดที่เพิ่งปรับ)
+
+const stockType = () => els.stockForm.elements.type.value;
+
+function setStockMode(editing) {
+  const input = els.form.elements.stock_quantity;
+  input.readOnly = editing;
+  els.form.querySelectorAll('.stepper-btn').forEach((b) => (b.disabled = editing));
+  els.stockHint.hidden = !editing;
+  els.stockCard.hidden = !editing;
+  state.stock = { current: 0, movements: [], page: 1, total: 0 };
+  els.stockForm.reset();
+  renderStockForm();
+  renderStockHistory();
+}
+
+function renderStockNow() {
+  els.stockNow.textContent = state.stock.current.toLocaleString();
+  els.form.elements.stock_quantity.value = String(state.stock.current);
+  renderStockForm();
+}
+
+// ยอดหลังบันทึก (โชว์ให้ดูก่อนกด) · กรอกไม่ครบ → null
+function stockTarget() {
+  const qty = els.stockQty.value === '' ? null : Number(els.stockQty.value);
+  if (qty === null || !Number.isInteger(qty) || qty < 0) return null;
+  const now = state.stock.current;
+  const type = stockType();
+  if (type === 'restock') return now + qty;
+  if (type === 'write_off') return now - qty;
+  return qty;
+}
+
+function renderStockForm() {
+  const type = stockType();
+  els.stockQtyLabel.textContent = t(`ap.stock.qty.${type}`);
+  els.stockNoteReq.hidden = type === 'restock'; // ตัดของ / ปรับยอด ต้องบอกเหตุผล
+  const after = stockTarget();
+  els.stockPreview.textContent =
+    after === null ? '' : t('ap.stock.preview', { before: state.stock.current.toLocaleString(), after: after.toLocaleString() });
+  els.stockPreview.classList.toggle('is-bad', after !== null && after < 0);
+}
+
+const dateFmt = () =>
+  new Intl.DateTimeFormat(getLang() === 'th' ? 'th-TH' : 'en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+
+function renderStockHistory() {
+  const items = state.stock.movements;
+  const fmt = dateFmt();
+  els.stockRows.innerHTML = items
+    .map((m) => {
+      const typeText = has(`stock.type.${m.type}`) ? t(`stock.type.${m.type}`) : m.type;
+      const by = m.created_by ? m.created_by.display_name || m.created_by.username : '—';
+      const order = m.order_id ? `<span class="stock-order">${escapeHtml(t('ap.stock.order', { id: m.order_id }))}</span> ` : '';
+      return `
+      <tr>
+        <td class="stock-date">${escapeHtml(fmt.format(new Date(m.created_at)))}</td>
+        <td><span class="stock-type type-${escapeHtml(m.type)}">${escapeHtml(typeText)}</span></td>
+        <td class="num stock-change ${m.qty_change > 0 ? 'up' : 'down'}">${m.qty_change > 0 ? '+' : '−'}${Math.abs(m.qty_change).toLocaleString()}</td>
+        <td class="num">${m.balance_after.toLocaleString()}</td>
+        <td>${escapeHtml(by)}</td>
+        <td class="stock-note">${order}${escapeHtml(m.note || '')}</td>
+      </tr>`;
+    })
+    .join('');
+  els.stockEmpty.hidden = items.length > 0;
+  els.stockRows.closest('.stock-history-wrap').hidden = items.length === 0;
+  els.stockMore.hidden = items.length >= state.stock.total;
+}
+
+async function loadStockHistory(page) {
+  const id = state.editingId;
+  if (!id) return;
+  try {
+    const res = await api.get(`/products/${id}/stock-movements`, { page, pageSize: 10 });
+    if (state.editingId !== id) return; // เปลี่ยนสินค้าไปแล้วระหว่างโหลด
+    state.stock.page = page;
+    state.stock.total = res.meta.total;
+    state.stock.movements = page === 1 ? res.data : [...state.stock.movements, ...res.data];
+    renderStockHistory();
+  } catch (err) {
+    showToast(errorMessage(err), 'error');
+  }
+}
+
+els.stockForm.addEventListener('input', renderStockForm);
+els.stockForm.addEventListener('change', renderStockForm);
+els.stockMore.addEventListener('click', () => loadStockHistory(state.stock.page + 1));
+
+els.stockForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = state.editingId;
+  if (!id) return;
+  const type = stockType();
+  const qty = els.stockQty.value === '' ? NaN : Number(els.stockQty.value);
+  const note = els.stockNote.value.trim();
+  const body = type === 'adjust' ? { type, new_quantity: qty, note } : { type, quantity: qty, note };
+
+  els.stockSave.disabled = true;
+  try {
+    const res = await api.post(`/products/${id}/stock`, body);
+    state.stock.current = res.data.after;
+    state.stock.movements = [res.data.movement, ...state.stock.movements];
+    state.stock.total += 1;
+    els.stockForm.reset();
+    renderStockNow();
+    renderStockHistory();
+    showToast({ key: 'ap.ok.stock', vars: { before: res.data.before, after: res.data.after } });
+  } catch (err) {
+    // ช่องที่ผิด → บอกเป็นข้อความเดียวด้านบน (กล่องสต็อกมีแค่ 2 ช่อง)
+    const detail = err instanceof ApiError && Array.isArray(err.details) ? err.details[0] : null;
+    showToast(detail ? { text: `${err.message}: ${detail.issue}` } : errorMessage(err), 'error');
+  } finally {
+    els.stockSave.disabled = false;
+  }
+});
+
 async function openForm(id) {
   els.form.reset();
   clearFieldErrors();
   resetImage();
   state.editingId = id;
+  setImages([]);
+  setStockMode(Boolean(id));
   renderFormTitle();
   if (!id) {
     els.form.elements.status.value = 'draft'; // สินค้าใหม่เริ่มเป็นฉบับร่าง กันเผลอขึ้นเว็บ
@@ -553,8 +785,11 @@ async function openForm(id) {
   }
   els.saveBtn.disabled = true;
   try {
-    const { data } = await api.get(`/products/${id}`);
+    const { data } = await api.get(`${LIST_PATH}/${id}`);
     fillForm(data);
+    state.stock.current = data.stock_quantity;
+    renderStockNow();
+    loadStockHistory(1);
   } catch (err) {
     showMessage(
       err instanceof ApiError && err.status === 404
@@ -589,16 +824,35 @@ els.form.addEventListener('submit', async (event) => {
       ? await api.put(`/products/${state.editingId}`, payload)
       : await api.post('/products', payload);
 
-    // TODO (R3): อัปโหลดรูปเมื่อมี API รูปสินค้า เช่น POST /products/:id/images (FormData)
+    // สินค้าบันทึกแล้ว → รูปพังก็ไม่ให้ค้างอยู่ในฟอร์ม (กดบันทึกซ้ำจะได้สินค้าซ้ำ) แค่บอกว่ารูปยังไม่ขึ้น
+    // แก้ไขสินค้าแล้วเลือกรูปใหม่ = เปลี่ยนรูปปก (รูปเดิมยังอยู่ ลบได้ในแถวรูปด้านล่าง)
+    let okKey = state.editingId ? 'ap.ok.saved' : 'ap.ok.added';
     if (state.imageFile && res?.data?.product_id) {
-      const body = new FormData();
-      body.append('image', state.imageFile);
-      await api.post(`/products/${res.data.product_id}/images`, body);
+      try {
+        await api.post(`/products/${res.data.product_id}/images`, state.imageFile, {
+          params: { cover: 'true', alt: payload.title },
+        });
+      } catch (err) {
+        okKey = err?.code === 'STORAGE_NOT_CONFIGURED' ? 'ap.ok.savedNoStorage' : 'ap.ok.savedNoImage';
+      }
     }
 
-    const okKey = state.editingId ? 'ap.ok.saved' : 'ap.ok.added';
-    window.location.hash = '';
-    showMessage({ key: okKey }, 'success');
+    // แก้ไข → อยู่หน้าเดิม โหลดข้อมูลที่บันทึกแล้วมาแสดงใหม่ (รูปใหม่ขึ้นในแถวรูปทันที) แจ้งผลเป็นป๊อปอัป
+    // เพิ่มใหม่ → กลับไปหน้ารายการเหมือนเดิม
+    if (state.editingId) {
+      const id = state.editingId;
+      const { data } = await api.get(`${LIST_PATH}/${id}`);
+      if (state.editingId === id) {
+        resetImage();
+        fillForm(data);
+        state.stock.current = data.stock_quantity;
+        renderStockNow();
+      }
+      showToast({ key: okKey }, okKey === 'ap.ok.saved' ? 'success' : 'error');
+    } else {
+      window.location.hash = '';
+      showMessage({ key: okKey }, 'success');
+    }
   } catch (err) {
     // backend ตอบ details: [{ field, issue }] → แสดงใต้ช่องที่ผิด
     if (err instanceof ApiError && Array.isArray(err.details)) {
@@ -643,6 +897,10 @@ onLangChange(() => {
   renderMessage();
   renderFieldErrors();
   renderDropzoneText();
+  renderGallery();
+  renderStockForm();
+  renderStockHistory();
+  renderToast();
   if (currentView().form) {
     renderFormTitle();
   } else {

@@ -73,6 +73,8 @@
 - **ห้ามขึ้น GitHub** (`.env` อยู่ใน `.gitignore` แล้ว) ค่าจริงอยู่ใน **Notion ของทีม**
 - `service_role` ข้ามสิทธิ์ทุกอย่างของ Supabase ได้ จึงใช้ **เฉพาะใน `backend/`** ห้ามใส่ใน `frontend/` เด็ดขาด เพราะโค้ดหน้าเว็บทุกคนเปิดดูได้
 - ใครแก้ `docker-compose.yml` เพื่อเพิ่มค่าเหล่านี้ ให้บอก R1 ก่อน
+- `docker-compose.yml` ส่ง `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (และ `SUPABASE_PRODUCT_BUCKET` ค่าเริ่มต้น `Product_image`) เข้ากล่อง `api` แล้ว (R3) · ใส่ค่าใน `.env` แล้ว `docker compose up -d` ใหม่
+- API รูปสินค้า: `POST /products/:id/images` และอื่น ๆ ดู `docs/api.md` หัวข้อ "รูปสินค้า (แอดมิน)" · ไฟล์ใหม่เก็บที่โฟลเดอร์ `products/<product_id>/`
 - เครื่องที่ยังไม่มี key ระบบยังเปิดได้ปกติ แค่อัปโหลดรูปใหม่ไม่ได้
 
 ### รูปตัวอย่างใน seed
