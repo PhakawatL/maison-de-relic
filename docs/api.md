@@ -4,6 +4,12 @@
 
 ## R5 — สถานะปัจจุบัน 15 พฤศจิกายน 2026
 
+**เก็บกวาดหลัง review ข้อ 3–4:** Cart/Orders ใช้ Auth ของ R2 โดยตรงผ่าน cart.auth.js แล้ว ไม่มี file-existence/AUTH_NOT_READY fallback; route ที่ mount จริงยังครบ ลบเฉพาะ comment ค้าง. Auth boundary test ตรวจ forged token/spoof identity ได้ 401 จริง ไม่ skip แล้ว. ผลล่าสุด CI=true: Backend 359 ผ่าน / 14 ข้าม / 0 ล้มเหลว; Frontend 41 ผ่าน. Header desktop ปรับระยะห่าง menu/actions ใน base.css และตรวจ 1280/390px, TH/EN, สว่าง/มืดแล้ว
+
+**อัปเดตหลัง review PR #68 (branch แก้ Demo/Events):** `GET /orders/payment-config` (ต้อง login) คืน `{data:{mode:'simulated'|'omise_test',test_mode:true}}` ไม่ส่ง key. เฉพาะ non-production ที่ Omise public/secret key ว่างทั้งคู่จึงเปิด `POST /orders` สำหรับจ่ายจำลอง; ต้อง verified, quote_hash/checkout_key และข้อมูลตาม contract เดิม พร้อม `simulation_result: 'succeeded'|'failed'`. สำเร็จตอบ 201 `{data:order,replayed:false}` และ replay 200; failed 409 PAYMENT_SIMULATED_FAILED ไม่สร้าง Order/ตัด stock. ถ้ามี key แม้เพียงตัวเดียว/ผิด/Live หรือ production ยังคง 409 PAYMENT_PROVIDER_REQUIRED ไม่เปิด fallback. ถ้ามี unresolved provider attempt ตอบ 409 PAYMENT_IN_PROGRESS; มี advisory/cart locks กันจ่ายคนเดียวกันพร้อมสร้าง provider charge. เน็ต/provider ล้มเหลวไม่สลับโหมดอัตโนมัติ
+
+Frontend เลือกโหมดจาก server ก่อนยืนยัน แสดงป้ายจ่ายจำลองชัดเจน ไม่เปิด QR/TrueMoney ภายนอกในโหมดนี้ แต่ Order/stock/ledger เป็นข้อมูลจริงใน DB. Retry หลัง response หายใช้ key/โหมดเดิม ไม่สร้าง charge ใหม่. ทาง Omise ยังตรวจผล provider ตามเดิม. Development runtime worker เปิด `allowTestEvents` เพื่อส่ง Purchase ทั้ง simulated และ Omise Test เข้า R4; production runtime ยังคงข้าม Test events. Event/outbox acknowledgment ใช้ transaction เดียวกันและไม่ส่งซ้ำจาก browser; Test outbox เก่าที่ยังไม่ส่งจะถูก worker ส่งด้วยเมื่อเปิด Development
+
 ผลก่อนส่ง PR (หลังเพิ่ม CLI/ปุ่ม Test/flow Checkout ล่าสุด): Backend ปกติ 366 ผ่าน / 1 ข้าม / 1 ล้มเหลวใน Search R4 ที่สมมติว่ามี Charizard พร้อมขายสองชิ้น แต่ seed product 467 stock=0 หลัง Demo; ไม่แก้ stock เพื่อให้ผ่าน. รันด้วย CI=true ตาม Actions: 353 ผ่าน / 15 ข้าม / 0 ล้มเหลว. Frontend 39 ผ่าน. ตัวเลขในบันทึกแต่ละ Step ด้านล่างเป็นผลในเวลานั้น ไม่ใช่ full-suite ล่าสุด และยังไม่อ้างว่า GitHub CI ผ่าน
 
 ส่วนนี้สรุป implementation ใน branch R5 หลังรวม main ถึง `79c4a57` ไม่ได้หมายความว่าโค้ด R5 ถูกส่งขึ้น main แล้ว หัวข้อผลตรวจที่ลงวันที่เก่าด้านล่างเป็นบันทึกย้อนหลัง; ใช้สรุปนี้และหัวข้อ TrueMoney / Events readiness สำหรับสถานะล่าสุด
@@ -11,11 +17,11 @@
 | ส่วน | สถานะที่ใช้จริงในโค้ด |
 |---|---|
 | Checkout | Omise **Test** PromptPay / TrueMoney ผ่าน `/orders/payment-attempts`; ไม่รองรับบัตรหรือ Live keys |
-| สั่งซื้อแบบจำลองเดิม | HTTP `POST /orders` ตอบ 409 `PAYMENT_PROVIDER_REQUIRED`; service เดิมเก็บไว้ทดสอบ ไม่ใช่เส้นทางซื้อในเว็บ |
+| สั่งซื้อแบบจำลอง | เปิดเฉพาะ non-production และ Omise keys ว่างทั้งคู่ ตาม payment-config; กรณีอื่น HTTP `POST /orders` ตอบ 409 PAYMENT_PROVIDER_REQUIRED |
 | Order / จัดส่ง | มีประวัติ รายละเอียด Admin Orders เลขพัสดุ และยืนยันรับสินค้า พร้อม status log / admin audit |
 | รีวิว / คืนเงิน | รวม R1 แล้ว; Order Detail ใช้ eligibility API และลิงก์ด้วย `order_item_id` ไป `/write-review` / `/refunds` |
 | R3 Inventory | เชื่อมแล้ว: R5 `deductStock(client,line)` แปลงเป็น R3 `applyStockChange(client,{productId,type:'sale',change:-quantity,orderItemId,actorId})` ใช้ transaction เดียวกับ Order/Payment ไม่มี stock fallback; ยังตอบ 503 INVENTORY_NOT_READY หาก service หายหรือ export ผิด |
-| R4 Events | รวม API ของ R4 แล้ว และ R5 ใช้ service ภายในฐานข้อมูลเดียวกันผ่าน local outbox worker; event และ acknowledgment commit พร้อมกัน จึงไม่ต้องใช้ HTTP dedup/token สำหรับเส้นทางนี้ ดูหัวข้อ Local Events ท้ายเอกสาร; public HTTP API ยังไม่มี deduplication |
+| R4 Events | R5 local outbox worker เรียก service R4 ด้วย transaction เดียวสำหรับ event/ack; Development ส่ง Test purchases แล้ว Production ข้าม Test; public HTTP API ยังไม่มี deduplication |
 | R3 Sales | อ่าน Order/OrderItem/Refund จริงผ่าน `/admin/sales-summary`; gross รวมค่าส่ง หัก refund ที่ปิดแล้วเพื่อเป็น net; ตรวจข้อมูล QA ครบ Step 4 แล้ว |
 
 ผลตรวจล่าสุด Step 1–5 วันที่ 15 พ.ย.: เชื่อม Inventory จริง, ซื้อด้วย Omise Test ภายนอกทั้งสองวิธี, จัดส่ง/รับสินค้า/Review/Refund ของ R1 และ Sales/Events ผ่านแล้ว. Backend 359 ผ่าน / 1 ข้าม / 0 ล้มเหลว; Frontend 37 ผ่าน. Omise Test purchase ถูกกันจากข้อมูลแนะนำตามค่าเริ่มต้น; การคืนเงินยังเป็นการบันทึกจำลอง ไม่ใช่ provider refund. ยังไม่ได้ตรวจ public webhook delivery ผ่านอินเทอร์เน็ตหรือ Live payment และยังไม่ส่งงานขึ้น GitHub
@@ -179,7 +185,8 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | DELETE | `/cart/items/:productId` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบรายการสินค้า |
 | POST | `/cart/item-removals` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบหลายรายการ |
 | POST | `/orders/quotes` | ✓ ยืนยันอีเมลแล้ว | R5 | ตรวจราคา สต็อก ที่อยู่ และยอดก่อนซื้อ |
-| POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | ปิดเส้นทางจำลอง: 409 PAYMENT_PROVIDER_REQUIRED; ใช้ `/orders/payment-attempts` |
+| GET | `/orders/payment-config` | ✓ | R5 | โหมดจ่ายจาก server ไม่มี key ส่งกลับ; simulated เฉพาะ non-production ที่ไม่มี Omise keys ทั้งคู่ |
+| POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | จ่ายจำลองเฉพาะเงื่อนไข payment-config; กรณีอื่น 409 PAYMENT_PROVIDER_REQUIRED |
 | GET | `/orders/:id` | ✓ | R5 | รายละเอียดออเดอร์ของตัวเอง |
 | GET | `/orders` | ✓ | R5 | ประวัติออเดอร์ของตัวเอง กรองสถานะและแบ่งหน้า |
 | GET | `/admin/orders` | ✓ แอดมิน | R5 | รายการออเดอร์ของร้าน ค้นหา กรองและแบ่งหน้า |

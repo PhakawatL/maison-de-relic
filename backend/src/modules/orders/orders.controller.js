@@ -5,7 +5,7 @@ function positive(value, field) {
   if (!Number.isSafeInteger(value) || value < 1) throw AppError.badRequest('VALIDATION_ERROR', 'ข้อมูลไม่ถูกต้อง', [{ field, issue: 'ต้องเป็นจำนวนเต็มบวก' }]);
   return value;
 }
-function parse(body, create = false) {
+function parse(body, create = false, { offline = false } = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) throw AppError.badRequest('VALIDATION_ERROR', 'กรุณาระบุข้อมูลสั่งซื้อ');
   if (!Array.isArray(body.product_ids) || !body.product_ids.length || body.product_ids.length > 100)
     throw AppError.badRequest('VALIDATION_ERROR', 'เลือกสินค้า 1–100 รายการต่อคำสั่งซื้อ');
@@ -14,7 +14,7 @@ function parse(body, create = false) {
     throw AppError.badRequest('VALIDATION_ERROR', 'วิธีส่งหรือวิธีชำระเงินไม่ถูกต้อง');
   const result = { product_ids, address_id: positive(body.address_id, 'address_id'), shipping_method: body.shipping_method, payment_method: body.payment_method };
   if (body.session_id !== undefined) result.session_id=parseSessionId(body.session_id);
-  if (create && body.payment_method === 'truemoney') {
+  if (create && !offline && body.payment_method === 'truemoney') {
     if (typeof body.phone_number !== 'string' || !/^0[0-9]{9}$/.test(body.phone_number))
       throw AppError.badRequest('VALIDATION_ERROR', 'กรุณาระบุเบอร์ TrueMoney Wallet 10 หลักขึ้นต้นด้วย 0');
     result.phone_number = body.phone_number;
@@ -47,11 +47,19 @@ async function list(req, res) {
   const result = await service.list(req.user.user_id, filters);
   res.json({ data: result.items, meta: { page: filters.page, pageSize: filters.pageSize, total: result.total } });
 }
-async function create(req, res) {
-  throw AppError.conflict('PAYMENT_PROVIDER_REQUIRED', 'กรุณาชำระผ่าน Omise Test ที่หน้า Checkout');
+function createDemoController({ orders = service, mode = require('./payment-mode').paymentMode } = {}) {
+  return {
+    paymentConfig: async (req,res) => res.json({data:{mode:mode(),test_mode:true}}),
+    create: async (req,res) => {
+      if (mode() !== 'simulated') throw AppError.conflict('PAYMENT_PROVIDER_REQUIRED', 'กรุณาชำระผ่าน Omise Test ที่หน้า Checkout');
+      // Offline TrueMoney needs no wallet phone: no provider/wallet is contacted.
+      const result = await orders.place(req.user.user_id,parse(req.body,true,{offline:true}));
+      res.status(result.replayed?200:201).json({data:result.order,replayed:result.replayed});
+    },
+  };
 }
 async function getById(req, res) {
   if (!/^\d+$/.test(req.params.id)) throw AppError.badRequest('INVALID_ID', 'รหัสคำสั่งซื้อไม่ถูกต้อง');
   res.json({ data: await service.getById(req.user.user_id, positive(Number(req.params.id), 'id')) });
 }
-module.exports = { quote, create, getById, parse, list, parseListQuery };
+module.exports = { quote, getById, parse, list, parseListQuery, ...createDemoController(), createDemoController };

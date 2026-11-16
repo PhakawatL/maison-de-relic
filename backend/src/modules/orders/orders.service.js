@@ -63,12 +63,16 @@ function createService({ db = database, addresses = integrations.addresses, stoc
     const requestHash = digest({ product_ids: input.product_ids, address_id: input.address_id, shipping_method: input.shipping_method, payment_method: input.payment_method, quote_hash: input.quote_hash, simulation_result: input.simulation_result });
     return db.withTransaction(async client => {
       // Cart lock also serializes concurrent retries before checking the idempotency key.
+      await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [userId]);
       const cartId = await lockCart(userId, client);
       const existing = await client.query('SELECT order_id, checkout_request_hash FROM "order" WHERE user_id = $1 AND checkout_key = $2', [userId, input.checkout_key]);
       if (existing.rows.length) {
         if (existing.rows[0].checkout_request_hash !== requestHash) throw AppError.conflict('IDEMPOTENCY_CONFLICT', 'รหัสคำขอสั่งซื้อนี้ถูกใช้กับข้อมูลอื่นแล้ว');
         return { order: await readOrder(userId, existing.rows[0].order_id, client), replayed: true };
       }
+      const active = await client.query(`SELECT 1 FROM checkout_payment_attempt
+        WHERE user_id=$1 AND status=ANY($2::text[]) LIMIT 1`, [userId,['initializing','unknown','pending','needs_review']]);
+      if (active.rowCount) throw AppError.conflict('PAYMENT_IN_PROGRESS','มีรายการชำระเดิมที่ต้องตรวจสอบก่อน กรุณากลับไปตรวจสถานะ');
       const q = await buildQuote(userId, input, client, cartId, true);
       if (q.quote_hash !== input.quote_hash) throw AppError.conflict('QUOTE_CHANGED', 'ราคา จำนวน หรือที่อยู่เปลี่ยนไป กรุณาตรวจยอดใหม่ก่อนยืนยัน');
       if (input.simulation_result === 'failed') throw AppError.conflict('PAYMENT_SIMULATED_FAILED', 'จำลองการชำระเงินไม่สำเร็จ ไม่มีการสร้างออเดอร์หรือตัดสต็อก');
@@ -97,10 +101,10 @@ function createService({ db = database, addresses = integrations.addresses, stoc
       }
       await client.query('UPDATE cart SET updated_at=NOW() WHERE cart_id=$1', [cartId]);
     const order = await readOrder(userId, orderId, client);
-    if (!paymentMethod.startsWith('simulated_')) await events.enqueue(client, {
+    await events.enqueue(client, {
       key:'purchase:'+orderId, type:'purchase', userId, orderId,
       payload:{order_id:Number(orderId),currency:'THB',value:q.grand_total,shipping_fee:q.shipping_fee,
-        test_mode:paymentMethod.startsWith('omise_test_'),...(input.session_id?{session_id:input.session_id}:{}),
+        test_mode:paymentMethod.startsWith('omise_test_')||paymentMethod.startsWith('simulated_'),...(input.session_id?{session_id:input.session_id}:{}),
         items:q.items.map(line=>({product_id:line.product_id,quantity:line.quantity,unit_price:line.price}))},
     });
     return order;

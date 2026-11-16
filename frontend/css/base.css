@@ -208,6 +208,9 @@ a {
 /* จอกว้าง: โลโก้ เมนู และปุ่มอยู่แถวเดียว — ที่ไม่พอให้ปุ่มชื่อผู้ใช้หดแล้วตัดเป็น … แทนการดันเมนูตกบรรทัด
    (เมนูแอดมินภาษาไทย + ปุ่มหัวใจ + ชื่อยาว เคยทำให้ "แอดมิน" ตกไปบรรทัดที่สอง) */
 @media (min-width: 1101px) {
+  .brand {
+    margin-right: 0; /* header-inner already supplies the brand/navigation gap */
+  }
   .nav {
     flex: none;
     flex-wrap: nowrap;
@@ -217,6 +220,9 @@ a {
     min-width: 0;
     flex-wrap: nowrap;
     justify-content: flex-end;
+    /* Keep the language switch separated from the last navigation item even
+       when account actions consume the remaining desktop width. */
+    padding-inline-start: var(--space-3);
   }
   .header-actions > * {
     flex-shrink: 0;

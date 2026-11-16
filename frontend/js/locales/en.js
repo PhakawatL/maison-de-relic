@@ -560,6 +560,7 @@ export default {
   "payment.charge": "Omise charge",
   "payment.check": "Check payment status",
   "payment.testControls": "Test payment",
+  "payment.offlineNotice": "Simulated payment — no money is transferred. This demo can create an order without Omise or an internet connection.",
   "payment.existingNotice": "An earlier payment is still open. Confirm the same method to return to it.",
   "payment.finishExisting": "Finish the earlier payment first. For a Test QR, choose payment failed there before starting a different method.",
   "payment.resume": "Open existing payment",

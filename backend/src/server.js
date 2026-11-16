@@ -2,7 +2,8 @@
 const app = require('./app');
 const env = require('./config/env');
 const { pool } = require('./db/pool');
-const stopEvents = require('./modules/orders/r5-local-events').startWorker();
+const localEvents = require('./modules/orders/r5-local-events');
+const stopEvents = localEvents.startWorker({dispatcher:localEvents.createRuntimeDispatcher()});
 
 const server = app.listen(env.port, () => {
   console.log(`API พร้อมใช้งานที่ http://localhost:${env.port}/api/health (${env.nodeEnv})`);
