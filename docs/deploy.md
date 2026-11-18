@@ -29,6 +29,9 @@
 
 4. กด Deploy จะได้ URL เช่น `https://maison-de-relic.vercel.app`
 
+> **ตั้งแล้ว (18 พ.ย. 2569):** https://maison-de-relic.vercel.app · โปรเจกต์ Vercel `maison-de-relic` บัญชี Hobby ของ R1 · แอป Vercel บน GitHub ให้สิทธิ์เฉพาะ repo นี้
+> เปิดได้ทุกหน้า (ลิงก์แบบไม่มี `.html` ใช้ได้) · หน้าแรกขึ้นข้อมูลตัวอย่างพร้อมข้อความ "ยังเรียก API สินค้าไม่ได้" เพราะ API ยังไม่ออนไลน์ (ดูข้อจำกัดด้านบน)
+
 หลังจากนี้ทุกครั้งที่ merge เข้า `main` และมีไฟล์ใน `frontend/` เปลี่ยน Vercel จะ deploy ให้เอง และทุก PR จะได้ลิงก์ preview ไว้ดูหน้าตาก่อน merge
 (`frontend/vercel.json` ตั้งให้ข้ามการ deploy ถ้าไม่มีอะไรใน `frontend/` เปลี่ยน)
 
