@@ -4,6 +4,29 @@
 
 ## 1. ขอบเขตและการเตรียม Demo
 
+**การตรวจส่งอาจารย์ให้ใช้ Omise Test เป็นเส้นทางหลัก** โดยตั้ง Test keys ให้ครบและเชื่อมต่ออินเทอร์เน็ต การทดสอบต้องสร้าง charge ใหม่ที่ตรวจพบใน Omise Dashboard ได้ ไม่ใช้ Offline Demo, `?preview=1` หรือผล automated tests แทนหลักฐานการเรียก API ภายนอก
+
+| โหมด | ใช้ key | เรียก Omise API จริง | บันทึก Order/stock ใน PostgreSQL |
+|---|---|---|---|
+| Omise Test — ใช้ตรวจส่งอาจารย์ | Test public + secret keys | ใช่; ไม่มีการเก็บเงินจริง | เมื่อ provider ยืนยันสำเร็จ |
+| Offline Demo — ใช้ตรวจระบบภายในเท่านั้น | ว่างทั้งคู่ และ non-production | ไม่เรียก | เมื่อเลือกผลจำลองสำเร็จ |
+| Preview (`?preview=1`) | ไม่ใช้ | ไม่เรียก | ไม่บันทึก |
+
+### ตั้งค่า Omise สำหรับชุดส่งอาจารย์
+
+รับค่าจริงจาก R5 ผ่านช่องทางส่วนตัว แล้วใส่ใน `.env` ที่ root ของ repository (ตัวอย่างต่อไปนี้เป็น placeholder ไม่ใช่ key จริง):
+
+```dotenv
+OMISE_PUBLIC_KEY=pkey_test_REPLACE_WITH_PROVIDED_VALUE
+OMISE_SECRET_KEY=skey_test_REPLACE_WITH_PROVIDED_VALUE
+```
+
+ไม่ใส่ค่า secret ใน README, frontend, Postman หรือรายงาน หลังแก้ `.env` ให้ recreate API ด้วย `docker compose up -d --force-recreate api` เพื่อรับค่าใหม่ ปุ่มทดสอบใช้ Development ตาม Docker compose หลัก ไม่ต้องเปิดโหมดรับเงินจริง
+
+หลัง Login ตามหัวข้อ 2 ตรวจ `GET /api/orders/payment-config` ด้วย token ลูกค้า: ต้องได้ `data.mode = omise_test` ถ้าได้ `simulated` ให้ตรวจการส่ง environment เข้า container ก่อนเริ่มตรวจ ห้ามใช้ผลจำลองแทนการทดสอบ Omise
+
+หลักฐานที่ต้องตรวจในหัวข้อ 5/7: charge ID ของรายการใหม่ต้องตรงกับรายการใน Omise Dashboard (Test mode) พร้อมยอดและเวลา; ทดสอบ Pending → Failed และ Pending → Successful แล้วเทียบว่า Failed ไม่สร้าง Order/ลด stock ส่วน Successful สร้าง Order และตัด stock เพียงครั้งเดียว ปุ่ม Test ใต้ QR เรียก Omise Test API เปลี่ยนผลแล้วดึง charge กลับมาตรวจอีกครั้ง ไม่ได้ตั้ง paid ใน DB โดยตรง
+
 ลำดับหลัก: Login → Cart → Quote → Omise Test → Order → Admin จัดส่ง → Customer ยืนยันรับ → R1 Review/Refund → R3 Sales / R4 Events
 
 | ส่วน | เจ้าของ / สิ่งที่ต้องพร้อม |
@@ -24,7 +47,7 @@
 - P2 ราคา **฿1,500** สต็อกอย่างน้อย **2** สถานะ `available`
 - Cart ของ customer A ควรว่าง และไม่มี payment attempt ค้างอยู่ อย่าใช้สินค้าหรือออเดอร์ส่วนตัว
 - ไม่ยึด IDs จากเครื่องผู้พัฒนา เช่น 1878/1879 หรือ 2503/2504 เพราะเครื่องอาจารย์มี IDs ต่างกัน
-- ถ้าตรวจทาง provider ให้ตั้ง Omise **Test** public/secret keys ที่ `.env` ฝั่ง server ตาม [setup](../../setup.md); ถ้า Demo ไม่ใช้ key/เน็ตให้ใช้หัวข้อ 5 ทางเลือก Offline แทน ห้ามใส่ secret ใน Postman/frontend
+- สำหรับการตรวจส่งอาจารย์ ต้องตั้ง Omise **Test** public/secret keys ที่ `.env` ฝั่ง server ตามขั้นตอนด้านบนและ [setup](../../setup.md); Offline ในหัวข้อ 5 ใช้ตรวจระบบภายในเพิ่มเติมเท่านั้น ห้ามใส่ secret ใน Postman/frontend
 - ปุ่ม/API เปลี่ยนผล PromptPay Test ใช้ได้เมื่อ `NODE_ENV` ไม่ใช่ `production`; Docker compose หลักตั้ง `development` ไว้แล้ว ต้องเชื่อมอินเทอร์เน็ตถึง Omise
 
 ```powershell
@@ -146,9 +169,9 @@ $ExpressQuote = (Invoke-R5 POST '/orders/quotes' -Token $CustomerToken -Body @{
 
 ## 5. PromptPay Test — R5-P01 ถึง P06
 
-### ทางเลือก Demo ไม่มี key / ไม่มีเน็ต — R5-D01 ถึง D06
+### Offline Demo ไม่มี key / ไม่มีเน็ต — ตรวจระบบภายในเท่านั้น (R5-D01 ถึง D06)
 
-ใช้แทนหัวข้อ PromptPay/TrueMoney provider เมื่อเครื่องอาจารย์ไม่พร้อมเรียก Omise: ให้เว้น `OMISE_PUBLIC_KEY` และ `OMISE_SECRET_KEY` **ทั้งคู่** แล้ว recreate API ด้วย `docker compose up -d --force-recreate api` (ไม่ลบ volume). ไม่ต้องเผย key/ให้ AI อ่าน `.env`. ต้องไม่มีรายการ provider เดิมที่ยังตรวจผลไม่ได้; ห้ามเปลี่ยนโหมดเพื่อข้ามการจ่ายเดิม
+ส่วนนี้ไม่เรียก Omise และใช้แทนการตรวจ API ภายนอกของอาจารย์ไม่ได้ หากไม่มี key หรือเชื่อมต่อ provider ไม่ได้ ให้แก้ configuration/การเชื่อมต่อก่อนตรวจส่งงาน สำหรับการตรวจระบบภายในเพิ่มเติมเท่านั้น ให้เว้น `OMISE_PUBLIC_KEY` และ `OMISE_SECRET_KEY` **ทั้งคู่** แล้ว recreate API ด้วย `docker compose up -d --force-recreate api` (ไม่ลบ volume). ต้องไม่มีรายการ provider เดิมที่ยังตรวจผลไม่ได้; ห้ามเปลี่ยนโหมดเพื่อข้ามการจ่ายเดิม
 
 1. D01: `GET /orders/payment-config` ด้วย CustomerToken → mode `simulated`. บน `/checkout` ต้องขึ้น “จ่ายจำลอง” และตัวเลือกผลสำเร็จ/ไม่สำเร็จ ไม่แสดง QR/พาออกไป wallet
 2. D02: ใช้ `$QuoteInput` จากหัวข้อ 4 พร้อม quote_hash และ UUID ใหม่ POST `/orders` โดย `simulation_result='failed'` → 409 PAYMENT_SIMULATED_FAILED; Cart/stock คงเดิม
@@ -174,7 +197,7 @@ Invoke-R5 POST '/orders' -Token $CustomerToken -Body $DemoInput
 
 ถ้าเลือก offline Demo ให้ข้าม code ของ provider ในหัวข้อ 5/7 แล้วไปหัวข้อ 6 ด้วย OrderId นี้; ที่อยู่/Cart/สินค้า/quote ยังต้องเตรียมจริงตามหัวข้อ 1–4. ตัวเลขผลขาย/สต็อกในหัวข้อ 8 ให้เทียบตามรายการที่ทำจริง ไม่รวมรอบที่ข้าม
 
-### ทาง Omise Test — ต้องตั้ง Test keys และเชื่อมต่อ provider ได้
+### เส้นทางหลักสำหรับอาจารย์: Omise Test — ต้องตั้ง Test keys และเชื่อมต่อ provider ได้
 
 ทำ failure ก่อน success เพื่อใช้ Cart ชุดเดียวกัน ห้ามสแกนด้วยธนาคารจริง ค่า Test result นี้ส่งไป Omise Test จริง ไม่ใช่แก้ DB ให้ paid โดยตรง
 
