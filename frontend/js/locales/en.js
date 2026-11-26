@@ -55,6 +55,8 @@ export default {
   'detail.backToSearch': 'Back to search',
   'detail.relatedKicker': 'Similar pieces',
   'detail.relatedTitle': 'You may also like',
+  'detail.photoCredit': 'Photo: {name} / {source}',
+  'detail.approxPrice': 'About {prices} (ECB rate on {date} · charged in THB)',
 
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'Art toys',

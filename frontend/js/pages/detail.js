@@ -7,6 +7,8 @@ import { heartButton, setupHeartButtons } from '../wishlist-button.js'; // ป�
 import { mountProductReviews } from '../product-reviews.js'; // ส่วนรีวิว + ลิงก์รายงานสินค้า (R1)
 import { mountProductCart } from './product-cart.js';
 import { trackEvent } from '../events.js'; // บันทึกพฤติกรรมไว้ทำระบบแนะนำ (ส่งไป POST /api/events ของ R4)
+import { getThbRates, convertPrice } from '../exchange-rate.js'; // ราคาโดยประมาณเป็น USD/JPY (เว็บเซอร์วิสสาธารณะ Frankfurter)
+import { creditForUrl } from '../image-credits.js'; // เครดิตช่างภาพของรูปสินค้าตัวอย่าง (Pexels)
 
 applyI18n(); // แปลข้อความที่มี data-i18n ในหน้า (คำแปลอยู่ที่ js/locales/th.js และ en.js)
 
@@ -51,7 +53,8 @@ function galleryHtml() {
     return `<div class="detail-media"><span class="no-image">${t('detail.noImage')}</span></div>`;
   }
   const img = gallery[current];
-  const main = `<div class="detail-media"><img id="detail-main-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt)}"></div>`;
+  const main = `<div class="detail-media"><img id="detail-main-img" src="${escapeHtml(img.url)}" alt="${escapeHtml(img.alt)}"></div>
+    <p class="detail-credit" id="detail-credit">${creditHtml(img.url)}</p>`;
   if (gallery.length === 1) return main; // รูปเดียว ไม่ต้องมีแถวรูปย่อย
 
   // รูปย่อยเป็น <button> (ไม่ใช่ <img> เฉย ๆ) เพื่อให้กด Tab มาโฟกัส แล้วกด Enter/Space เลือกได้
@@ -68,6 +71,18 @@ function galleryHtml() {
   return `${main}<div class="detail-thumbs">${thumbs}</div>`;
 }
 
+// บรรทัดอ้างอิงที่มาของรูป (ใบงานกำหนดให้อ้างอิงทุกครั้งที่ใช้รูปจากแหล่งอื่น)
+// รูปตัวอย่างมาจาก Pexels → "ภาพ: ชื่อช่างภาพ / Pexels" · รูปที่ร้านอัปโหลดเอง (ไม่มีในรายการ) → ว่าง
+function creditHtml(url) {
+  const credit = creditForUrl(url);
+  if (!credit) return '';
+  const name = credit.photographerUrl
+    ? `<a href="${escapeHtml(credit.photographerUrl)}" target="_blank" rel="noopener">${escapeHtml(credit.photographer)}</a>`
+    : escapeHtml(credit.photographer);
+  const source = `<a href="${escapeHtml(credit.source)}" target="_blank" rel="noopener">Pexels</a>`;
+  return t('detail.photoCredit', { name, source });
+}
+
 // เปลี่ยนรูปใหญ่เป็นรูปที่ index (ไม่วาดทั้งหน้าใหม่ แก้แค่ src/alt และสถานะปุ่ม)
 function selectImage(index) {
   if (index === current || !gallery[index]) return;
@@ -80,6 +95,8 @@ function selectImage(index) {
   main.classList.remove('img-swap');
   void main.offsetWidth;
   main.classList.add('img-swap');
+  const credit = document.getElementById('detail-credit');
+  if (credit) credit.innerHTML = creditHtml(gallery[index].url); // รูปใหม่อาจเป็นของช่างภาพคนอื่น
   box.querySelectorAll('.detail-thumb').forEach((btn) => {
     btn.setAttribute('aria-pressed', String(Number(btn.dataset.index) === index));
   });
@@ -151,6 +168,7 @@ function renderProduct(p) {
         ${heartButton(p.product_id)}
       </div>
       <p class="detail-price">${priceFormat.format(p.price)}</p>
+      <p class="detail-price-fx" id="detail-price-fx" hidden></p>
       <dl class="detail-facts">
         <div>
           <dt>${t('detail.condition')}</dt>
@@ -176,6 +194,20 @@ function renderProduct(p) {
   const cart = box.querySelector('#product-cart');
   if (existingCart) cart.replaceWith(existingCart);
   else mountProductCart(cart, p, {showSummary:false});
+  renderFx(p.price);
+}
+
+/* ---------- ราคาโดยประมาณเป็นสกุลเงินต่างประเทศ ---------- */
+// อัตราแลกเปลี่ยนมาจากเว็บเซอร์วิสสาธารณะ (Frankfurter) ผ่าน fetch() ใน exchange-rate.js
+// null = ยังโหลดไม่เสร็จ หรือโหลดไม่สำเร็จ → ซ่อนบรรทัดนี้ไว้ ราคาบาทยังแสดงปกติ
+let fx = null;
+function renderFx(priceThb) {
+  const el = document.getElementById('detail-price-fx');
+  if (!el) return;
+  const prices = convertPrice(priceThb, fx?.rates);
+  el.hidden = prices.length === 0;
+  if (el.hidden) return;
+  el.textContent = t('detail.approxPrice', { prices: prices.map((x) => x.text).join(' · '), date: fx.date });
 }
 
 /* ---------- วาด error ---------- */
@@ -255,6 +287,11 @@ async function load() {
     gallery = collectImages(data); // เตรียมรูปครั้งเดียวตอนโหลด (สลับภาษาไม่ต้องทำใหม่)
     current = 0;
     show(() => renderProduct(data));
+    // อัตราแลกเปลี่ยนไม่ต้อง await ให้หน้าขึ้นก่อน ได้ผลเมื่อไหร่ค่อยเติมบรรทัดราคาโดยประมาณ
+    getThbRates().then((rates) => {
+      fx = rates;
+      renderFx(data.price);
+    });
     // ส่วนรีวิวของ R1 เรียกครั้งเดียวพอ (ไม่อยู่ใน renderProduct) เพราะมันดูแลการสลับภาษาของมันเอง
     // เรียกเฉพาะตอนโหลดสินค้าสำเร็จ ถ้า error จะไม่มีส่วนรีวิว
     mountProductReviews(document.getElementById('reviews'), data);

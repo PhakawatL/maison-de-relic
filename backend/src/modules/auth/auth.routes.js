@@ -1,3 +1,44 @@
+// ===================== ตัวอย่างข้อมูลสำหรับทดสอบเว็บเซอร์วิสด้วย Postman =====================
+// ใช้กับฐานข้อมูลตัวอย่าง (หลังสั่ง npm run db:reset) · ชุดเดียวกับ docs/testing/postman/maison-de-relic.postman_collection.json
+// route ที่ต้องล็อกอิน: แท็บ Headers ใส่  Authorization: Bearer <token>  (token ได้จาก POST /api/auth/login)
+//
+// Testing Login เจ้าของร้าน (ตัวอย่างที่ 1)
+// method: post
+// URL: http://localhost:3000/api/auth/login
+// body: raw JSON
+// {
+//     "username": "Neptz",
+//     "password": "Neptz@1234"
+// }
+// ผลที่ควรได้: 200 OK · data.token (เอาไปใส่ header Authorization) และ data.user.admin_role = "owner"
+//
+// Testing Login ทีมงาน (ตัวอย่างที่ 2)
+// method: post
+// URL: http://localhost:3000/api/auth/login
+// body: raw JSON
+// {
+//     "username": "staff",
+//     "password": "Staff@1234"
+// }
+// ผลที่ควรได้: 200 OK · data.user.admin_role = "staff"
+//
+// Testing Login รหัสผ่านผิด (ตัวอย่างที่ 3)
+// method: post
+// URL: http://localhost:3000/api/auth/login
+// body: raw JSON
+// {
+//     "username": "Neptz",
+//     "password": "wrong-password"
+// }
+// ผลที่ควรได้: 401 Unauthorized
+//
+// Testing ดูผู้ใช้ที่ล็อกอินอยู่
+// method: get
+// URL: http://localhost:3000/api/auth/me
+// header: Authorization: Bearer <token ของ ผู้ใช้คนใดก็ได้>
+// ผลที่ควรได้: 200 OK · ข้อมูลของเจ้าของ token (ไม่ใส่ token → 401)
+// ====================================================================================
+
 // routes ของระบบสมาชิก (R2): ล็อกอิน · สมัคร + ยืนยันอีเมลด้วย OTP · ลืม / รีเซ็ตรหัสผ่าน
 // ออกจากระบบ: หน้าเว็บลบ token ทิ้งเอง (auth.clear() ใน js/api.js) ไม่ต้องเรียก API
 // แก้โปรไฟล์ / เปลี่ยนรหัสผ่าน อยู่ที่ /api/profile (modules/users/profile.routes.js)
