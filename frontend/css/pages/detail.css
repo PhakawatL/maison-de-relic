@@ -82,6 +82,20 @@
   min-width: 0; /* กันแถวรูปย่อยดันคอลัมน์ให้กว้างเกินจอ */
 }
 /* เปลี่ยนรูปแล้วรูปใหญ่ค่อย ๆ ขยายขึ้นมา (keyframes pop อยู่ใน home.css) */
+/* บรรทัดเครดิตใต้รูปใหญ่ (ภาพ: ชื่อช่างภาพ / Pexels) */
+.detail-credit {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-3);
+  font-size: 0.8rem;
+  text-align: right;
+}
+.detail-credit:empty {
+  display: none;
+}
+.detail-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
 .detail-media img.img-swap {
   animation: pop 0.45s var(--ease) both;
 }
@@ -158,6 +172,12 @@
   margin: 0;
   font-size: 1.8rem;
   font-weight: 700;
+}
+/* ราคาโดยประมาณเป็น USD/JPY (จาก exchange-rate.js) — ตัวเล็ก สีจาง เพราะเป็นข้อมูลเสริม */
+.detail-price-fx {
+  margin: calc(-1 * var(--space-3) + var(--space-1)) 0 0; /* ชิดราคาบาท (หักระยะห่างของ grid ใน .detail-info) */
+  color: var(--ink-3);
+  font-size: 0.9rem;
 }
 /* สภาพ / สต็อก เป็นกล่องเล็ก 2 ช่องเคียงกัน */
 .detail-facts {

@@ -1,0 +1,1658 @@
+{
+  "info": {
+    "name": "Maison de Relic — Web Service Tests (ITDS242)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication (POST /auth/login, GET /auth/me)",
+      "item": [
+        {
+          "name": "1.1 Login owner (Neptz) สำเร็จ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"Neptz\",\n  \"password\": \"Neptz@1234\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('ได้ token และเป็น owner', () => { pm.expect(j.data.token).to.be.a('string'); pm.expect(j.data.user.admin_role).to.eql('owner'); });",
+                  "pm.collectionVariables.set('token_owner', j.data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.2 Login staff สำเร็จ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"staff\",\n  \"password\": \"Staff@1234\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('เป็น staff', () => pm.expect(j.data.user.admin_role).to.eql('staff'));",
+                  "pm.collectionVariables.set('token_staff', j.data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.3 Login ลูกค้า (customer) สำเร็จ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"customer\",\n  \"password\": \"Customer@1234\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('ไม่ใช่แอดมิน', () => pm.expect(j.data.user.is_admin).to.eql(false));",
+                  "pm.collectionVariables.set('token_customer', j.data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.4 Login รหัสผ่านผิด",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"Neptz\",\n  \"password\": \"wrong-password\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 401', () => pm.response.to.have.status(401));",
+                  "pm.test('error code', () => pm.expect(pm.response.json().error.code).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.5 Login ไม่กรอกข้อมูล",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"\",\n  \"password\": \"\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.6 ดูผู้ใช้ที่ล็อกอินอยู่ (มี token)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('username = Neptz', () => pm.expect(pm.response.json().data.username).to.eql('Neptz'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "1.7 ดูผู้ใช้โดยไม่มี token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/auth/me",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Search and View — สินค้า",
+      "item": [
+        {
+          "name": "2.1 ค้นหาแบบไม่มีเกณฑ์ (Select All)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('มี meta.total และได้รายการ', () => { pm.expect(j.meta.total).to.be.above(0); pm.expect(j.data.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.2 ค้นด้วยชื่อ (q=charizard)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?q=charizard",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "charizard"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ทุกรายการมีคำว่า charizard', () => pm.response.json().data.forEach(p => pm.expect(p.title.toLowerCase()).to.include('charizard')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.3 ค้นด้วยหมวดหมู่ + สภาพ (category=figures&condition=like_new)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?category=figures&condition=like_new",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "figures"
+                },
+                {
+                  "key": "condition",
+                  "value": "like_new"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ตรงหมวดและสภาพ', () => pm.response.json().data.forEach(p => { pm.expect(p.category.slug).to.eql('figures'); pm.expect(p.condition).to.eql('like_new'); }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.4 ค้นด้วยช่วงราคา + เรียงราคา (500–2000)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?minPrice=500&maxPrice=2000&sort=price_asc",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "minPrice",
+                  "value": "500"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "2000"
+                },
+                {
+                  "key": "sort",
+                  "value": "price_asc"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('ราคาอยู่ในช่วง', () => d.forEach(p => { pm.expect(p.price).to.be.within(500, 2000); }));",
+                  "pm.test('เรียงจากน้อยไปมาก', () => { for (let i = 1; i < d.length; i++) pm.expect(d[i].price).to.be.at.least(d[i-1].price); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.5 ค้นด้วยซีรีส์ (series=gundam)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?series=gundam",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "series",
+                  "value": "gundam"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ทุกชิ้นอยู่ซีรีส์ gundam', () => pm.response.json().data.forEach(p => pm.expect(p.series.slug).to.eql('gundam')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.6 ค้นหลายเกณฑ์พร้อมกัน (q + category + maxPrice)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?q=holo&category=trading-cards&maxPrice=5000",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "holo"
+                },
+                {
+                  "key": "category",
+                  "value": "trading-cards"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "5000"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ตรงทุกเกณฑ์', () => pm.response.json().data.forEach(p => { pm.expect(p.category.slug).to.eql('trading-cards'); pm.expect(p.price).to.be.at.most(5000); }));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.7 ค่า query ผิด (condition=broken)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products?condition=broken",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "condition",
+                  "value": "broken"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.8 ดูรายละเอียดสินค้า id=1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products/1",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().data;",
+                  "pm.test('มีรูปและรายละเอียด', () => { pm.expect(p.product_id).to.eql(1); pm.expect(p.images).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.9 ดูสินค้าที่ไม่มีอยู่ (id=999999)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products/999999",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "999999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.10 แอดมินดูสินค้าทุกสถานะ (status=draft)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admin/products?status=draft",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "draft"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ทุกชิ้นเป็น draft', () => pm.response.json().data.forEach(p => pm.expect(p.status).to.eql('draft')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.11 เรียก /admin/products โดยไม่ล็อกอิน",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/admin/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2.12 ลูกค้าเรียก /admin/products",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_customer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admin/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admin",
+                "products"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Insert — สินค้า (POST /products)",
+      "item": [
+        {
+          "name": "3.1 เพิ่มสินค้าตัวอย่างที่ 1",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"[Postman] Zaku II — ประกอบแล้ว\",\n  \"description\": \"ทดสอบเพิ่มสินค้าผ่าน Postman\",\n  \"category_id\": 3,\n  \"series_id\": 3,\n  \"status\": \"draft\",\n  \"condition\": \"like_new\",\n  \"price\": 1290,\n  \"stock_quantity\": 2,\n  \"attributes\": {\n    \"year\": \"2021\",\n    \"original_box\": \"yes\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json().data;",
+                  "pm.test('ข้อมูลตรงกับที่ส่ง', () => { pm.expect(p.title).to.include('Zaku'); pm.expect(p.price).to.eql(1290); pm.expect(p.stock_quantity).to.eql(2); });",
+                  "pm.collectionVariables.set('product_id_1', p.product_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.2 เพิ่มสินค้าตัวอย่างที่ 2 (staff เป็นคนเพิ่ม)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"[Postman] Labubu The Monsters — Have a Seat\",\n  \"description\": \"กล่องสุ่มเปิดแล้ว ตัวครบ\",\n  \"category_id\": 4,\n  \"series_id\": 5,\n  \"status\": \"available\",\n  \"condition\": \"new\",\n  \"price\": 850,\n  \"stock_quantity\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('product_id_2', pm.response.json().data.product_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.3 เพิ่มสินค้าข้อมูลไม่ครบ (ไม่มี title, ราคาติดลบ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": 3,\n  \"status\": \"draft\",\n  \"condition\": \"new\",\n  \"price\": -5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 400', () => pm.response.to.have.status(400));",
+                  "pm.test('บอกช่องที่ผิด', () => pm.expect(pm.response.json().error.details.map(d => d.field)).to.include('title'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3.4 ลูกค้าพยายามเพิ่มสินค้า",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_customer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"x\",\n  \"category_id\": 3,\n  \"status\": \"draft\",\n  \"condition\": \"new\",\n  \"price\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Update — สินค้า (PUT /products/:id)",
+      "item": [
+        {
+          "name": "4.1 แก้ไขสินค้าตัวอย่างที่ 1 (ราคา + สถานะ)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_1}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"[Postman] Zaku II — ประกอบแล้ว (แก้ไข)\",\n  \"description\": \"แก้ราคาและเปิดขาย\",\n  \"category_id\": 3,\n  \"series_id\": 3,\n  \"status\": \"available\",\n  \"condition\": \"excellent\",\n  \"price\": 1190,\n  \"attributes\": {\n    \"year\": \"2021\",\n    \"original_box\": \"no\"\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().data;",
+                  "pm.test('ค่าใหม่ถูกบันทึก', () => { pm.expect(p.price).to.eql(1190); pm.expect(p.status).to.eql('available'); pm.expect(p.condition).to.eql('excellent'); });",
+                  "pm.test('PUT ไม่แตะสต็อก', () => pm.expect(p.stock_quantity).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 แก้ไขสินค้าตัวอย่างที่ 2 (ซ่อนสินค้า)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_2}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_2}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"[Postman] Labubu The Monsters — Have a Seat\",\n  \"description\": \"ซ่อนไว้ชั่วคราว\",\n  \"category_id\": 4,\n  \"series_id\": 5,\n  \"status\": \"hidden\",\n  \"condition\": \"new\",\n  \"price\": 890\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('สถานะ hidden', () => pm.expect(pm.response.json().data.status).to.eql('hidden'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 ตรวจผลการแก้ไขด้วย GET /admin/products/:id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admin/products/{{product_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admin",
+                "products",
+                "{{product_id_1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ราคาเป็น 1190', () => pm.expect(pm.response.json().data.price).to.eql(1190));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.4 แก้ไขสินค้าที่ไม่มีอยู่",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/999999",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "999999"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"x\",\n  \"category_id\": 3,\n  \"series_id\": null,\n  \"status\": \"draft\",\n  \"condition\": \"new\",\n  \"price\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.5 แก้ไขด้วยหมวดหมู่ที่ไม่มีอยู่",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_1}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"x\",\n  \"category_id\": 999,\n  \"series_id\": null,\n  \"status\": \"draft\",\n  \"condition\": \"new\",\n  \"price\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Delete — สินค้า (DELETE /products/:id)",
+      "item": [
+        {
+          "name": "5.1 ลบสินค้าตัวอย่างที่ 1",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('result = deleted', () => pm.expect(pm.response.json().data.result).to.eql('deleted'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.2 ลบสินค้าตัวอย่างที่ 2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_2}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.3 ลบซ้ำ (สินค้าถูกลบไปแล้ว)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/products/{{product_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "{{product_id_1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.4 ลบโดยไม่ล็อกอิน",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base}}/products/1",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "products",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Search / Insert / Update / Delete — บัญชีผู้ดูแล (/admins)",
+      "item": [
+        {
+          "name": "6.1 ดูผู้ดูแลทั้งหมด (ไม่มีเกณฑ์)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('มีผู้ดูแลอย่างน้อย 1 คน', () => pm.expect(pm.response.json().meta.total).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 ค้นผู้ดูแลด้วยคำค้น + สถานะ (q=staff&status=active)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins?q=staff&status=active",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "staff"
+                },
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ทุกคนยังใช้งานอยู่', () => pm.response.json().data.forEach(a => pm.expect(a.is_active).to.eql(true)));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 เพิ่มผู้ดูแลตัวอย่างที่ 1 (staff)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_staff1\",\n  \"email\": \"postman.staff1@example.com\",\n  \"password\": \"Postman@1234\",\n  \"first_name\": \"สมชาย\",\n  \"last_name\": \"ใจดี\",\n  \"phone\": \"081-234-5678\",\n  \"admin_role\": \"staff\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 201', () => pm.response.to.have.status(201));",
+                  "const a = pm.response.json().data;",
+                  "pm.test('ไม่มี password_hash ใน response', () => pm.expect(a).to.not.have.property('password_hash'));",
+                  "pm.collectionVariables.set('admin_id_1', a.user_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.4 เพิ่มผู้ดูแลตัวอย่างที่ 2 (owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_owner2\",\n  \"email\": \"postman.owner2@example.com\",\n  \"password\": \"Postman@1234\",\n  \"first_name\": \"สมหญิง\",\n  \"last_name\": \"รักดี\",\n  \"admin_role\": \"owner\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('admin_id_2', pm.response.json().data.user_id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.5 เพิ่มผู้ดูแล username ซ้ำ",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_staff1\",\n  \"email\": \"other@example.com\",\n  \"password\": \"Postman@1234\",\n  \"first_name\": \"ซ้ำ\",\n  \"last_name\": \"ซ้ำ\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.6 staff พยายามเพิ่มผู้ดูแล",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_staff}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_x\",\n  \"email\": \"x@example.com\",\n  \"password\": \"Postman@1234\",\n  \"first_name\": \"x\",\n  \"last_name\": \"x\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.7 ดูผู้ดูแล 1 คน",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/{{admin_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "{{admin_id_1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.8 แก้ไขผู้ดูแลตัวอย่างที่ 1 (ชื่อ + เบอร์)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/{{admin_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "{{admin_id_1}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"first_name\": \"สมชาย (แก้ไข)\",\n  \"phone\": \"089-999-0000\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ค่าใหม่ถูกบันทึก', () => pm.expect(pm.response.json().data.phone).to.eql('089-999-0000'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.9 แก้ไขผู้ดูแลตัวอย่างที่ 2 (ลดระดับเป็น staff)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/{{admin_id_2}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "{{admin_id_2}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"admin_role\": \"staff\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 200', () => pm.response.to.have.status(200));",
+                  "pm.test('admin_role = staff', () => pm.expect(pm.response.json().data.admin_role).to.eql('staff'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.10 ลบ (ปิดบัญชี) ผู้ดูแลตัวอย่างที่ 1",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/{{admin_id_1}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "{{admin_id_1}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.11 ลบ (ปิดบัญชี) ผู้ดูแลตัวอย่างที่ 2",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/{{admin_id_2}}",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "{{admin_id_2}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.12 ผู้ดูแลที่ถูกปิดบัญชีล็อกอินไม่ได้",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/auth/login",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman_staff1\",\n  \"password\": \"Postman@1234\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('ล็อกอินไม่ผ่าน (4xx)', () => pm.expect(pm.response.code).to.be.within(400, 499));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.13 owner ปิดบัญชีของตัวเอง",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token_owner}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base}}/admins/1",
+              "host": [
+                "{{base}}"
+              ],
+              "path": [
+                "admins",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status = 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base",
+      "value": "http://localhost:3000/api"
+    }
+  ]
+}

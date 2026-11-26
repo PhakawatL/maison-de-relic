@@ -186,6 +186,11 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | POST | `/cart/item-removals` | ✓ ยืนยันอีเมลแล้ว | R5 | ลบหลายรายการ |
 | POST | `/orders/quotes` | ✓ ยืนยันอีเมลแล้ว | R5 | ตรวจราคา สต็อก ที่อยู่ และยอดก่อนซื้อ |
 | GET | `/orders/payment-config` | ✓ | R5 | โหมดจ่ายจาก server ไม่มี key ส่งกลับ; simulated เฉพาะ non-production ที่ไม่มี Omise keys ทั้งคู่ |
+| POST | `/orders/payment-attempts` | ✓ ยืนยันอีเมลแล้ว | R5 | สร้างรายการชำระเงินผ่าน Omise Test (PromptPay / TrueMoney) |
+| GET | `/orders/payment-attempts/active` | ✓ | R5 | รายการชำระเงินที่ค้างอยู่ของตัวเอง (กู้หน้า QR หลังรีเฟรช) |
+| GET | `/orders/payment-attempts/:attemptId` | ✓ | R5 | สถานะรายการชำระเงิน |
+| POST | `/orders/payment-attempts/:attemptId/sync` | ✓ ยืนยันอีเมลแล้ว | R5 | ตรวจผลการจ่ายจาก Omise แล้วสร้างคำสั่งซื้อเมื่อจ่ายสำเร็จ |
+| POST | `/orders/payment-attempts/:attemptId/test-result` | ✓ ยืนยันอีเมลแล้ว | R5 | ปุ่มจำลองผลจ่ายสำเร็จ/ไม่สำเร็จของ Omise Test (ปิดเมื่อ production) |
 | POST | `/orders` | ✓ ยืนยันอีเมลแล้ว | R5 | จ่ายจำลองเฉพาะเงื่อนไข payment-config; กรณีอื่น 409 PAYMENT_PROVIDER_REQUIRED |
 | GET | `/orders/:id` | ✓ | R5 | รายละเอียดออเดอร์ของตัวเอง |
 | GET | `/orders` | ✓ | R5 | ประวัติออเดอร์ของตัวเอง กรองสถานะและแบ่งหน้า |
@@ -193,6 +198,7 @@ error จาก PostgreSQL ที่เจอบ่อย เช่น ข้อ
 | GET | `/admin/orders/:id` | ✓ แอดมิน | R5 | รายละเอียดออเดอร์เพื่อจัดส่ง |
 | PATCH | `/admin/orders/:id/fulfillment` | ✓ แอดมิน | R5 | บันทึกสถานะจัดส่งและเลขพัสดุ |
 | POST | `/orders/:id/receipt` | ✓ เจ้าของ ยืนยันอีเมลแล้ว | R5 | ยืนยันรับสินค้า delivered → completed |
+| POST | `/payments/omise/webhook` | - (Omise เป็นผู้เรียก ตรวจลายเซ็น) | R5 | รับแจ้งผลการจ่ายจาก Omise |
 | POST | `/events` | - (มี token จะใส่ผู้ใช้ให้) | R4 | บันทึกพฤติกรรม view / click / wishlist / add_to_cart / purchase |
 | GET | `/recommend/popular` | - | R4 | สินค้ายอดนิยม (ขายได้ + ถูกใจ + คะแนนรีวิว) |
 | GET | `/recommend/related/:productId` | - | R4 | สินค้าที่เกี่ยวข้อง 8 ชิ้นที่ความหมายใกล้ที่สุด (embedding) |

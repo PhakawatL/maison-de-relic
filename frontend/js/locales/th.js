@@ -63,6 +63,8 @@ export default {
   'detail.backToSearch': 'กลับไปหน้าค้นหา',
   'detail.relatedKicker': 'คล้ายกับชิ้นนี้',
   'detail.relatedTitle': 'สินค้าที่เกี่ยวข้อง',
+  'detail.photoCredit': 'ภาพ: {name} / {source}',
+  'detail.approxPrice': 'ประมาณ {prices} (อัตราแลกเปลี่ยน ECB วันที่ {date} · ร้านคิดเงินเป็นบาท)',
 
   // ---------------------------------------------------------------- ส่วนกลาง: หมวดหมู่ (ตรงกับ category.slug)
   'cat.art-toys': 'อาร์ตทอย',
